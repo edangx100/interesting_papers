@@ -6,3 +6,6 @@
 - A global workspace in language models
   - https://www.anthropic.com/research/global-workspace
   - https://edangx100.github.io/interesting_papers/jspace.html
+- AI Agents Push Humans Out of the Loop
+  - https://arxiv.org/abs/2608.23642 
+  - https://edangx100.github.io/interesting_papers/human-out-of-loop
