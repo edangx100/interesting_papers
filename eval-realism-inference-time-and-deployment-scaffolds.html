@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Making AI safety tests look like real work</title>
+<style>
+  :root{
+    --paper:#EDF0EE;
+    --panel:#F6F8F6;
+    --ink:#25312E;
+    --ink-soft:#5B6A66;
+    --ink-faint:#8B9793;
+    --rule:#D3DAD7;
+    --audit:#7C8FA8;
+    --deploy:#7E9E88;
+    --flag:#8C7A9B;
+    --measure:34rem;
+    --wide:46rem;
+  }
+  :root.dim{
+    --paper:#1B2220;
+    --panel:#212A28;
+    --ink:#D3DBD7;
+    --ink-soft:#9BA8A4;
+    --ink-faint:#6E7C78;
+    --rule:#33403C;
+    --audit:#8FA2B8;
+    --deploy:#8FAF9A;
+    --flag:#A292B0;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    font-size:19px;
+    line-height:1.78;
+    letter-spacing:.005em;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  main{
+    max-width:var(--measure);
+    margin:0 auto;
+    padding:clamp(2.5rem,7vw,6rem) 1.4rem 8rem;
+  }
+  p{margin:0 0 1.5em;text-wrap:pretty;hyphens:none}
+  a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.22em;text-decoration-color:var(--ink-faint)}
+  a:hover{text-decoration-color:var(--ink)}
+  :focus-visible{outline:2px solid var(--audit);outline-offset:3px;border-radius:2px}
+
+  /* — masthead — */
+  .top{
+    max-width:var(--measure);
+    margin:0 auto;
+    padding:1.4rem 1.4rem 0;
+    display:flex;justify-content:flex-end;
+  }
+  .dimmer{
+    font:inherit;font-size:.78rem;line-height:1;
+    color:var(--ink-soft);background:transparent;
+    border:1px solid var(--rule);border-radius:2em;
+    padding:.5em .95em;cursor:pointer;
+  }
+  .dimmer:hover{color:var(--ink);border-color:var(--ink-faint)}
+
+  h1{
+    font-size:clamp(2.05rem,5.2vw,2.85rem);
+    line-height:1.16;
+    font-weight:600;
+    letter-spacing:-.012em;
+    margin:0 0 .7em;
+    max-width:14ch;
+  }
+  .summary{
+    font-size:1.22rem;
+    line-height:1.6;
+    color:var(--ink);
+    border-left:2px solid var(--deploy);
+    padding-left:1.1rem;
+    margin:0 0 3.2rem;
+    max-width:30rem;
+  }
+
+  h2{
+    font-size:1.34rem;
+    font-weight:600;
+    line-height:1.35;
+    letter-spacing:-.005em;
+    margin:4.2rem 0 1.1rem;
+    max-width:24ch;
+  }
+  h2::before{
+    content:"";
+    display:block;
+    width:2.2rem;height:1px;
+    background:var(--rule);
+    margin-bottom:1.5rem;
+  }
+  h3{
+    font-size:1.02rem;font-weight:600;
+    margin:2.4rem 0 .6rem;
+    color:var(--ink);
+  }
+
+  .term{
+    font-style:italic;
+    color:var(--ink);
+  }
+
+  /* — figures — */
+  figure{
+    margin:2.6rem 0 3rem;
+    width:min(var(--wide),100%);
+    margin-left:calc((var(--measure) - min(var(--wide),100%)) / 2);
+  }
+  @media (max-width:52rem){
+    figure{width:100%;margin-left:0}
+  }
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{
+    font-size:.86rem;
+    line-height:1.6;
+    color:var(--ink-soft);
+    margin-top:1rem;
+    max-width:38rem;
+  }
+  .svg-label{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;fill:var(--ink-soft)}
+  .svg-label.strong{fill:var(--ink)}
+  .svg-num{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px;fill:var(--ink);font-weight:600}
+  .svg-tiny{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:10.5px;fill:var(--ink-faint)}
+
+  /* — pull quote / stat line — */
+  .standout{
+    font-size:1.1rem;
+    line-height:1.65;
+    color:var(--ink);
+    background:var(--panel);
+    border-radius:3px;
+    padding:1.4rem 1.5rem;
+    margin:2.4rem 0;
+  }
+  .standout p:last-child{margin-bottom:0}
+
+  ul{padding-left:1.15em;margin:0 0 1.5em}
+  li{margin-bottom:.75em;text-wrap:pretty}
+  li::marker{color:var(--ink-faint)}
+
+  .source{
+    margin-top:5rem;
+    padding-top:1.6rem;
+    border-top:1px solid var(--rule);
+    font-size:.9rem;
+    color:var(--ink-soft);
+  }
+  .source p{margin-bottom:.6em}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <button class="dimmer" id="dimmer" type="button" aria-pressed="false">Dim the page</button>
+</div>
+
+<main>
+
+  <h1>Making AI safety tests look like real work</h1>
+
+  <p class="summary">When a model can tell it is being tested, the test stops meaning much — so this paper spends extra thinking time, and a real coding harness, on making the test look like an ordinary day at the office.</p>
+
+  <p>Before a new AI model is released, people try to catch it misbehaving. A common way to do this is to have one model play director: it invents a situation, plays the human, and fakes anything the model under test tries to reach for — files, emails, search results. Everything the tested model sees is staged.</p>
+
+  <p>The catch is that staged situations feel staged. Models notice. And a model that suspects it is on camera may be on its best behaviour, which is exactly the behaviour you did not want to measure. This paper asks a narrow, practical question: can you make the staging better, automatically, and does better staging change what you find?</p>
+
+  <figure>
+    <svg viewBox="0 0 700 250" role="img" aria-label="Two abstract conversation transcripts side by side, nearly identical; one has dashed borders indicating simulated tool results.">
+      <!-- left: audit -->
+      <rect x="8" y="8" width="316" height="196" rx="4" fill="var(--panel)"/>
+      <rect x="30" y="34" width="150" height="9" rx="4.5" fill="var(--ink-faint)" opacity=".55"/>
+      <rect x="30" y="52" width="214" height="9" rx="4.5" fill="var(--ink-faint)" opacity=".55"/>
+      <rect x="52" y="78" width="196" height="9" rx="4.5" fill="var(--audit)" opacity=".6"/>
+      <rect x="52" y="96" width="132" height="9" rx="4.5" fill="var(--audit)" opacity=".6"/>
+      <rect x="30" y="122" width="238" height="34" rx="3" fill="none" stroke="var(--audit)" stroke-width="1.2" stroke-dasharray="4 4"/>
+      <rect x="44" y="133" width="120" height="7" rx="3.5" fill="var(--audit)" opacity=".45"/>
+      <rect x="44" y="145" width="168" height="7" rx="3.5" fill="var(--audit)" opacity=".45"/>
+      <rect x="52" y="172" width="164" height="9" rx="4.5" fill="var(--audit)" opacity=".6"/>
+      <text x="8" y="230" class="svg-label strong">Staged for the test</text>
+      <text x="8" y="246" class="svg-tiny">tool results written on the fly by another model</text>
+
+      <!-- right: deployment -->
+      <rect x="376" y="8" width="316" height="196" rx="4" fill="var(--panel)"/>
+      <rect x="398" y="34" width="164" height="9" rx="4.5" fill="var(--ink-faint)" opacity=".55"/>
+      <rect x="398" y="52" width="202" height="9" rx="4.5" fill="var(--ink-faint)" opacity=".55"/>
+      <rect x="420" y="78" width="188" height="9" rx="4.5" fill="var(--deploy)" opacity=".6"/>
+      <rect x="420" y="96" width="144" height="9" rx="4.5" fill="var(--deploy)" opacity=".6"/>
+      <rect x="398" y="122" width="238" height="34" rx="3" fill="var(--deploy)" opacity=".12"/>
+      <rect x="412" y="133" width="128" height="7" rx="3.5" fill="var(--deploy)" opacity=".55"/>
+      <rect x="412" y="145" width="160" height="7" rx="3.5" fill="var(--deploy)" opacity=".55"/>
+      <rect x="420" y="172" width="172" height="9" rx="4.5" fill="var(--deploy)" opacity=".6"/>
+      <text x="376" y="230" class="svg-label strong">A real session</text>
+      <text x="376" y="246" class="svg-tiny">tool results from an actual machine</text>
+
+      <!-- divider -->
+      <line x1="350" y1="24" x2="350" y2="188" stroke="var(--rule)" stroke-width="1"/>
+    </svg>
+    <figcaption>Show a model both and ask which one is the test. Today it guesses right most of the time. The paper's goal is to make that guess harder.</figcaption>
+  </figure>
+
+  <h2>How badly the seams show</h2>
+
+  <p>Two numbers set the scene. In earlier work, models said out loud that they suspected a test in roughly 17 to 21 percent of audits. And when a model was handed one audit transcript and one real transcript and asked to sort them by realism, it picked out the audit about 95 percent of the time.</p>
+
+  <p>That second measurement becomes the paper's main yardstick, called the <span class="term">realism win rate</span>: the share of head-to-head pairings in which the fake transcript is judged the more realistic of the two. Fifty percent would mean the model cannot tell at all. Baseline audits sit around one to fifteen percent depending on which model you ask.</p>
+
+  <h2>First idea: let the model critique the script</h2>
+
+  <p>The first technique is <span class="term">critique refinement</span>. Instead of the director writing its next move and moving on, it writes a draft, hands it to a copy of the model being tested, and asks: what about this reads like a test rather than a real day? It rewrites using that feedback. Then a third copy is shown the old draft and the new one and asked which looks more like the real thing. The winner stays, and the audit continues.</p>
+
+  <p>It is worth pausing on the loop here. The model under test is being used as the critic of its own exam. If it knows what gives a test away, that knowledge gets spent on hiding the seams.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 300" role="img" aria-label="Diagram of the critique refinement loop: draft, critique, refine, compare, keep the winner; then four such loops feeding a single-elimination bracket.">
+      <!-- row 1: the loop -->
+      <text x="0" y="14" class="svg-label strong">One refinement round</text>
+
+      <rect x="0" y="34" width="118" height="52" rx="3" fill="var(--panel)"/>
+      <text x="14" y="58" class="svg-label strong">Draft an action</text>
+      <text x="14" y="74" class="svg-tiny">the director writes</text>
+
+      <path d="M126 60 L160 60" stroke="var(--rule)" stroke-width="1.4" fill="none"/>
+      <path d="M154 56 L160 60 L154 64" stroke="var(--ink-faint)" stroke-width="1.2" fill="none"/>
+
+      <rect x="168" y="34" width="118" height="52" rx="3" fill="var(--panel)"/>
+      <text x="182" y="58" class="svg-label strong">Critique it</text>
+      <text x="182" y="74" class="svg-tiny">a copy of the target</text>
+
+      <path d="M294 60 L328 60" stroke="var(--rule)" stroke-width="1.4" fill="none"/>
+      <path d="M322 56 L328 60 L322 64" stroke="var(--ink-faint)" stroke-width="1.2" fill="none"/>
+
+      <rect x="336" y="34" width="118" height="52" rx="3" fill="var(--panel)"/>
+      <text x="350" y="58" class="svg-label strong">Rewrite</text>
+      <text x="350" y="74" class="svg-tiny">using the critique</text>
+
+      <path d="M462 60 L496 60" stroke="var(--rule)" stroke-width="1.4" fill="none"/>
+      <path d="M490 56 L496 60 L490 64" stroke="var(--ink-faint)" stroke-width="1.2" fill="none"/>
+
+      <rect x="504" y="34" width="118" height="52" rx="3" fill="none" stroke="var(--deploy)" stroke-width="1.4"/>
+      <text x="518" y="58" class="svg-label strong">Keep the winner</text>
+      <text x="518" y="74" class="svg-tiny">whichever reads real</text>
+
+      <!-- feedback arc -->
+      <path d="M563 92 C563 120, 60 120, 60 94" stroke="var(--rule)" stroke-width="1.2" fill="none" stroke-dasharray="4 4"/>
+      <path d="M56 100 L60 94 L64 100" stroke="var(--ink-faint)" stroke-width="1.2" fill="none"/>
+      <text x="252" y="118" class="svg-tiny">repeat: this is &#8220;depth&#8221;</text>
+
+      <!-- row 2: bracket -->
+      <text x="0" y="176" class="svg-label strong">Four loops at once</text>
+
+      <rect x="0" y="196" width="96" height="22" rx="3" fill="var(--panel)"/>
+      <rect x="0" y="224" width="96" height="22" rx="3" fill="var(--panel)"/>
+      <rect x="0" y="252" width="96" height="22" rx="3" fill="var(--panel)"/>
+      <rect x="0" y="280" width="96" height="22" rx="3" fill="var(--panel)"/>
+      <text x="10" y="211" class="svg-tiny">candidate</text>
+      <text x="10" y="239" class="svg-tiny">candidate</text>
+      <text x="10" y="267" class="svg-tiny">candidate</text>
+      <text x="10" y="295" class="svg-tiny">candidate</text>
+
+      <path d="M104 207 H140 V221 M104 235 H140 V221 H164" stroke="var(--rule)" stroke-width="1.2" fill="none"/>
+      <path d="M104 263 H140 V277 M104 291 H140 V277 H164" stroke="var(--rule)" stroke-width="1.2" fill="none"/>
+      <path d="M164 221 V249 H196 M164 277 V249" stroke="var(--rule)" stroke-width="1.2" fill="none"/>
+
+      <rect x="196" y="238" width="112" height="22" rx="3" fill="none" stroke="var(--deploy)" stroke-width="1.4"/>
+      <text x="206" y="253" class="svg-tiny">most real of the four</text>
+      <text x="330" y="253" class="svg-tiny">this is &#8220;breadth&#8221;</text>
+    </svg>
+    <figcaption>Depth means critiquing and rewriting the same action again and again. Breadth means running several drafts in parallel and holding a knockout round between them.</figcaption>
+  </figure>
+
+  <h2>It works, and more compute buys more of it</h2>
+
+  <p>With four parallel drafts and two rounds of critique each, the realism win rate roughly doubled or better on every model tested. The gains are real but the ceiling is still low — the best case moves from about one audit in ten passing as real to about one in four.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 300" role="img" aria-label="Slope chart showing realism win rate rising from baseline to critique refinement for four models: Sonnet 4.6 from 10 to 26 percent, Gemini 3.5 Flash 15 to 22, Opus 4.8 2 to 7, GPT-5.5 1 to 6.">
+      <!-- axis -->
+      <line x1="150" y1="30" x2="150" y2="250" stroke="var(--rule)" stroke-width="1"/>
+      <line x1="490" y1="30" x2="490" y2="250" stroke="var(--rule)" stroke-width="1"/>
+      <text x="150" y="272" class="svg-label">Plain audit</text>
+      <text x="490" y="272" class="svg-label">With critique refinement</text>
+      <text x="0" y="20" class="svg-tiny">realism win rate &#8212; higher means harder to spot</text>
+
+      <!-- y ticks: 0 at 250, 30% at 40 => 7px per point -->
+      <line x1="150" y1="250" x2="490" y2="250" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 5"/>
+      <text x="500" y="254" class="svg-tiny">0%</text>
+      <line x1="150" y1="40" x2="490" y2="40" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 5"/>
+      <text x="500" y="44" class="svg-tiny">30%</text>
+
+      <!-- Sonnet 10 -> 26 : y 180 -> 68 -->
+      <line x1="150" y1="180" x2="490" y2="68" stroke="var(--deploy)" stroke-width="2"/>
+      <circle cx="150" cy="180" r="4" fill="var(--deploy)"/>
+      <circle cx="490" cy="68" r="4" fill="var(--deploy)"/>
+      <text x="140" y="184" class="svg-num" text-anchor="end">10%</text>
+      <text x="504" y="66" class="svg-num">26%</text>
+      <text x="504" y="82" class="svg-label">Sonnet 4.6</text>
+
+      <!-- Gemini 15 -> 22 : y 145 -> 96 -->
+      <line x1="150" y1="145" x2="490" y2="96" stroke="var(--audit)" stroke-width="2"/>
+      <circle cx="150" cy="145" r="4" fill="var(--audit)"/>
+      <circle cx="490" cy="96" r="4" fill="var(--audit)"/>
+      <text x="140" y="149" class="svg-num" text-anchor="end">15%</text>
+      <text x="504" y="102" class="svg-num">22%</text>
+      <text x="504" y="118" class="svg-label">Gemini 3.5 Flash</text>
+
+      <!-- Opus 2 -> 7 : y 236 -> 201 -->
+      <line x1="150" y1="236" x2="490" y2="201" stroke="var(--flag)" stroke-width="2"/>
+      <circle cx="150" cy="236" r="4" fill="var(--flag)"/>
+      <circle cx="490" cy="201" r="4" fill="var(--flag)"/>
+      <text x="140" y="232" class="svg-num" text-anchor="end">2%</text>
+      <text x="504" y="199" class="svg-num">7%</text>
+      <text x="504" y="215" class="svg-label">Opus 4.8</text>
+
+      <!-- GPT 1 -> 6 : y 243 -> 208 -->
+      <line x1="150" y1="243" x2="490" y2="208" stroke="var(--ink-faint)" stroke-width="2"/>
+      <circle cx="150" cy="243" r="4" fill="var(--ink-faint)"/>
+      <circle cx="490" cy="208" r="4" fill="var(--ink-faint)"/>
+      <text x="140" y="256" class="svg-num" text-anchor="end">1%</text>
+      <text x="504" y="238" class="svg-num">6%</text>
+      <text x="504" y="254" class="svg-label">GPT-5.5</text>
+    </svg>
+    <figcaption>Four models, before and after. Even the best result leaves the audit recognisable three times out of four.</figcaption>
+  </figure>
+
+  <p>Given a fixed budget, is it better to critique one draft many times, or to write many drafts and pick the best? Depth won clearly. Sixteen rounds of critique on a single draft pushed the win rate from nine to thirty-four percent, while adding parallel drafts alone barely moved the needle. Depth has a cost, though, which the next section gets to.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 260" role="img" aria-label="Schematic showing realism rising steeply when refinement rounds are added, and staying almost flat when parallel drafts are added instead.">
+      <line x1="60" y1="30" x2="60" y2="200" stroke="var(--rule)" stroke-width="1"/>
+      <line x1="60" y1="200" x2="640" y2="200" stroke="var(--rule)" stroke-width="1"/>
+      <text x="60" y="226" class="svg-label">more compute spent on each turn &#8594;</text>
+      <text x="0" y="20" class="svg-tiny">realism win rate</text>
+
+      <!-- depth curve: 9% -> 34% -->
+      <path d="M100 178 C220 150, 330 108, 600 58" stroke="var(--deploy)" stroke-width="2.2" fill="none"/>
+      <circle cx="100" cy="178" r="4" fill="var(--deploy)"/>
+      <circle cx="600" cy="58" r="4" fill="var(--deploy)"/>
+      <text x="76" y="168" class="svg-num">9%</text>
+      <text x="614" y="56" class="svg-num">34%</text>
+      <text x="614" y="74" class="svg-label">critique the</text>
+      <text x="614" y="90" class="svg-label">same draft again</text>
+
+      <!-- breadth curve: flat -->
+      <path d="M100 178 C240 174, 380 172, 600 168" stroke="var(--audit)" stroke-width="2.2" fill="none" stroke-dasharray="6 4"/>
+      <circle cx="600" cy="168" r="4" fill="var(--audit)"/>
+      <text x="614" y="166" class="svg-label">write more</text>
+      <text x="614" y="182" class="svg-label">drafts instead</text>
+    </svg>
+    <figcaption>Rewriting beats reshuffling. The curve for parallel drafts is drawn schematically; the paper reports it as close to flat.</figcaption>
+  </figure>
+
+  <h2>Second idea: stop building a fake office</h2>
+
+  <p>The other technique goes after a different seam. In a normal audit, the director has to improvise the whole workspace: the instructions the model wakes up with, the list of tools it can call, the little system messages that punctuate a session. Improvised versions of these are subtly wrong in ways a model recognises immediately.</p>
+
+  <p><span class="term">DISH</span> — the Deployment-Imitating SWE-Agent Harness — skips the improvisation. It runs the model inside the actual coding tool it ships in, such as Claude Code, and intercepts the traffic passing through. The instructions and tools are not imitations of the real thing. They are the real thing.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 240" role="img" aria-label="Comparison: on the left, a director model improvises a system prompt and tools around the target; on the right, the target sits inside a real coding harness while the director intercepts messages at the boundary.">
+      <!-- left -->
+      <text x="0" y="16" class="svg-label strong">Improvised</text>
+      <rect x="0" y="34" width="300" height="150" rx="4" fill="none" stroke="var(--audit)" stroke-width="1.3" stroke-dasharray="5 4"/>
+      <text x="16" y="58" class="svg-tiny">instructions, tool list, reminders &#8212; all invented</text>
+      <rect x="86" y="80" width="128" height="60" rx="3" fill="var(--panel)"/>
+      <text x="150" y="115" class="svg-label strong" text-anchor="middle">model on test</text>
+      <text x="0" y="206" class="svg-tiny">the model has never seen a workspace</text>
+      <text x="0" y="222" class="svg-tiny">that looks quite like this one</text>
+
+      <!-- right -->
+      <text x="400" y="16" class="svg-label strong">Borrowed from the real tool</text>
+      <rect x="400" y="34" width="300" height="150" rx="4" fill="var(--deploy)" opacity=".1"/>
+      <rect x="400" y="34" width="300" height="150" rx="4" fill="none" stroke="var(--deploy)" stroke-width="1.4"/>
+      <text x="416" y="58" class="svg-tiny">the shipping harness, unchanged</text>
+      <rect x="486" y="80" width="128" height="60" rx="3" fill="var(--panel)"/>
+      <text x="550" y="115" class="svg-label strong" text-anchor="middle">model on test</text>
+      <circle cx="400" cy="110" r="9" fill="var(--paper)" stroke="var(--audit)" stroke-width="1.4"/>
+      <text x="352" y="140" class="svg-tiny">director edits</text>
+      <text x="352" y="154" class="svg-tiny">in transit</text>
+      <text x="400" y="206" class="svg-tiny">everything except the story is genuine</text>
+    </svg>
+    <figcaption>The director still writes the plot. It just no longer has to build the set.</figcaption>
+  </figure>
+
+  <p>On coding scenarios this was the single strongest change for some models: Sonnet 4.6 went from nine to twenty-one percent. On others the shift was a point or two. And the two techniques stack — running both pushed Sonnet 4.6 to roughly thirty-four percent, well past either one alone.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 220" role="img" aria-label="Bar chart for Sonnet 4.6 on coding scenarios: plain audit 9 percent, with DISH 21 percent, with both techniques 34 percent.">
+      <line x1="0" y1="176" x2="640" y2="176" stroke="var(--rule)" stroke-width="1"/>
+
+      <rect x="40" y="140" width="120" height="36" fill="var(--ink-faint)" opacity=".5"/>
+      <text x="100" y="128" class="svg-num" text-anchor="middle">9%</text>
+      <text x="100" y="196" class="svg-label" text-anchor="middle">plain audit</text>
+
+      <rect x="250" y="92" width="120" height="84" fill="var(--audit)" opacity=".7"/>
+      <text x="310" y="80" class="svg-num" text-anchor="middle">21%</text>
+      <text x="310" y="196" class="svg-label" text-anchor="middle">real harness</text>
+
+      <rect x="460" y="40" width="120" height="136" fill="var(--deploy)" opacity=".8"/>
+      <text x="520" y="28" class="svg-num" text-anchor="middle">34%</text>
+      <text x="520" y="196" class="svg-label" text-anchor="middle">both together</text>
+    </svg>
+    <figcaption>Sonnet 4.6 on coding scenarios. Other models gained far less, and on some the difference was a point or two.</figcaption>
+  </figure>
+
+  <h2>What it costs</h2>
+
+  <p>Three costs are worth knowing about, and the paper is candid about all three.</p>
+
+  <h3>The audit drifts off topic</h3>
+  <p>Every audit starts from a written instruction: probe for this specific tendency. Pushing hard on realism pulls against that instruction, because the most realistic version of a scene is usually the one where nothing much happens. Sixteen rounds of critique dropped adherence to the original instruction from 0.89 to 0.79 — and with GPT-5.5 as the critic, from 0.92 down to 0.72. Tracing that gap, the authors found GPT-5.5 mentioned the audit's actual goal in about nine percent of its critiques, against forty-nine percent for Opus 4.8. The critic was optimising for realism and quietly forgetting the assignment.</p>
+
+  <h3>What you catch changes</h3>
+  <p>More realism did not simply surface more bad behaviour. It surfaced different bad behaviour. Under critique refinement the audits built up more gradually, applied less blunt pressure, and included more scenario detail. Two models then became measurably more likely to go along with a user pushing them, to flatter, and to claim work was finished when it was not. Another model's concerning scores went down. Realism is not a dial that makes problems more visible; it changes which problems are in frame.</p>
+
+  <h3>Money</h3>
+  <p>Critiquing every single action is expensive. The paper compares it against the obvious alternative — spend the same budget letting the director run much longer, 235 turns instead of 30, across several attempts. That alternative surfaced more concerning behaviour but produced less realistic transcripts. Which one you want depends on what you are worried about.</p>
+
+  <div class="standout">
+    <p>If you mainly want to catch misbehaviour, longer audits work better today. If you are worried that models are behaving well because they know they are being watched, realism is what you need to buy.</p>
+  </div>
+
+  <h2>What is still open</h2>
+
+  <ul>
+    <li>Even the best result leaves audits identifiable most of the time. When the authors held the task fixed and asked only whether the environment felt real, the best single method stayed under twenty percent on two flagship models.</li>
+    <li>The two techniques stacked cleanly on scripted coding scenarios but not on recreations of real sessions. Nobody yet knows why.</li>
+    <li>A model that never says it suspects a test may still suspect one. Unspoken suspicion cannot be measured directly, which is why realism is used as a stand-in.</li>
+    <li>The model being tested is also the critic and the judge of realism. That is a door left open for a future model to nudge its own exam, and the authors flag it as unexplored rather than solved.</li>
+  </ul>
+
+  <p>The larger point survives the caveats. As models get better at recognising a test, the staging has to keep pace, or the safety results stop describing anything real. This paper is a demonstration that some of that work can be automated and bought with compute — and a fairly clear-eyed account of how far that gets you, which is not yet far enough.</p>
+
+  <div class="source">
+    <p>Based on <a href="https://arxiv.org/abs/2609.02302">Improving Evaluation Realism with Inference-Time Compute and Deployment Scaffolds</a> (arXiv:2609.02302), by Ahlqvist, Guan, Rivera, Kassler, Troitskii, Souly, Fronsdal, Kirk and Hughes.</p>
+    <p>Figures are redrawn as schematics; consult the paper for confidence intervals and full results.</p>
+  </div>
+
+</main>
+
+<script>
+  (function(){
+    var root = document.documentElement;
+    var btn = document.getElementById('dimmer');
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('dim');
+    }
+    function sync(){
+      var on = root.classList.contains('dim');
+      btn.textContent = on ? 'Brighten the page' : 'Dim the page';
+      btn.setAttribute('aria-pressed', String(on));
+    }
+    btn.addEventListener('click', function(){
+      root.classList.toggle('dim');
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+</body>
+</html>
