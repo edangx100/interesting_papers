@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STAIR: ask the table of contents</title>
+<style>
+  :root{
+    --paper:#e7ecec;
+    --surface:#f3f7f6;
+    --ink:#22323a;
+    --ink-soft:#5b7079;
+    --ink-faint:#8fa2a8;
+    --rule:#c6d2d2;
+    --teal:#2c6d68;
+    --teal-fill:#bcd8d3;
+    --ochre:#8a6a2e;
+    --ochre-fill:#e6d9b8;
+    --plum:#6d4f6b;
+    --warn:#a1584a;
+    --serif:"Iowan Old Style","Charter","Bitstream Charter","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:"Avenir Next","Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+    --measure:37rem;
+    color-scheme:light;
+  }
+  html.dim{
+    --paper:#161e21;
+    --surface:#1e282b;
+    --ink:#ccd8d6;
+    --ink-soft:#8ba09e;
+    --ink-faint:#6b7f7d;
+    --rule:#30403f;
+    --teal:#7cbcb1;
+    --teal-fill:#28423f;
+    --ochre:#c5a56d;
+    --ochre-fill:#3c3527;
+    --plum:#b394ae;
+    --warn:#d18d78;
+    color-scheme:dark;
+  }
+  html{font-size:18px;scroll-behavior:smooth;}
+  html.big{font-size:20.5px;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:1rem;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  ::selection{background:var(--teal-fill);color:var(--ink);}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px;}
+
+  .wrap{max-width:var(--measure);margin:0 auto;padding:0 1.5rem;}
+  .wide{max-width:52rem;margin:0 auto;padding:0 1.5rem;}
+
+  /* ---------- header ---------- */
+  header.top{padding:4.5rem 0 2rem;}
+  h1{
+    font-family:var(--serif);
+    font-size:2.6rem;line-height:1.12;font-weight:600;
+    letter-spacing:-.015em;margin:0 0 1.1rem;
+    max-width:16ch;
+  }
+  .standfirst{font-size:1.18rem;line-height:1.6;margin:0 0 1.6rem;color:var(--ink);}
+  .sourceline{font-family:var(--sans);font-size:.72rem;color:var(--ink-soft);letter-spacing:.02em;margin:0 0 2.2rem;}
+  .sourceline a{color:var(--ink-soft);}
+
+  a{color:var(--teal);text-decoration:none;border-bottom:1px solid var(--teal-fill);}
+  a:hover{border-bottom-color:var(--teal);}
+
+  /* ---------- comfort controls ---------- */
+  .comfort{
+    display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;
+    font-family:var(--sans);font-size:.78rem;color:var(--ink-soft);
+    border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+    padding:.75rem 0;margin-bottom:2.6rem;
+  }
+  .comfort p{margin:0 .5rem 0 0;flex:1 1 15rem;line-height:1.5;}
+  .comfort button{
+    font:inherit;color:var(--ink);background:transparent;
+    border:1px solid var(--rule);border-radius:999px;
+    padding:.28rem .85rem;cursor:pointer;
+  }
+  .comfort button:hover{border-color:var(--teal);color:var(--teal);}
+  .comfort button[aria-pressed="true"]{background:var(--teal-fill);border-color:var(--teal-fill);color:var(--ink);}
+
+  /* ---------- toc rail ---------- */
+  nav.rail{display:none;}
+  @media (min-width:1180px){
+    nav.rail{
+      display:block;position:fixed;top:3.2rem;left:2.2rem;width:14.5rem;
+      font-family:var(--sans);font-size:.74rem;line-height:1.45;
+      border-left:1px solid var(--rule);padding-left:.9rem;
+    }
+    nav.rail ol{list-style:none;margin:0;padding:0;}
+    nav.rail li{margin:.34rem 0;display:flex;align-items:baseline;gap:.35rem;}
+    nav.rail li.sub{padding-left:.9rem;}
+    nav.rail a{color:var(--ink-soft);border:0;display:flex;gap:.35rem;width:100%;align-items:baseline;}
+    nav.rail .num{color:var(--ink-faint);font-variant-numeric:tabular-nums;min-width:1.9rem;}
+    nav.rail .dots{flex:1;border-bottom:1px dotted var(--rule);transform:translateY(-.22em);}
+    nav.rail a:hover,nav.rail a.on{color:var(--teal);}
+    nav.rail a.on .dots{border-bottom-color:var(--teal);}
+  }
+
+  /* ---------- sections ---------- */
+  section{padding:2.2rem 0;}
+  h2{
+    font-size:1.45rem;line-height:1.25;font-weight:600;letter-spacing:-.01em;
+    margin:0 0 .2rem;max-width:22ch;
+  }
+  .marker{
+    font-family:var(--sans);font-size:.72rem;color:var(--ink-faint);
+    display:block;margin-bottom:.55rem;font-variant-numeric:tabular-nums;
+  }
+  h3{font-family:var(--sans);font-size:.95rem;font-weight:600;margin:2rem 0 .4rem;letter-spacing:-.005em;}
+  p{margin:0 0 1.1rem;}
+  p.lead{font-size:1.08rem;}
+  em{font-style:italic;}
+  strong{font-weight:600;}
+
+  ul.plain{list-style:none;margin:0 0 1.2rem;padding:0;}
+  ul.plain li{padding-left:1.1rem;position:relative;margin-bottom:.5rem;}
+  ul.plain li::before{content:"";position:absolute;left:0;top:.72em;width:.42rem;height:1px;background:var(--teal);}
+
+  /* ---------- figures ---------- */
+  figure{
+    margin:2rem 0;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;
+    padding:1.4rem 1.2rem 1rem;
+  }
+  figure svg{display:block;width:100%;height:auto;}
+  figcaption{
+    font-family:var(--sans);font-size:.76rem;line-height:1.55;color:var(--ink-soft);
+    margin-top:1rem;padding-top:.7rem;border-top:1px solid var(--rule);
+  }
+  .schematic{color:var(--ink-faint);}
+
+  /* svg text styles */
+  .t-lbl{font-family:var(--sans);font-size:11px;fill:var(--ink-soft);}
+  .t-lbl-s{font-family:var(--sans);font-size:9.5px;fill:var(--ink-faint);letter-spacing:.03em;}
+  .t-num{font-family:var(--sans);font-size:11px;fill:var(--ink-soft);font-variant-numeric:tabular-nums;}
+  .t-toc{font-family:var(--serif);font-size:12.5px;fill:var(--ink);}
+  .t-toc-dim{font-family:var(--serif);font-size:12.5px;fill:var(--ink-faint);}
+  .t-strong{font-family:var(--sans);font-size:12px;font-weight:600;fill:var(--ink);}
+  .t-big{font-family:var(--sans);font-size:19px;font-weight:600;fill:var(--ink);font-variant-numeric:tabular-nums;}
+  .stroke-rule{stroke:var(--rule);fill:none;}
+  .fill-surface{fill:var(--paper);}
+
+  /* hero panels */
+  .chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem;}
+  .chips button{
+    font-family:var(--sans);font-size:.74rem;color:var(--ink-soft);
+    background:transparent;border:1px solid var(--rule);border-radius:999px;
+    padding:.3rem .8rem;cursor:pointer;
+  }
+  .chips button:hover{border-color:var(--teal);color:var(--teal);}
+  .chips button[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:var(--surface);}
+  html.dim .chips button[aria-selected="true"]{color:#14201f;}
+  .panel{display:none;}
+  .panel.on{display:block;}
+  .trace{stroke-dasharray:520;stroke-dashoffset:0;}
+  .panel.on .trace{animation:draw 1.1s ease-out both;}
+  @keyframes draw{from{stroke-dashoffset:520;}to{stroke-dashoffset:0;}}
+
+  /* table */
+  table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.8rem;margin:1.6rem 0;}
+  caption{text-align:left;font-family:var(--sans);font-size:.76rem;color:var(--ink-soft);padding-bottom:.6rem;}
+  th,td{padding:.45rem .5rem;text-align:right;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums;}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{color:var(--ink-soft);font-weight:600;border-bottom:1px solid var(--ink-faint);}
+  tbody tr.best td{background:var(--teal-fill);}
+  tbody tr.best td:first-child{font-weight:600;}
+
+  /* verdict cards */
+  .verdicts{margin:1.4rem 0;border-top:1px solid var(--rule);}
+  .verdict{display:grid;grid-template-columns:1.5rem 4.6rem 1fr;gap:.7rem;align-items:baseline;
+    padding:.7rem 0;border-bottom:1px solid var(--rule);}
+  .verdict .who{font-family:var(--sans);font-size:.8rem;font-weight:600;}
+  .verdict .said{font-size:.94rem;line-height:1.5;}
+  .verdict .note{display:block;font-family:var(--sans);font-size:.74rem;color:var(--ink-soft);margin-top:.15rem;}
+  .verdict svg{width:1.05rem;height:1.05rem;transform:translateY(.15em);}
+
+  .callout{
+    border-left:2px solid var(--teal);padding:.1rem 0 .1rem 1.1rem;
+    margin:1.6rem 0;color:var(--ink);
+  }
+  .callout p:last-child{margin-bottom:0;}
+
+  .prompt{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.76rem;line-height:1.7;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;padding:1rem 1.1rem;
+    white-space:pre-wrap;overflow-x:auto;color:var(--ink-soft);margin:1.2rem 0;
+  }
+  .prompt b{color:var(--ink);font-weight:600;}
+  .prompt i{color:var(--ochre);font-style:normal;}
+
+  footer{
+    border-top:1px solid var(--rule);margin-top:3rem;padding:1.6rem 0 4rem;
+    font-family:var(--sans);font-size:.78rem;color:var(--ink-soft);
+  }
+  @media (max-width:640px){
+    header.top{padding-top:2.6rem;}
+    h1{font-size:2rem;}
+    figure{padding:1rem .7rem .8rem;}
+  }
+</style>
+</head>
+<body>
+
+<nav class="rail" aria-label="Sections">
+  <ol id="rail">
+    <li><a href="#idea"><span class="num">1</span><span>The idea</span><span class="dots"></span></a></li>
+    <li class="sub"><a href="#chunks"><span class="num">1.1</span><span>What chunking loses</span><span class="dots"></span></a></li>
+    <li><a href="#bench"><span class="num">2</span><span>SearchTome</span><span class="dots"></span></a></li>
+    <li><a href="#train"><span class="num">3</span><span>How STAIR is built</span><span class="dots"></span></a></li>
+    <li class="sub"><a href="#prompt"><span class="num">3.1</span><span>What it sees</span><span class="dots"></span></a></li>
+    <li><a href="#results"><span class="num">4</span><span>Results</span><span class="dots"></span></a></li>
+    <li class="sub"><a href="#invented"><span class="num">4.1</span><span>Invented sections</span><span class="dots"></span></a></li>
+    <li class="sub"><a href="#thin"><span class="num">4.2</span><span>Thinly taught sections</span><span class="dots"></span></a></li>
+    <li><a href="#example"><span class="num">5</span><span>One query, five systems</span><span class="dots"></span></a></li>
+    <li><a href="#limits"><span class="num">6</span><span>What it can't do yet</span><span class="dots"></span></a></li>
+  </ol>
+</nav>
+
+<header class="top">
+  <div class="wrap">
+    <h1>STAIR: ask the table of contents</h1>
+    <p class="standfirst">Give a language model the book's contents page along with the question, and it names the one section that holds the answer — right 82.6% of the time on the first try, and almost never inventing a section that doesn't exist.</p>
+    <p class="sourceline">Kumar, Pulivarthi, Kumar, Sen, Bhat and Joshi, IBM. <a href="https://arxiv.org/abs/2609.03874">arXiv:2609.03874</a>, September 2026.</p>
+
+    <div class="comfort">
+      <p>Set for long reading: warm-grey paper instead of white, lines under 70 characters, and no motion unless you ask for it.</p>
+      <button id="dimBtn" aria-pressed="false">Dim</button>
+      <button id="bigBtn" aria-pressed="false">Larger text</button>
+    </div>
+  </div>
+
+  <div class="wide">
+    <figure>
+      <div class="chips" role="tablist" aria-label="Example questions">
+        <button role="tab" aria-selected="true" data-panel="p1">Politics textbook</button>
+        <button role="tab" aria-selected="false" data-panel="p2">Child development</button>
+        <button role="tab" aria-selected="false" data-panel="p3">Nursing</button>
+      </div>
+
+      <!-- PANEL 1 -->
+      <div class="panel on" id="p1">
+        <svg viewBox="0 0 760 336" role="img" aria-label="A question is matched to the section 4.2.3 Electoral Systems and Political Parties by walking down the table of contents.">
+          <rect x="22" y="14" width="470" height="48" rx="24" fill="none" stroke="var(--teal)" stroke-width="1.2"/>
+          <text class="t-toc" x="44" y="44" fill="var(--ink)">“What is the plurality voting system?”</text>
+          <text class="t-lbl-s" x="510" y="35">Introduction to Comparative</text>
+          <text class="t-lbl-s" x="510" y="49">Government and Politics</text>
+
+          <path class="trace" d="M40 62 C 40 110, 46 120, 62 120 M40 62 C 40 150, 52 168, 92 168 M40 62 C 40 200, 60 216, 128 216"
+                stroke="var(--teal)" fill="none" stroke-width="1" opacity=".45" stroke-dasharray="3 3"/>
+
+          <text class="t-lbl-s" x="22" y="96">chapter</text>
+          <text class="t-lbl-s" x="88" y="96">section</text>
+          <text class="t-lbl-s" x="150" y="96">leaf</text>
+
+          <text class="t-toc-dim" x="62" y="124">3  Political Culture and Socialisation</text>
+
+          <rect x="52" y="140" width="600" height="24" rx="3" fill="var(--teal-fill)" opacity=".45"/>
+          <text class="t-toc" x="62" y="157">4  Democracies and Democratization</text>
+
+          <rect x="82" y="188" width="570" height="24" rx="3" fill="var(--teal-fill)" opacity=".6"/>
+          <text class="t-toc" x="92" y="205">4.2  Institutions within Democracy</text>
+          <text class="t-toc-dim" x="128" y="181">4.1.2  Defining democracy</text>
+
+          <rect x="118" y="236" width="534" height="26" rx="3" fill="var(--teal-fill)"/>
+          <rect x="118" y="236" width="2.5" height="26" fill="var(--teal)"/>
+          <text class="t-toc" x="132" y="254">4.2.3  Electoral Systems &amp; Political Parties</text>
+          <text class="t-lbl-s" x="600" y="254" fill="var(--teal)">retrieved</text>
+
+          <text class="t-toc-dim" x="128" y="284">4.2.4  Executives and Legislatures</text>
+          <text class="t-toc-dim" x="62" y="312">5  Non-Democracies and Democratic Backsliding</text>
+        </svg>
+      </div>
+
+      <!-- PANEL 2 -->
+      <div class="panel" id="p2">
+        <svg viewBox="0 0 760 336" role="img" aria-label="A question about preschoolers is matched to leaf 2.2.3 Initiative versus Guilt.">
+          <rect x="22" y="14" width="560" height="48" rx="24" fill="none" stroke="var(--teal)" stroke-width="1.2"/>
+          <text class="t-toc" x="44" y="44">“How do preschoolers react when caregivers belittle their autonomy?”</text>
+          <text class="t-lbl-s" x="600" y="35">The Whole Child:</text>
+          <text class="t-lbl-s" x="600" y="49">Development in the Early Years</text>
+
+          <path class="trace" d="M40 62 C 40 110, 46 120, 62 120 M40 62 C 40 150, 52 160, 92 160 M40 62 C 40 210, 60 232, 128 232"
+                stroke="var(--teal)" fill="none" stroke-width="1" opacity=".45" stroke-dasharray="3 3"/>
+
+          <rect x="52" y="106" width="600" height="24" rx="3" fill="var(--teal-fill)" opacity=".45"/>
+          <text class="t-toc" x="62" y="123">2  Theorists and Theories of Development</text>
+
+          <rect x="82" y="140" width="570" height="24" rx="3" fill="var(--teal-fill)" opacity=".6"/>
+          <text class="t-toc" x="92" y="157">2.2  Psychosocial Theory</text>
+
+          <text class="t-toc-dim" x="128" y="182">2.2.1  Trust vs. Mistrust (Infancy)</text>
+          <text class="t-toc-dim" x="128" y="204">2.2.2  Autonomy vs. Shame/Doubt (Toddlerhood)</text>
+
+          <rect x="118" y="214" width="534" height="26" rx="3" fill="var(--teal-fill)"/>
+          <rect x="118" y="214" width="2.5" height="26" fill="var(--teal)"/>
+          <text class="t-toc" x="132" y="232">2.2.3  Initiative vs. Guilt (Preschool Years)</text>
+          <text class="t-lbl-s" x="600" y="232" fill="var(--teal)">retrieved</text>
+
+          <text class="t-toc-dim" x="128" y="262">2.2.4  Industry vs. Inferiority (Elementary Years)</text>
+          <text class="t-toc-dim" x="128" y="284">2.2.5  Identity vs. Role-Confusion (Adolescence)</text>
+          <text class="t-toc-dim" x="62" y="312">3  Domains in Development</text>
+        </svg>
+      </div>
+
+      <!-- PANEL 3 -->
+      <div class="panel" id="p3">
+        <svg viewBox="0 0 760 336" role="img" aria-label="A question about chronic illness in older adults is matched to leaf 31.3 Applying the Nursing Process.">
+          <rect x="22" y="14" width="540" height="48" rx="24" fill="none" stroke="var(--teal)" stroke-width="1.2"/>
+          <text class="t-toc" x="44" y="44">“How does chronic illness affect an older person's daily activities?”</text>
+          <text class="t-lbl-s" x="600" y="42">Nursing Fundamentals</text>
+
+          <path class="trace" d="M40 62 C 40 130, 46 150, 62 150 M40 62 C 40 200, 60 232, 128 232"
+                stroke="var(--teal)" fill="none" stroke-width="1" opacity=".45" stroke-dasharray="3 3"/>
+
+          <text class="t-toc-dim" x="128" y="112">30.5  Spiritual Care of Self</text>
+          <text class="t-toc-dim" x="128" y="134">30.6  Putting It All Together</text>
+
+          <rect x="52" y="136" width="600" height="24" rx="3" fill="var(--teal-fill)" opacity=".45"/>
+          <text class="t-toc" x="62" y="153">31  Care of the Older Adult</text>
+
+          <text class="t-toc-dim" x="128" y="182">31.1  Care of the Older Adult Introduction</text>
+          <text class="t-toc-dim" x="128" y="204">31.2  Basic Concepts</text>
+
+          <rect x="118" y="214" width="534" height="26" rx="3" fill="var(--teal-fill)"/>
+          <rect x="118" y="214" width="2.5" height="26" fill="var(--teal)"/>
+          <text class="t-toc" x="132" y="232">31.3  Applying the Nursing Process</text>
+          <text class="t-lbl-s" x="600" y="232" fill="var(--teal)">retrieved</text>
+
+          <text class="t-toc-dim" x="128" y="262">31.4  Putting It All Together</text>
+          <text class="t-toc-dim" x="62" y="290">32  Grief and Loss</text>
+        </svg>
+      </div>
+
+      <figcaption>Three real questions from the paper's benchmark. In each case the answer lives in one leaf section, and the shape of the contents page is enough to find it.</figcaption>
+    </figure>
+  </div>
+</header>
+
+<main>
+
+<section id="idea">
+  <div class="wrap">
+    <span class="marker">1</span>
+    <h2>The idea</h2>
+    <p class="lead">When you want to know something from a thick book, you don't read it. You flip to the contents page, run your eye down the chapter names, pick the one that sounds right, then narrow to a section inside it. You find the answer without having read a word of the body text. Software search does almost the opposite: it slices the book into equal-sized blocks of text and compares your question against every block. The contents page — the author's own map of what is where — gets thrown away before the search begins. STAIR is what happens when you hand that map back.</p>
+    <p>The map is a tree. Chapters contain sections, sections contain subsections, and at the bottom are the entries with no children beneath them. The paper calls those bottom entries <strong>leaf nodes</strong>, and they are what STAIR returns: not a paragraph, not a page range, but the name of one leaf. Ask about plurality voting and it answers “4.2.3 Electoral Systems &amp; Political Parties.” The text under that heading is where you read next.</p>
+    <p>Two things make this more than a nice metaphor. First, a leaf section is a unit an author already decided was one topic, so its edges fall in sensible places — unlike a 500-word window, which starts and stops wherever the counter runs out. Second, the set of valid answers is small and known in advance: a book has a few hundred leaves, and nothing else counts as an answer. That turns a fuzzy matching problem into something closer to multiple choice.</p>
+  </div>
+</section>
+
+<section id="chunks">
+  <div class="wide">
+    <span class="marker" style="max-width:var(--measure);margin:0 auto;display:block;">1.1</span>
+    <h2 style="max-width:var(--measure);margin:0 auto .2rem;">What chunking loses</h2>
+
+    <figure>
+      <svg viewBox="0 0 760 300" role="img" aria-label="Left: fixed-length chunks cut across headings. Right: sections keep each topic whole.">
+        <text class="t-strong" x="20" y="18">Fixed-length chunks</text>
+        <text class="t-lbl" x="20" y="34">boundaries fall wherever the token count runs out</text>
+
+        <!-- left column of text lines -->
+        <g>
+          <rect x="20" y="52" width="150" height="7" rx="3" fill="var(--ink-faint)" opacity=".55"/>
+          <rect x="20" y="68" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="80" width="270" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="92" width="285" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="104" width="180" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+
+          <rect x="20" y="124" width="120" height="7" rx="3" fill="var(--ink-faint)" opacity=".55"/>
+          <rect x="20" y="140" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="152" width="260" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="164" width="288" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="176" width="240" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="188" width="150" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+
+          <rect x="20" y="208" width="165" height="7" rx="3" fill="var(--ink-faint)" opacity=".55"/>
+          <rect x="20" y="224" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="236" width="255" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="20" y="248" width="280" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+        </g>
+        <!-- chunk boxes cutting across -->
+        <g fill="none" stroke="var(--warn)" stroke-width="1.1">
+          <rect x="12" y="46" width="308" height="86" rx="3"/>
+          <rect x="12" y="136" width="308" height="86" rx="3"/>
+          <rect x="12" y="226" width="308" height="46" rx="3"/>
+        </g>
+        <g stroke="var(--warn)" stroke-width="1" stroke-dasharray="2 3">
+          <line x1="12" y1="132" x2="320" y2="132"/>
+          <line x1="12" y1="222" x2="320" y2="222"/>
+        </g>
+        <text class="t-lbl-s" x="12" y="288" fill="var(--warn)">a heading and its first lines land in different chunks</text>
+
+        <line x1="380" y1="40" x2="380" y2="272" stroke="var(--rule)"/>
+
+        <text class="t-strong" x="440" y="18">Contents-page sections</text>
+        <text class="t-lbl" x="440" y="34">boundaries fall where the author put them</text>
+
+        <g>
+          <rect x="440" y="52" width="150" height="7" rx="3" fill="var(--teal)" opacity=".75"/>
+          <rect x="440" y="68" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="80" width="270" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="92" width="285" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="104" width="180" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+
+          <rect x="440" y="132" width="120" height="7" rx="3" fill="var(--teal)" opacity=".75"/>
+          <rect x="440" y="148" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="160" width="260" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="172" width="288" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="184" width="240" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="196" width="150" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+
+          <rect x="440" y="224" width="165" height="7" rx="3" fill="var(--teal)" opacity=".75"/>
+          <rect x="440" y="240" width="290" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+          <rect x="440" y="252" width="255" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".3"/>
+        </g>
+        <g fill="none" stroke="var(--teal)" stroke-width="1.1">
+          <rect x="432" y="46" width="308" height="72" rx="3"/>
+          <rect x="432" y="126" width="308" height="84" rx="3"/>
+          <rect x="432" y="218" width="308" height="48" rx="3"/>
+        </g>
+        <text class="t-lbl-s" x="432" y="288" fill="var(--teal)">each block is one topic, with a name attached</text>
+      </svg>
+      <figcaption>Length-based chunks have no reason to line up with meaning. Two chunks from the same discussion end up competing with each other for the same query, and neither carries a label saying what it is about.</figcaption>
+    </figure>
+
+    <div class="wrap" style="padding:0;">
+      <p>There is a second reason not to just paste the whole book into the model's context and let it read. Long-context models degrade in a well-documented way: they attend to the beginning and the end of a long input and lose material buried in the middle. Feeding a 1,300-page textbook to a model per question is both expensive and unreliable, which is why precise retrieval still matters even as context windows grow.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 190" role="img" aria-label="Schematic curve showing accuracy dipping for information placed in the middle of a long context.">
+        <line x1="60" y1="150" x2="720" y2="150" stroke="var(--rule)"/>
+        <line x1="60" y1="30" x2="60" y2="150" stroke="var(--rule)"/>
+        <path d="M60 52 C 180 62, 220 118, 390 120 C 560 118, 600 62, 720 50"
+              fill="none" stroke="var(--plum)" stroke-width="2"/>
+        <circle cx="390" cy="120" r="3.5" fill="var(--plum)"/>
+        <text class="t-lbl" x="330" y="142">buried in the middle</text>
+        <text class="t-lbl" x="60" y="172">start of context</text>
+        <text class="t-lbl" x="640" y="172">end</text>
+        <text class="t-lbl" x="18" y="36" >accuracy</text>
+      </svg>
+      <figcaption class="schematic">Schematic, not measured data: the “lost in the middle” effect the paper cites as motivation.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="bench">
+  <div class="wide">
+    <div class="wrap" style="padding:0;">
+      <span class="marker">2</span>
+      <h2>A benchmark had to be built first</h2>
+      <p>Nobody could test this idea, because no existing dataset had what it needed: long documents, a clean structural map, and questions labelled with the exact section that answers them. Summarisation benchmarks have no gold passage. Question-answering benchmarks give the answer text but not its location. The closest fit, LocoV1, has gold passages but no contents page.</p>
+      <p>So the authors built <strong>SearchTome</strong> from open textbooks: three books each from education, finance, law, medicine, natural sciences and social sciences. They parsed each PDF, pulled out the contents tree, matched every entry to its body text, then had Mixtral 8×7B write questions about each paragraph — splitting them into training, tuning and test sets.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 300" role="img" aria-label="Eighteen books grouped by domain; bar height shows page count, and a marker shows the number of leaf sections.">
+        <!-- baseline -->
+        <line x1="30" y1="235" x2="740" y2="235" stroke="var(--rule)"/>
+        <text class="t-lbl-s" x="30" y="24">bar height = pages · dot = leaf sections</text>
+
+        <g id="spines">
+          <!-- Education -->
+          <g>
+            <rect x="42" y="105" width="20" height="130" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="52" cy="97" r="4.2" fill="var(--ochre)"/>
+            <rect x="68" y="217" width="20" height="18" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="78" cy="209" r="2.7" fill="var(--ochre)"/>
+            <rect x="94" y="157" width="20" height="78" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="104" cy="149" r="2.6" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="42" y="252">Education</text>
+            <text class="t-num" x="42" y="270">2,258 pp</text>
+          </g>
+          <!-- Finance -->
+          <g>
+            <rect x="160" y="203" width="20" height="32" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="170" cy="195" r="2.4" fill="var(--ochre)"/>
+            <rect x="186" y="178" width="20" height="57" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="196" cy="170" r="2.2" fill="var(--ochre)"/>
+            <rect x="212" y="127" width="20" height="108" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="222" cy="119" r="2.5" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="160" y="252">Finance</text>
+            <text class="t-num" x="160" y="270">1,967 pp</text>
+          </g>
+          <!-- Law -->
+          <g>
+            <rect x="278" y="195" width="20" height="40" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="288" cy="187" r="2.5" fill="var(--ochre)"/>
+            <rect x="304" y="145" width="20" height="90" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="314" cy="137" r="2.5" fill="var(--ochre)"/>
+            <rect x="330" y="140" width="20" height="95" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="340" cy="132" r="4.1" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="278" y="252">Law</text>
+            <text class="t-num" x="278" y="270">2,248 pp</text>
+          </g>
+          <!-- Medicine -->
+          <g>
+            <rect x="396" y="169" width="20" height="66" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="406" cy="161" r="2.6" fill="var(--ochre)"/>
+            <rect x="422" y="102" width="20" height="133" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="432" cy="94" r="2.6" fill="var(--ochre)"/>
+            <rect x="448" y="175" width="20" height="60" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="458" cy="167" r="2.1" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="396" y="252">Medicine</text>
+            <text class="t-num" x="396" y="270">2,585 pp</text>
+          </g>
+          <!-- Natural sciences -->
+          <g>
+            <rect x="514" y="184" width="20" height="51" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="524" cy="176" r="2" fill="var(--ochre)"/>
+            <rect x="540" y="217" width="20" height="18" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="550" cy="209" r="2.6" fill="var(--ochre)"/>
+            <rect x="566" y="110" width="20" height="125" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="576" cy="102" r="3.8" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="514" y="252">Natural sciences</text>
+            <text class="t-num" x="514" y="270">1,941 pp</text>
+          </g>
+          <!-- Social sciences -->
+          <g>
+            <rect x="632" y="168" width="20" height="67" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="642" cy="160" r="2.6" fill="var(--ochre)"/>
+            <rect x="658" y="193" width="20" height="42" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="668" cy="185" r="3.2" fill="var(--ochre)"/>
+            <rect x="684" y="197" width="20" height="38" rx="2" fill="var(--teal)" opacity=".55"/><circle cx="694" cy="189" r="3.1" fill="var(--ochre)"/>
+            <text class="t-lbl-s" x="632" y="252">Social sciences</text>
+            <text class="t-num" x="632" y="270">1,476 pp</text>
+          </g>
+        </g>
+      </svg>
+      <figcaption>Eighteen books, 12,475 pages, 2,880 leaf sections. The largest single book — a tort law casebook — has 396 leaves on its own; the smallest has 70. Roughly 190,000 generated questions are split across training, development and test.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="train">
+  <div class="wide">
+    <div class="wrap" style="padding:0;">
+      <span class="marker">3</span>
+      <h2>How STAIR is built</h2>
+      <p>STAIR fine-tunes Mistral 7B Instruct v0.2 with a LoRA adapter — a small set of added weights, rank 16, rather than retraining the whole model. Training stops early based on top-1 accuracy on the held-out development questions. The input can run to 14,000 tokens, because the entire contents page rides along with every question.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 240" role="img" aria-label="Three stages: generate questions, fine-tune with the contents page in the prompt, and decode only valid leaf names.">
+        <!-- stage 1 -->
+        <g>
+          <text class="t-lbl-s" x="24" y="18">stage one</text>
+          <text class="t-strong" x="24" y="36">Write the questions</text>
+          <rect x="24" y="54" width="190" height="120" rx="3" fill="none" stroke="var(--rule)"/>
+          <rect x="44" y="76" width="52" height="70" rx="2" fill="var(--teal)" opacity=".25"/>
+          <line x1="50" y1="88" x2="90" y2="88" stroke="var(--ink-faint)" stroke-width="1"/>
+          <line x1="50" y1="98" x2="90" y2="98" stroke="var(--ink-faint)" stroke-width="1"/>
+          <line x1="50" y1="108" x2="82" y2="108" stroke="var(--ink-faint)" stroke-width="1"/>
+          <text class="t-lbl-s" x="44" y="162">book text</text>
+          <path d="M104 111 L124 111" stroke="var(--ink-faint)" stroke-width="1"/>
+          <text class="t-lbl" x="130" y="98">Mixtral</text>
+          <text class="t-lbl" x="130" y="114">8×7B</text>
+          <text class="t-lbl-s" x="130" y="140">questions per</text>
+          <text class="t-lbl-s" x="130" y="152">paragraph</text>
+        </g>
+        <path d="M222 114 L252 114" stroke="var(--ink-faint)" stroke-width="1"/>
+        <path d="M246 110 L252 114 L246 118" fill="none" stroke="var(--ink-faint)"/>
+
+        <!-- stage 2 -->
+        <g>
+          <text class="t-lbl-s" x="262" y="18">stage two</text>
+          <text class="t-strong" x="262" y="36">Teach the map</text>
+          <rect x="262" y="54" width="220" height="120" rx="3" fill="none" stroke="var(--rule)"/>
+          <rect x="278" y="70" width="88" height="16" rx="2" fill="var(--ochre-fill)"/>
+          <text class="t-lbl-s" x="284" y="82" fill="var(--ochre)">whole contents</text>
+          <rect x="278" y="92" width="88" height="16" rx="2" fill="var(--teal-fill)"/>
+          <text class="t-lbl-s" x="284" y="104" fill="var(--teal)">the question</text>
+          <path d="M372 92 L392 92" stroke="var(--ink-faint)" stroke-width="1"/>
+          <rect x="396" y="70" width="70" height="60" rx="3" fill="var(--teal)" opacity=".18" stroke="var(--teal)" stroke-width=".8"/>
+          <text class="t-lbl" x="406" y="94">Mistral</text>
+          <text class="t-lbl" x="406" y="110">+ LoRA</text>
+          <text class="t-lbl-s" x="278" y="152">r = 16, α = 32, input up to 14k tokens</text>
+        </g>
+        <path d="M490 114 L520 114" stroke="var(--ink-faint)" stroke-width="1"/>
+        <path d="M514 110 L520 114 L514 118" fill="none" stroke="var(--ink-faint)"/>
+
+        <!-- stage 3 -->
+        <g>
+          <text class="t-lbl-s" x="530" y="18">stage three</text>
+          <text class="t-strong" x="530" y="36">Answer with a leaf</text>
+          <rect x="530" y="54" width="206" height="120" rx="3" fill="none" stroke="var(--rule)"/>
+          <text class="t-lbl-s" x="546" y="76">candidate outputs</text>
+          <g>
+            <text class="t-lbl" x="546" y="98" fill="var(--ink-faint)" text-decoration="line-through">2.2  Psychosocial Theory</text>
+            <text class="t-lbl" x="546" y="118" fill="var(--teal)">2.2.3  Initiative vs. Guilt</text>
+            <text class="t-lbl" x="546" y="138" fill="var(--ink-faint)" text-decoration="line-through">2.2.9  (not in the book)</text>
+          </g>
+          <rect x="538" y="106" width="192" height="20" rx="3" fill="var(--teal-fill)" opacity=".55"/>
+          <text class="t-lbl-s" x="546" y="162">only real leaves survive</text>
+        </g>
+      </svg>
+      <figcaption>Generation is constrained to the book's actual leaf names, so a parent section or a plausible-sounding invention can't be returned.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="prompt">
+  <div class="wrap">
+    <span class="marker">3.1</span>
+    <h2>What the model actually sees</h2>
+    <p>This is the whole trick, and it is almost embarrassingly plain. The comparison system, DSI, is trained on question-and-answer pairs alone: it has to infer the book's structure indirectly, from thousands of examples, and store it in its weights. STAIR gets handed the structure as part of every prompt.</p>
+
+    <div class="prompt"><b>### Book:</b> Teaching in a Digital Age
+Pick the best section from the table of contents below
+which can answer the user query below. Only generate
+the section name, do not generate any explanation!
+
+<b>### Table of Contents</b>
+1 Chapter 1: Fundamental Change in Education
+   ⋯
+<i>leaf</i> 12.7 Step five: master the technology
+<i>leaf</i> 12.8 Step six: set appropriate learning goals
+<i>leaf</i> 12.9 Step seven: design course structure and learning
+   ⋯
+<i>leaf</i> 13.7 Building the future
+
+<b>### Query:</b> What is the suggested time allocation
+for students studying a course or program?
+
+<b>### Section:</b> leaf  →  <b>12.9 Step seven: design course structure and learning</b></div>
+
+    <p>Note the word “leaf” marking which entries are answerable. The contents page is identical for every question about that book, so the model sees the same map thousands of times during training and learns to navigate it, while also absorbing the book's content into its weights as it goes.</p>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wide">
+    <div class="wrap" style="padding:0;">
+      <span class="marker">4</span>
+      <h2>It wins, and the margin holds up</h2>
+      <p>Top-1 accuracy — how often the very first section returned is the right one — averaged across all eighteen books:</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 300" role="img" aria-label="Bar chart of top-1 accuracy: Mistral 13.8, Haiku 45.6, BM25 59.5, DPR 68.7, DSI 76.9, STAIR 82.6 percent.">
+        <g stroke="var(--rule)" stroke-width="1">
+          <line x1="150" y1="24" x2="150" y2="266"/>
+          <line x1="292" y1="24" x2="292" y2="266" opacity=".55"/>
+          <line x1="434" y1="24" x2="434" y2="266" opacity=".55"/>
+          <line x1="576" y1="24" x2="576" y2="266" opacity=".55"/>
+          <line x1="718" y1="24" x2="718" y2="266" opacity=".55"/>
+        </g>
+        <text class="t-lbl-s" x="150" y="284">0</text>
+        <text class="t-lbl-s" x="286" y="284">25</text>
+        <text class="t-lbl-s" x="428" y="284">50</text>
+        <text class="t-lbl-s" x="570" y="284">75</text>
+        <text class="t-lbl-s" x="706" y="284">100%</text>
+
+        <g>
+          <text class="t-lbl" x="20" y="48">Mistral, untuned</text>
+          <rect x="150" y="34" width="78.4" height="20" rx="2" fill="var(--ink-faint)" opacity=".45"/>
+          <text class="t-num" x="238" y="49">13.8</text>
+        </g>
+        <g>
+          <text class="t-lbl" x="20" y="88">Claude Haiku 4.5</text>
+          <rect x="150" y="74" width="259" height="20" rx="2" fill="var(--ink-faint)" opacity=".45"/>
+          <text class="t-num" x="418" y="89">45.6</text>
+        </g>
+        <g>
+          <text class="t-lbl" x="20" y="128">BM25 keyword search</text>
+          <rect x="150" y="114" width="338" height="20" rx="2" fill="var(--ink-faint)" opacity=".45"/>
+          <text class="t-num" x="497" y="129">59.5</text>
+        </g>
+        <g>
+          <text class="t-lbl" x="20" y="168">DPR embeddings</text>
+          <rect x="150" y="154" width="390" height="20" rx="2" fill="var(--ink-faint)" opacity=".45"/>
+          <text class="t-num" x="549" y="169">68.7</text>
+        </g>
+        <g>
+          <text class="t-lbl" x="20" y="208">DSI, fine-tuned</text>
+          <rect x="150" y="194" width="437" height="20" rx="2" fill="var(--plum)" opacity=".5"/>
+          <text class="t-num" x="596" y="209">76.9</text>
+        </g>
+        <g>
+          <text class="t-strong" x="20" y="248">STAIR</text>
+          <rect x="150" y="234" width="469" height="20" rx="2" fill="var(--teal)"/>
+          <text class="t-num" x="628" y="249" fill="var(--ink)">82.6</text>
+        </g>
+
+        <line x1="587" y1="188" x2="587" y2="262" stroke="var(--ochre)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text class="t-lbl-s" x="592" y="272" fill="var(--ochre)">+5.7 points over DSI</text>
+      </svg>
+      <figcaption>DSI is the fair comparison: same base model, same training data, same fine-tuning recipe. The only difference is that STAIR is shown the contents page. Everything else in the chart is beaten by a wider margin.</figcaption>
+    </figure>
+
+    <div class="wrap" style="padding:0;">
+      <p>The paper reports this gap as 7.4%, which is the relative improvement — 82.6 divided by 76.9. In absolute terms it is 5.7 percentage points. Either way the authors checked it isn't noise, running a randomisation test separately for each of the six domains; the difference came out significant in all six.</p>
+
+      <table>
+        <caption>Averages across all books, in percent.</caption>
+        <thead>
+          <tr><th>System</th><th>Top&nbsp;1</th><th>Top&nbsp;3</th><th>nDCG@3</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mistral, untuned</td><td>13.8</td><td>16.4</td><td>15.4</td></tr>
+          <tr><td>Claude Haiku 4.5</td><td>45.6</td><td>64.1</td><td>56.4</td></tr>
+          <tr><td>BM25</td><td>59.5</td><td>77.6</td><td>70.1</td></tr>
+          <tr><td>DPR (NV-Embed-v2)</td><td>68.7</td><td>85.4</td><td>78.6</td></tr>
+          <tr><td>DSI</td><td>76.9</td><td>85.3</td><td>81.9</td></tr>
+          <tr class="best"><td>STAIR</td><td>82.6</td><td>90.8</td><td>87.5</td></tr>
+        </tbody>
+      </table>
+
+      <p>Two results in that table are worth pausing on. An untuned Mistral, handed the same contents page and asked the same question, gets 13.8% — the structure alone is useless without training on the corpus. And BM25, a keyword-matching method from the 1990s, beats a frontier model used off the shelf. Neither the knowledge nor the task can be skipped.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 220" role="img" aria-label="Per-domain comparison: STAIR beats DSI in every one of the six domains.">
+        <text class="t-lbl-s" x="20" y="16">top-1 accuracy per domain · pale = DSI · solid = STAIR</text>
+        <line x1="20" y1="176" x2="740" y2="176" stroke="var(--rule)"/>
+        <g>
+          <!-- scale: 0 at y=176, 100 at y=36 → 1.4px per point -->
+          <g><rect x="42" y="69.3" width="24" height="106.7" rx="2" fill="var(--plum)" opacity=".35"/><rect x="70" y="59.4" width="24" height="116.6" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="42" y="60">76.2</text><text class="t-num" x="70" y="50">83.3</text>
+             <text class="t-lbl-s" x="42" y="194">Education</text></g>
+          <g><rect x="162" y="66.7" width="24" height="109.3" rx="2" fill="var(--plum)" opacity=".35"/><rect x="190" y="60.1" width="24" height="115.9" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="162" y="58">78.1</text><text class="t-num" x="190" y="50">82.8</text>
+             <text class="t-lbl-s" x="162" y="194">Finance</text></g>
+          <g><rect x="282" y="73.4" width="24" height="102.6" rx="2" fill="var(--plum)" opacity=".35"/><rect x="310" y="62.9" width="24" height="113.1" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="282" y="64">73.3</text><text class="t-num" x="310" y="53">80.8</text>
+             <text class="t-lbl-s" x="282" y="194">Law</text></g>
+          <g><rect x="402" y="61.1" width="24" height="114.9" rx="2" fill="var(--plum)" opacity=".35"/><rect x="430" y="55.5" width="24" height="120.5" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="402" y="52">82.1</text><text class="t-num" x="430" y="45">86.1</text>
+             <text class="t-lbl-s" x="402" y="194">Medicine</text></g>
+          <g><rect x="522" y="69.3" width="24" height="106.7" rx="2" fill="var(--plum)" opacity=".35"/><rect x="550" y="63.2" width="24" height="112.8" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="522" y="60">76.2</text><text class="t-num" x="550" y="53">80.6</text>
+             <text class="t-lbl-s" x="522" y="194">Nat. sciences</text></g>
+          <g><rect x="642" y="70.4" width="24" height="105.6" rx="2" fill="var(--plum)" opacity=".35"/><rect x="670" y="61.5" width="24" height="114.5" rx="2" fill="var(--teal)"/>
+             <text class="t-num" x="642" y="62">75.4</text><text class="t-num" x="670" y="52">81.8</text>
+             <text class="t-lbl-s" x="642" y="194">Soc. sciences</text></g>
+        </g>
+      </svg>
+      <figcaption>The advantage is not carried by one easy domain. Law shows the widest gap at 7.5 points; medicine, where both systems do best, the narrowest at 4.0.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="invented">
+  <div class="wide">
+    <div class="wrap" style="padding:0;">
+      <span class="marker">4.1</span>
+      <h2>It stops inventing sections</h2>
+      <p>A retriever that returns a heading which doesn't exist in the book is worse than useless — the answer looks plausible and leads nowhere. The paper counts these directly: any output that isn't a real leaf is a hallucination. Untuned Mistral produces them constantly, roughly a quarter of its mistakes. Fine-tuned DSI cuts that to 3.25% of all its predictions. STAIR gets it to 0.05%.</p>
+    </div>
+
+    <figure>
+      <div id="dotgrids"></div>
+      <figcaption>Each dot is one prediction; a thousand per panel. Marked dots are section names that don't exist in the book. STAIR's rate works out to about one in every two thousand answers, and it stays flat no matter how little training data a section had.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="thin">
+  <div class="wide">
+    <div class="wrap" style="padding:0;">
+      <span class="marker">4.2</span>
+      <h2>The gap is widest where the data is thinnest</h2>
+      <p>This is the most interesting finding in the paper, and it explains the mechanism. Some sections of a book attract many training questions; others attract only a handful. DSI has to memorise every section name from those examples, so the rarely-taught ones are the ones it forgets and misses. STAIR never has to remember them — they are right there in the prompt. As the number of training examples per section rises, DSI catches up. Where examples are scarce, STAIR is far ahead.</p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 760 280" role="img" aria-label="Schematic: STAIR's accuracy stays high with few training examples while DSI's starts low and climbs.">
+        <line x1="70" y1="220" x2="720" y2="220" stroke="var(--rule)"/>
+        <line x1="70" y1="30" x2="70" y2="220" stroke="var(--rule)"/>
+        <text class="t-lbl" x="70" y="248">few training examples for a section</text>
+        <text class="t-lbl" x="608" y="248">many</text>
+        <text class="t-lbl" x="20" y="24">top-1</text>
+
+        <path d="M70 200 C 200 140, 300 100, 460 82 C 580 72, 650 68, 720 66"
+              fill="none" stroke="var(--plum)" stroke-width="2" opacity=".65"/>
+        <path d="M70 96 C 200 84, 300 74, 460 64 C 580 58, 650 55, 720 54"
+              fill="none" stroke="var(--teal)" stroke-width="2.2"/>
+
+        <line x1="112" y1="92" x2="112" y2="192" stroke="var(--ochre)" stroke-width="1"/>
+        <circle cx="112" cy="92" r="3" fill="var(--teal)"/>
+        <circle cx="112" cy="192" r="3" fill="var(--plum)"/>
+        <text class="t-lbl-s" x="122" y="146" fill="var(--ochre)">the gap</text>
+
+        <text class="t-strong" x="600" y="44" fill="var(--teal)">STAIR</text>
+        <text class="t-strong" x="600" y="86" fill="var(--plum)">DSI</text>
+      </svg>
+      <figcaption class="schematic">Schematic, redrawn from the paper's description of its Figure 4 rather than from published values. The shape is the claim: STAIR stays high on thinly-taught sections, and the two converge as examples accumulate.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="example">
+  <div class="wrap">
+    <span class="marker">5</span>
+    <h2>One query, five systems</h2>
+    <p>From <em>The Whole Child: Development in the Early Years</em>. The question is “How do preschoolers react when caregivers and teachers belittle their autonomous actions?” The right answer is section 2.2.3, <em>Initiative vs. Guilt (Preschool Years)</em>.</p>
+
+    <div class="verdicts">
+      <div class="verdict">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4 L16 16 M16 4 L4 16" stroke="var(--warn)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        <span class="who">Mistral</span>
+        <span class="said">Listed three sections at once, including the correct one.
+          <span class="note">Its world knowledge was enough to guess, but nobody taught it that the task is to pick exactly one.</span></span>
+      </div>
+      <div class="verdict">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4 L16 16 M16 4 L4 16" stroke="var(--warn)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        <span class="who">BM25</span>
+        <span class="said">8.3.2 Moral Development
+          <span class="note">Chosen purely for word overlap with the query. The classic failure of keyword matching.</span></span>
+      </div>
+      <div class="verdict">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4 L16 16 M16 4 L4 16" stroke="var(--warn)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        <span class="who">DPR</span>
+        <span class="said">2.2.2 Autonomy vs. Shame/Doubt (Toddlerhood)
+          <span class="note">Latched onto “autonomous” and landed one stage too early in childhood. Close, but it was never trained on this book.</span></span>
+      </div>
+      <div class="verdict">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4 L16 16 M16 4 L4 16" stroke="var(--warn)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        <span class="who">DSI</span>
+        <span class="said">2.2.2 Autonomy vs. Shame/Doubt <em>(Preschool Years)</em>
+          <span class="note">No such heading exists. It blended the toddler section's title with the preschool label from elsewhere — a fluent, confident invention.</span></span>
+      </div>
+      <div class="verdict">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 L8.5 15 L16 5.5" stroke="var(--teal)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="who">STAIR</span>
+        <span class="said">2.2.3 Initiative vs. Guilt (Preschool Years)</span>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p>DSI's answer is the one to study. It is not a random error — it is a better guess than DPR's, showing it had learned that “preschool” matters here. But because it was reciting section names from memory rather than choosing from a list, it produced a heading the book doesn't contain. Having the contents page in front of it would have made that answer impossible.</p>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <span class="marker">6</span>
+    <h2>What it can't do yet</h2>
+    <p>STAIR only works on documents that already have a structural map. Textbooks, manuals, regulatory filings and product documentation qualify; a pile of loose emails or scraped web pages does not. The authors name this as their main limitation and want to try generating a contents-page structure for corpora that lack one.</p>
+    <p>There is also a cost that comes with the design. The model is fine-tuned per corpus, its knowledge baked into the weights, so adding a chapter means retraining rather than re-indexing. And because the entire contents page travels with every question, each query carries thousands of tokens of overhead — fine for a 400-leaf textbook, an open question for an enterprise corpus with millions of entries, which is exactly where the authors want to test next.</p>
+    <p>The direction they are most interested in is iterative: a retriever that walks down the tree one level at a time, reads what it finds, and decides where to look next — the way a person actually uses a book when the first guess doesn't pan out.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap" style="padding-left:1.5rem;padding-right:1.5rem;">
+    Every figure on this page is drawn from the paper's reported values, except the two marked as schematic.
+    Benchmark and training code: <a href="https://arxiv.org/abs/2609.03874">arXiv:2609.03874</a>.
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+
+  function toggle(btn,cls){
+    btn.addEventListener('click',function(){
+      var on=root.classList.toggle(cls);
+      btn.setAttribute('aria-pressed',on?'true':'false');
+    });
+  }
+  toggle(document.getElementById('dimBtn'),'dim');
+  toggle(document.getElementById('bigBtn'),'big');
+
+  if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+    root.classList.add('dim');
+    document.getElementById('dimBtn').setAttribute('aria-pressed','true');
+  }
+
+  /* hero panels */
+  var chips=document.querySelectorAll('.chips button');
+  chips.forEach(function(b){
+    b.addEventListener('click',function(){
+      chips.forEach(function(o){o.setAttribute('aria-selected','false');});
+      b.setAttribute('aria-selected','true');
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});
+      var p=document.getElementById(b.dataset.panel);
+      void p.offsetWidth;
+      p.classList.add('on');
+    });
+  });
+
+  /* dot grids: invalid predictions per 1000 */
+  var host=document.getElementById('dotgrids');
+  if(host){
+    function grid(title,count,sub){
+      var cols=50,rows=20,step=12,pad=6;
+      var w=cols*step, h=rows*step+52;
+      var marked={};
+      // deterministic scatter
+      var k=0,i=0;
+      while(k<Math.round(count)&&i<5000){
+        var idx=(i*617+43)%1000;
+        if(!marked[idx]){marked[idx]=1;k++;}
+        i++;
+      }
+      var s='<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+title+', '+sub+'">';
+      s+='<text class="t-strong" x="0" y="14">'+title+'</text>';
+      s+='<text class="t-lbl" x="0" y="30">'+sub+'</text>';
+      for(var r=0;r<rows;r++){
+        for(var c=0;c<cols;c++){
+          var n=r*cols+c;
+          var cx=pad+c*step, cy=48+r*step;
+          if(marked[n]){
+            s+='<circle cx="'+cx+'" cy="'+cy+'" r="3.6" fill="var(--warn)" opacity="'+(count<1?0.5:0.9)+'"/>';
+          }else{
+            s+='<circle cx="'+cx+'" cy="'+cy+'" r="2.1" fill="var(--ink-faint)" opacity=".3"/>';
+          }
+        }
+      }
+      s+='</svg>';
+      return s;
+    }
+    host.innerHTML =
+      '<div style="margin-bottom:1.6rem">'+grid('DSI',33,'33 in every 1,000 answers name a section that does not exist')+'</div>'+
+      '<div>'+grid('STAIR',0.5,'about 1 in every 2,000')+'</div>';
+    host.querySelectorAll('svg').forEach(function(s){s.style.width='100%';s.style.height='auto';s.style.display='block';});
+  }
+
+  /* rail highlighting */
+  var links=document.querySelectorAll('nav.rail a');
+  var map={};
+  links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+  if('IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(a){a.classList.remove('on');});
+          if(map[e.target.id]) map[e.target.id].classList.add('on');
+        }
+      });
+    },{rootMargin:'-25% 0px -65% 0px'});
+    document.querySelectorAll('section[id]').forEach(function(s){obs.observe(s);});
+  }
+})();
+</script>
+</body>
+</html>
