@@ -12,3 +12,6 @@
 - Improving Evaluation Realism with Inference-Time Compute and Deployment Scaffolds
   - https://arxiv.org/html/2609.02302v1
   - https://edangx100.github.io/interesting_papers/eval-realism-inference-time-and-deployment-scaffolds
+- STAIR (STructure Aware Information Retriever): A novel dataset and LLM based retriever for document structure augmentation
+  - https://arxiv.org/html/2609.03874v1
+  - https://edangx100.github.io/interesting_papers/stair
