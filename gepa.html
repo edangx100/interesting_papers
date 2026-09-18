@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GEPA — learning by rewriting the instructions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,380;8..60,600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* ---------- tokens ---------- */
+:root{
+  --bg:#F6F3EC; --surface:#FCFAF5; --surface-2:#F1EDE4;
+  --ink:#2F2D29; --ink-soft:#57534B; --muted:#867F73;
+  --rule:#E3DDD1;
+  --accent:#4C7C6B; --accent-soft:#DDE9E3;
+  --blue:#5B7C99; --blue-soft:#DDE5EC;
+  --clay:#A9705A; --clay-soft:#F0E1D8;
+  --serif:"Source Serif 4",Iowan Old Style,Georgia,serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --measure:35rem;
+}
+:root[data-theme="sepia"]{
+  --bg:#ECE1CE; --surface:#F5ECDC; --surface-2:#E6DAC4;
+  --ink:#3A3227; --ink-soft:#5D5342; --muted:#8B7E67;
+  --rule:#DACDB6;
+  --accent:#4E7462; --accent-soft:#DDE4D9;
+  --blue:#5A7488; --blue-soft:#DEE3E4;
+  --clay:#9E6A50; --clay-soft:#E9D9C9;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="sepia"]){
+    --bg:#1A1C1B; --surface:#222524; --surface-2:#2A2E2C;
+    --ink:#DBD8D1; --ink-soft:#B2AEA5; --muted:#89857C;
+    --rule:#333734;
+    --accent:#8FBFA9; --accent-soft:#27332E;
+    --blue:#8FAAC4; --blue-soft:#242D35;
+    --clay:#D19E82; --clay-soft:#33281F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1C1B; --surface:#222524; --surface-2:#2A2E2C;
+  --ink:#DBD8D1; --ink-soft:#B2AEA5; --muted:#89857C;
+  --rule:#333734;
+  --accent:#8FBFA9; --accent-soft:#27332E;
+  --blue:#8FAAC4; --blue-soft:#242D35;
+  --clay:#D19E82; --clay-soft:#33281F;
+}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--serif); font-size:1.14rem; line-height:1.78;
+  font-weight:380; letter-spacing:.002em;
+  -webkit-font-smoothing:antialiased;
+}
+main{max-width:var(--measure); margin:0 auto; padding:0 1.35rem 8rem}
+p{margin:0 0 1.35em; color:var(--ink-soft)}
+strong{font-weight:600; color:var(--ink)}
+a{color:var(--accent); text-underline-offset:3px; text-decoration-thickness:1px}
+h1,h2,h3{font-family:var(--serif); font-weight:600; color:var(--ink); line-height:1.25; letter-spacing:-.01em}
+h2{font-size:1.5rem; margin:4.5rem 0 .3rem}
+h3{font-size:1.14rem; margin:2.8rem 0 .6rem}
+hr{border:0; border-top:1px solid var(--rule); margin:4rem 0}
+ul{padding-left:1.15rem; margin:0 0 1.35em; color:var(--ink-soft)}
+li{margin:.45em 0}
+.eyebrow{font-family:var(--sans); font-size:.72rem; letter-spacing:.14em; color:var(--muted); font-weight:500; margin:0 0 .5rem}
+
+/* ---------- header ---------- */
+header{max-width:var(--measure); margin:0 auto; padding:4.5rem 1.35rem 0}
+h1{font-size:2.3rem; margin:0 0 1.1rem}
+.summary{
+  font-size:1.26rem; line-height:1.6; color:var(--ink);
+  border-left:2px solid var(--accent); padding-left:1.1rem; margin:0 0 2rem;
+}
+.byline{font-family:var(--sans); font-size:.82rem; color:var(--muted); margin:0}
+
+/* ---------- theme switch ---------- */
+.switch{position:fixed; top:.9rem; right:.9rem; display:flex; gap:2px;
+  background:var(--surface); border:1px solid var(--rule); border-radius:999px; padding:3px; z-index:9}
+.switch button{
+  width:30px; height:30px; border:0; border-radius:999px; background:transparent;
+  color:var(--muted); cursor:pointer; display:grid; place-items:center; padding:0;
+}
+.switch button[aria-pressed="true"]{background:var(--surface-2); color:var(--accent)}
+.switch svg{width:15px; height:15px}
+
+/* ---------- figures ---------- */
+figure{margin:2.4rem 0 2.8rem}
+.frame{
+  background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+  padding:1.4rem 1.2rem; overflow-x:auto;
+}
+.d{display:block; width:100%; height:auto; min-width:480px}
+.d text{font-family:var(--sans); fill:var(--ink-soft)}
+.d .hd{font-size:16px; font-weight:600; fill:var(--ink)}
+.d .lbl{font-size:15px}
+.d .sm{font-size:13px; fill:var(--muted)}
+.d .num{font-size:15px; font-weight:500}
+.d .tag{font-size:12px; letter-spacing:.1em; font-weight:600; fill:var(--muted)}
+.d .box{fill:var(--surface-2); stroke:var(--rule)}
+figcaption{font-family:var(--sans); font-size:.82rem; line-height:1.6; color:var(--muted); margin-top:.85rem}
+
+/* ---------- misc blocks ---------- */
+.note{
+  background:var(--surface); border:1px solid var(--rule); border-left:2px solid var(--clay);
+  border-radius:8px; padding:1rem 1.2rem; margin:2.2rem 0; font-size:1rem; line-height:1.7;
+}
+.note p{margin:0; color:var(--ink-soft)}
+.quotebox{
+  font-family:var(--sans); font-size:.9rem; line-height:1.65;
+  background:var(--surface); border:1px solid var(--rule); border-radius:8px;
+  padding:1rem 1.15rem; margin:1.6rem 0; color:var(--ink-soft);
+}
+.quotebox .k{display:block; font-size:.7rem; letter-spacing:.12em; color:var(--muted); margin-bottom:.45rem}
+.tablewrap{overflow-x:auto; margin:2rem 0}
+table{border-collapse:collapse; width:100%; min-width:420px; font-family:var(--sans); font-size:.88rem}
+th,td{text-align:right; padding:.55rem .6rem; border-bottom:1px solid var(--rule); color:var(--ink-soft)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:500; font-size:.74rem; letter-spacing:.06em; color:var(--muted)}
+tbody tr.hi td{color:var(--ink); font-weight:500; background:var(--accent-soft)}
+td.n{font-variant-numeric:tabular-nums}
+.foot{font-family:var(--sans); font-size:.85rem; color:var(--muted); margin-top:3.5rem}
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+}
+@media (max-width:560px){
+  h1{font-size:1.85rem} .summary{font-size:1.1rem} body{font-size:1.08rem}
+  header{padding-top:3.5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="switch" role="group" aria-label="Reading theme">
+  <button type="button" data-set="light" aria-pressed="true" title="Paper">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+  </button>
+  <button type="button" data-set="sepia" aria-pressed="false" title="Warm">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+  </button>
+  <button type="button" data-set="dark" aria-pressed="false" title="Dim">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+  </button>
+</div>
+
+<header>
+  <p class="eyebrow">PAPER EXPLAINER</p>
+  <h1>Teaching an AI system by rewriting its instructions</h1>
+  <p class="summary">GEPA improves an AI system by reading its own failed attempts in plain English and editing the instructions it was given — reaching better results than reinforcement learning while needing up to 35 times fewer attempts.</p>
+  <p class="byline">On <em>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</em> — Agrawal et al., arXiv:2507.19457</p>
+</header>
+
+<main>
+
+<p>Suppose you have an assistant that answers hard research questions by searching, reading, and writing a summary. It gets about four in ten right. You want it better.</p>
+
+<p>The standard fix is to retrain the model: let it attempt the task thousands of times, score each attempt, and slowly adjust its internal settings toward whatever earned higher scores. It works. It is also slow and expensive, because every attempt costs a real search, a real model call, and real money.</p>
+
+<p>The authors of this paper noticed something plain. When the assistant fails, it does not fail silently. It leaves behind a complete written record — what it searched for, what came back, what it reasoned, and often an explicit note from the grader saying which document it missed. That record is in English. Models are good at English. So instead of crushing all of it into a single number, why not hand the record to a model and ask it what went wrong?</p>
+
+<p>That is the whole idea. The system that does it is called <strong>GEPA</strong>, and it changes nothing inside the model. It only rewrites the instructions.</p>
+
+<hr>
+
+<h2>The cost problem</h2>
+
+<p>An <strong>attempt</strong> — the paper calls it a rollout — is one full run of the system on one example, plus scoring. Retraining methods like GRPO typically burn tens of thousands of these. GEPA finished the same job on one benchmark after a few hundred, and scored higher.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 220" role="img" aria-label="Bar chart: GRPO used 24,000 attempts; GEPA reached a better prompt after 678.">
+      <text class="hd" x="0" y="20">Attempts needed on IFBench, Qwen3-8B</text>
+      <text class="lbl" x="0" y="66">GRPO &#183; retrain the model</text>
+      <rect x="0" y="78" width="660" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.35"/>
+      <text class="num" x="644" y="98" text-anchor="end" fill="var(--blue)">24,000</text>
+      <text class="sm" x="0" y="132">final score 35.9%</text>
+      <text class="lbl" x="0" y="172">GEPA &#183; rewrite the instructions</text>
+      <rect x="0" y="184" width="19" height="30" rx="6" fill="var(--accent)"/>
+      <text class="num" x="32" y="204" fill="var(--accent)">678</text>
+      <text class="sm" x="82" y="204">&#8212; 35&#215; fewer, final score 38.6%</text>
+    </svg>
+  </div>
+  <figcaption>Both bars are drawn to the same scale. The green bar is 19 pixels wide.</figcaption>
+</figure>
+
+<p>Across six benchmarks the pattern held: on average GEPA beat GRPO by about 6 points, and on the best case by around 20. The shape of the learning is different too. Retraining creeps upward across the whole budget. Prompt rewriting jumps early, because a single good edit changes the system's behaviour on every future example at once.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 300" role="img" aria-label="Schematic line chart: GEPA rises steeply and early, MIPROv2 rises moderately, GRPO rises slowly across the full budget.">
+      <line x1="60" y1="255" x2="670" y2="255" stroke="var(--rule)" stroke-width="1.5"/>
+      <line x1="60" y1="30" x2="60" y2="255" stroke="var(--rule)" stroke-width="1.5"/>
+      <line x1="60" y1="90" x2="670" y2="90" stroke="var(--rule)" stroke-dasharray="3 5"/>
+      <line x1="60" y1="160" x2="670" y2="160" stroke="var(--rule)" stroke-dasharray="3 5"/>
+      <path d="M60 240 C 100 150 140 108 210 98 L 670 86" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M60 240 C 150 205 240 178 360 172 L 670 166" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M60 240 C 220 236 420 222 670 200" fill="none" stroke="var(--clay)" stroke-width="2" stroke-linecap="round" stroke-dasharray="7 5"/>
+      <circle cx="670" cy="86" r="4.5" fill="var(--accent)"/>
+      <circle cx="670" cy="166" r="4" fill="var(--blue)"/>
+      <circle cx="670" cy="200" r="4" fill="var(--clay)"/>
+      <text class="lbl" x="420" y="72" fill="var(--accent)">GEPA</text>
+      <text class="lbl" x="420" y="152" fill="var(--blue)">MIPROv2</text>
+      <text class="lbl" x="420" y="228" fill="var(--clay)">GRPO</text>
+      <text class="sm" x="60" y="280">attempts spent &#8594;</text>
+      <text class="sm" x="0" y="34">score</text>
+    </svg>
+  </div>
+  <figcaption>Shape only, redrawn from Figure 1 of the paper — not measured values.</figcaption>
+</figure>
+
+<hr>
+
+<h2>What is actually being edited</h2>
+
+<p>These assistants are rarely one model call. They are small pipelines: one step writes a search query, a tool fetches documents, another step summarises them, another writes the final answer. Each step is a model working from its own short written instruction.</p>
+
+<p>Those instructions are the only thing GEPA touches. The model's weights stay frozen — which is why this works on models you cannot retrain at all, such as ones behind an API.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 235" role="img" aria-label="Pipeline diagram: question flows through a query-writing step, a search tool, a summarising step, and an answering step. Each step has an editable instruction chip above it.">
+      <rect x="112" y="6" width="130" height="30" rx="15" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.4"/>
+      <text class="sm" x="177" y="26" text-anchor="middle" fill="var(--accent)">instruction</text>
+      <rect x="412" y="6" width="130" height="30" rx="15" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.4"/>
+      <text class="sm" x="477" y="26" text-anchor="middle" fill="var(--accent)">instruction</text>
+      <rect x="566" y="6" width="128" height="30" rx="15" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.4"/>
+      <text class="sm" x="630" y="26" text-anchor="middle" fill="var(--accent)">instruction</text>
+      <line x1="177" y1="36" x2="177" y2="58" stroke="var(--accent)" stroke-opacity="0.45" stroke-dasharray="2 3"/>
+      <line x1="477" y1="36" x2="477" y2="58" stroke="var(--accent)" stroke-opacity="0.45" stroke-dasharray="2 3"/>
+      <line x1="630" y1="36" x2="630" y2="58" stroke="var(--accent)" stroke-opacity="0.45" stroke-dasharray="2 3"/>
+
+      <rect x="0" y="58" width="92" height="58" rx="8" class="box" stroke-width="1"/>
+      <text class="lbl" x="46" y="93" text-anchor="middle">question</text>
+
+      <rect x="112" y="58" width="130" height="58" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-opacity="0.5"/>
+      <text class="lbl" x="177" y="84" text-anchor="middle">write a</text>
+      <text class="lbl" x="177" y="103" text-anchor="middle">search query</text>
+
+      <rect x="262" y="58" width="130" height="58" rx="8" fill="none" stroke="var(--muted)" stroke-dasharray="5 4"/>
+      <text class="lbl" x="327" y="93" text-anchor="middle" fill="var(--muted)">search tool</text>
+
+      <rect x="412" y="58" width="130" height="58" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-opacity="0.5"/>
+      <text class="lbl" x="477" y="93" text-anchor="middle">summarise</text>
+
+      <rect x="566" y="58" width="128" height="58" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-opacity="0.5"/>
+      <text class="lbl" x="630" y="93" text-anchor="middle">answer</text>
+
+      <path d="M92 87 H108" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M242 87 H258" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M392 87 H408" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M542 87 H562" stroke="var(--ink-soft)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <path d="M477 116 V152 H177 V120" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arm)"/>
+      <text class="sm" x="327" y="146" text-anchor="middle">go round again for the next hop</text>
+
+      <rect x="0" y="182" width="12" height="12" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.4"/>
+      <text class="sm" x="22" y="193">green = text GEPA may rewrite</text>
+      <rect x="0" y="206" width="12" height="12" rx="3" fill="none" stroke="var(--muted)" stroke-dasharray="3 2"/>
+      <text class="sm" x="22" y="217">dashed = tools and model weights, untouched</text>
+
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/></marker>
+        <marker id="arm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+      </defs>
+    </svg>
+  </div>
+</figure>
+
+<hr>
+
+<h2>A number versus a sentence</h2>
+
+<p>Here is the difference the paper is really arguing about. A run that fails produces two things: a rich written trail, and a score. Reinforcement learning keeps the score and discards the trail. It then has to infer, from many scores, which part of the behaviour was at fault.</p>
+
+<p>GEPA keeps both. The score still decides whether an edit survives. The trail is what tells it <em>what to edit</em>.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 300" role="img" aria-label="Left panel: a written trace funnelled down into the number zero. Right panel: the same trace kept, annotated with specific diagnoses, with the score alongside.">
+      <text class="tag" x="0" y="14">KEPT BY A SCORE-ONLY METHOD</text>
+      <g fill="var(--surface-2)" stroke="var(--rule)">
+        <rect x="0" y="30" width="250" height="9" rx="4.5"/>
+        <rect x="0" y="47" width="220" height="9" rx="4.5"/>
+        <rect x="0" y="64" width="245" height="9" rx="4.5"/>
+        <rect x="0" y="81" width="190" height="9" rx="4.5"/>
+        <rect x="0" y="98" width="235" height="9" rx="4.5"/>
+      </g>
+      <path d="M0 124 H250 L160 176 H90 Z" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text x="125" y="240" text-anchor="middle" font-family="var(--sans)" font-size="54" font-weight="600" fill="var(--muted)">0</text>
+      <text class="sm" x="125" y="268" text-anchor="middle">everything else thrown away</text>
+
+      <line x1="320" y1="0" x2="320" y2="290" stroke="var(--rule)"/>
+
+      <text class="tag" x="360" y="14">KEPT BY GEPA</text>
+      <g fill="var(--surface-2)" stroke="var(--rule)">
+        <rect x="360" y="30" width="250" height="9" rx="4.5"/>
+        <rect x="360" y="47" width="220" height="9" rx="4.5"/>
+        <rect x="360" y="64" width="245" height="9" rx="4.5"/>
+        <rect x="360" y="81" width="190" height="9" rx="4.5"/>
+        <rect x="360" y="98" width="235" height="9" rx="4.5"/>
+      </g>
+      <path d="M614 34 h30" stroke="var(--accent)" stroke-width="1.2"/>
+      <path d="M584 51 h60" stroke="var(--accent)" stroke-width="1.2"/>
+      <path d="M609 68 h35" stroke="var(--accent)" stroke-width="1.2"/>
+      <text class="sm" x="650" y="38" fill="var(--accent)">query</text>
+      <text class="sm" x="650" y="55" fill="var(--accent)">docs</text>
+      <text class="sm" x="650" y="72" fill="var(--accent)">answer</text>
+
+      <rect x="360" y="132" width="290" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.35"/>
+      <text class="sm" x="374" y="153" fill="var(--ink-soft)">hop 2 never retrieved the article on Madeira</text>
+      <rect x="360" y="176" width="290" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.35"/>
+      <text class="sm" x="374" y="197" fill="var(--ink-soft)">2 of 3 output constraints were not met</text>
+      <rect x="360" y="220" width="290" height="34" rx="6" fill="var(--clay-soft)" stroke="var(--clay)" stroke-opacity="0.35"/>
+      <text class="sm" x="374" y="241" fill="var(--ink-soft)">compiler: undefined reference on line 12</text>
+      <text class="sm" x="360" y="278">&#8230; plus the same score, 0</text>
+    </svg>
+  </div>
+  <figcaption>Graders often produce text before they produce a number — missing-document lists, failed constraint names, compiler errors. GEPA reads that text too.</figcaption>
+</figure>
+
+<hr>
+
+<h2>One turn of the loop</h2>
+
+<p>GEPA keeps a pool of candidate instruction-sets, starting with just the original one. It then repeats four steps until the budget runs out.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 380" role="img" aria-label="Four-step cycle: choose a candidate, try it on three examples, reflect and rewrite one instruction, then keep or drop it.">
+      <rect x="20" y="20" width="300" height="140" rx="10" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text class="tag" x="44" y="50">1 &#183; CHOOSE</text>
+      <text class="lbl" x="44" y="80">Pick one instruction-set from</text>
+      <text class="lbl" x="44" y="101">the current pool of winners</text>
+      <text class="lbl" x="44" y="122">(see the next section).</text>
+
+      <rect x="380" y="20" width="300" height="140" rx="10" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text class="tag" x="404" y="50">2 &#183; TRY</text>
+      <text class="lbl" x="404" y="80">Run the whole system on three</text>
+      <text class="lbl" x="404" y="101">fresh examples. Keep every</text>
+      <text class="lbl" x="404" y="122">transcript and error message.</text>
+
+      <rect x="380" y="220" width="300" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.4"/>
+      <text class="tag" x="404" y="250" fill="var(--accent)">3 &#183; REFLECT</text>
+      <text class="lbl" x="404" y="280">A model reads all of it, works</text>
+      <text class="lbl" x="404" y="301">out what went wrong, and</text>
+      <text class="lbl" x="404" y="322">rewrites one step's instruction.</text>
+
+      <rect x="20" y="220" width="300" height="140" rx="10" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text class="tag" x="44" y="250">4 &#183; KEEP OR DROP</text>
+      <text class="lbl" x="44" y="280">Re-run those same three.</text>
+      <text class="lbl" x="44" y="301">Better: add it to the pool and</text>
+      <text class="lbl" x="44" y="322">score it. Worse: discard.</text>
+
+      <path d="M320 90 H372" fill="none" stroke="var(--ink-soft)" stroke-width="1.6" marker-end="url(#ar2)"/>
+      <path d="M530 160 V212" fill="none" stroke="var(--ink-soft)" stroke-width="1.6" marker-end="url(#ar2)"/>
+      <path d="M380 290 H328" fill="none" stroke="var(--ink-soft)" stroke-width="1.6" marker-end="url(#ar2)"/>
+      <path d="M170 220 V168" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#ar3)"/>
+      <text class="sm" x="182" y="196">repeat</text>
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/></marker>
+        <marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+      </defs>
+    </svg>
+  </div>
+  <figcaption>A minibatch of three examples is the whole learning signal for one edit. Most of GEPA's budget goes not on step 2 but on step 4's bookkeeping — re-scoring survivors on a validation set.</figcaption>
+</figure>
+
+<p>Each new candidate is a copy of its parent with one instruction changed, so lessons stack up along a lineage. A prompt that started as one line can end up as a page of task-specific advice, each paragraph traceable to a failure that produced it.</p>
+
+<div class="quotebox">
+  <span class="k">STARTING INSTRUCTION, SECOND-HOP QUERY WRITER</span>
+  Given the fields question, summary_1, produce the fields query.
+</div>
+
+<div class="quotebox">
+  <span class="k">AFTER OPTIMISATION &#8212; PARAPHRASED SUMMARY OF WHAT GEPA ADDED</span>
+  An explanation of what a second hop is for; a warning not to paraphrase the original question or repeat what the first hop already found; the observation that first-hop documents usually cover one entity while the missing document tends to cover a broader connected one; a worked example about a parish population versus an archipelago population; and a procedure for spotting the hinted-at entity and querying it directly.
+</div>
+
+<p>None of that was written by a person. It was inferred from a handful of failures.</p>
+
+<hr>
+
+<h2>Why it does not get stuck</h2>
+
+<p>The obvious way to run this loop is to always improve whatever currently scores highest. The paper shows that this fails in a specific way: you find one good idea, then spend the rest of the budget failing to improve it. The search becomes a stalled chain.</p>
+
+<p>GEPA's answer is to stop asking "which candidate is best overall" and ask "which candidate is best at <em>something</em>". For every single validation example, it records the highest score any candidate has ever achieved. A candidate that holds the record on even one example is kept, however mediocre its average.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 340" role="img" aria-label="Grid of four candidate prompts scored across six tasks, with the best score per task highlighted and a win count per candidate.">
+      <text class="tag" x="0" y="16">SCORE PER VALIDATION EXAMPLE</text>
+      <g class="sm">
+        <text x="202" y="46" text-anchor="middle">t1</text>
+        <text x="280" y="46" text-anchor="middle">t2</text>
+        <text x="358" y="46" text-anchor="middle">t3</text>
+        <text x="436" y="46" text-anchor="middle">t4</text>
+        <text x="514" y="46" text-anchor="middle">t5</text>
+        <text x="592" y="46" text-anchor="middle">t6</text>
+        <text x="660" y="46" text-anchor="middle">wins</text>
+      </g>
+
+      <!-- row A -->
+      <text class="lbl" x="0" y="90">prompt A</text>
+      <g>
+        <rect x="170" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="202" y="90" text-anchor="middle">.4</text>
+        <rect x="248" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="280" y="90" text-anchor="middle">.6</text>
+        <rect x="326" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="358" y="90" text-anchor="middle">.5</text>
+        <rect x="404" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="436" y="90" text-anchor="middle">.3</text>
+        <rect x="482" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="514" y="90" text-anchor="middle">.0</text>
+        <rect x="560" y="66" width="64" height="36" rx="6" class="box"/><text class="num" x="592" y="90" text-anchor="middle">.5</text>
+        <text class="num" x="660" y="90" text-anchor="middle" fill="var(--muted)">0</text>
+      </g>
+      <!-- row B -->
+      <text class="lbl" x="0" y="140">prompt B</text>
+      <g>
+        <rect x="170" y="116" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="202" y="140" text-anchor="middle" fill="var(--accent)">.9</text>
+        <rect x="248" y="116" width="64" height="36" rx="6" class="box"/><text class="num" x="280" y="140" text-anchor="middle">.7</text>
+        <rect x="326" y="116" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="358" y="140" text-anchor="middle" fill="var(--accent)">.6</text>
+        <rect x="404" y="116" width="64" height="36" rx="6" class="box"/><text class="num" x="436" y="140" text-anchor="middle">.8</text>
+        <rect x="482" y="116" width="64" height="36" rx="6" class="box"/><text class="num" x="514" y="140" text-anchor="middle">.0</text>
+        <rect x="560" y="116" width="64" height="36" rx="6" class="box"/><text class="num" x="592" y="140" text-anchor="middle">.6</text>
+        <text class="num" x="660" y="140" text-anchor="middle" fill="var(--accent)">2</text>
+      </g>
+      <!-- row C -->
+      <text class="lbl" x="0" y="190">prompt C</text>
+      <g>
+        <rect x="170" y="166" width="64" height="36" rx="6" class="box"/><text class="num" x="202" y="190" text-anchor="middle">.5</text>
+        <rect x="248" y="166" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="280" y="190" text-anchor="middle" fill="var(--accent)">.9</text>
+        <rect x="326" y="166" width="64" height="36" rx="6" class="box"/><text class="num" x="358" y="190" text-anchor="middle">.4</text>
+        <rect x="404" y="166" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="436" y="190" text-anchor="middle" fill="var(--accent)">.9</text>
+        <rect x="482" y="166" width="64" height="36" rx="6" class="box"/><text class="num" x="514" y="190" text-anchor="middle">.0</text>
+        <rect x="560" y="166" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="592" y="190" text-anchor="middle" fill="var(--accent)">.7</text>
+        <text class="num" x="660" y="190" text-anchor="middle" fill="var(--accent)">3</text>
+      </g>
+      <!-- row D -->
+      <text class="lbl" x="0" y="240">prompt D</text>
+      <g>
+        <rect x="170" y="216" width="64" height="36" rx="6" class="box"/><text class="num" x="202" y="240" text-anchor="middle">.3</text>
+        <rect x="248" y="216" width="64" height="36" rx="6" class="box"/><text class="num" x="280" y="240" text-anchor="middle">.4</text>
+        <rect x="326" y="216" width="64" height="36" rx="6" class="box"/><text class="num" x="358" y="240" text-anchor="middle">.3</text>
+        <rect x="404" y="216" width="64" height="36" rx="6" class="box"/><text class="num" x="436" y="240" text-anchor="middle">.2</text>
+        <rect x="482" y="216" width="64" height="36" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text class="num" x="514" y="240" text-anchor="middle" fill="var(--accent)">.8</text>
+        <rect x="560" y="216" width="64" height="36" rx="6" class="box"/><text class="num" x="592" y="240" text-anchor="middle">.4</text>
+        <text class="num" x="660" y="240" text-anchor="middle" fill="var(--accent)">1</text>
+      </g>
+
+      <line x1="0" y1="272" x2="700" y2="272" stroke="var(--rule)"/>
+      <text class="sm" x="0" y="296">A wins nothing and is dropped. D has the worst average &#8212; but it is the only prompt</text>
+      <text class="sm" x="0" y="316">that has ever solved t5, so it stays. The next candidate is drawn at random, weighted by wins.</text>
+    </svg>
+  </div>
+</figure>
+
+<p>The effect on the search is visible. Greedy selection produces a long thin chain of failed refinements. Sampling across the winners produces a bushy tree that explores several distinct strategies and finds a better one within the same budget.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 300" role="img" aria-label="Two search trees. Left: a short chain with many failed attempts branching off one node. Right: a broad branching tree reaching a better final candidate.">
+      <text class="tag" x="0" y="16">ALWAYS IMPROVE THE LEADER</text>
+      <circle cx="60" cy="52" r="15" fill="var(--surface-2)" stroke="var(--rule)"/><text class="sm" x="60" y="57" text-anchor="middle">0</text>
+      <line x1="60" y1="67" x2="60" y2="103" stroke="var(--ink-soft)" stroke-width="1.5"/>
+      <circle cx="60" cy="118" r="15" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.5"/><text class="sm" x="60" y="123" text-anchor="middle" fill="var(--blue)">1</text>
+      <g stroke="var(--muted)" stroke-dasharray="4 4" stroke-opacity="0.8">
+        <line x1="60" y1="133" x2="0" y2="190"/><line x1="60" y1="133" x2="35" y2="196"/>
+        <line x1="60" y1="133" x2="85" y2="196"/><line x1="60" y1="133" x2="120" y2="190"/>
+        <line x1="60" y1="133" x2="155" y2="178"/>
+      </g>
+      <g stroke="var(--muted)" stroke-width="1.6" stroke-opacity="0.9">
+        <path d="M-6 184 l12 12 M6 184 l-12 12" transform="translate(0,0)"/>
+        <path d="M29 190 l12 12 M41 190 l-12 12"/>
+        <path d="M79 190 l12 12 M91 190 l-12 12"/>
+        <path d="M114 184 l12 12 M126 184 l-12 12"/>
+        <path d="M149 172 l12 12 M161 172 l-12 12"/>
+      </g>
+      <text class="sm" x="0" y="248">one good jump, then the budget</text>
+      <text class="sm" x="0" y="268">drains into rejected edits</text>
+
+      <line x1="330" y1="0" x2="330" y2="290" stroke="var(--rule)"/>
+
+      <text class="tag" x="370" y="16">SAMPLE ACROSS THE WINNERS</text>
+      <g stroke="var(--ink-soft)" stroke-width="1.4">
+        <line x1="530" y1="67" x2="450" y2="103"/><line x1="530" y1="67" x2="610" y2="103"/>
+        <line x1="450" y1="133" x2="410" y2="168"/><line x1="450" y1="133" x2="492" y2="168"/>
+        <line x1="610" y1="133" x2="570" y2="168"/><line x1="610" y1="133" x2="650" y2="168"/>
+        <line x1="650" y1="198" x2="650" y2="233"/>
+      </g>
+      <circle cx="530" cy="52" r="15" fill="var(--surface-2)" stroke="var(--rule)"/><text class="sm" x="530" y="57" text-anchor="middle">0</text>
+      <circle cx="450" cy="118" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="610" cy="118" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="410" cy="183" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="492" cy="183" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="570" cy="183" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="650" cy="183" r="15" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <circle cx="650" cy="248" r="17" fill="var(--accent)"/><text class="sm" x="650" y="253" text-anchor="middle" fill="var(--surface)">best</text>
+      <text class="sm" x="370" y="288">several lineages survive; a later one overtakes the early leader</text>
+    </svg>
+  </div>
+  <figcaption>Redrawn from the search trees in Figure 6. Swapping this one selection rule for the greedy alternative costs about half of GEPA's total gain.</figcaption>
+</figure>
+
+<hr>
+
+<h2>Merging two lineages</h2>
+
+<p>Because different branches often improve different steps of the pipeline, GEPA can occasionally combine them: take the best version of each step from two cousins that share an ancestor and improved disjoint parts. The paper calls this Merge, and it is deliberately rare — both parents must have genuinely improved on the ancestor, and in different places.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 270" role="img" aria-label="Diagram: a shared ancestor with two modules; one descendant improves module one, another improves module two; a merged child combines both improvements.">
+      <g font-family="var(--sans)" font-size="13">
+        <rect x="270" y="10" width="160" height="50" rx="9" class="box"/>
+        <rect x="284" y="24" width="60" height="22" rx="5" fill="var(--surface)" stroke="var(--rule)"/><text x="314" y="39" text-anchor="middle" fill="var(--muted)">step 1</text>
+        <rect x="356" y="24" width="60" height="22" rx="5" fill="var(--surface)" stroke="var(--rule)"/><text x="386" y="39" text-anchor="middle" fill="var(--muted)">step 2</text>
+        <text class="sm" x="446" y="40">shared ancestor</text>
+
+        <rect x="20" y="110" width="200" height="50" rx="9" class="box"/>
+        <rect x="38" y="124" width="72" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text x="74" y="139" text-anchor="middle" fill="var(--accent)">step 1&#8242;</text>
+        <rect x="122" y="124" width="72" height="22" rx="5" fill="var(--surface)" stroke="var(--rule)"/><text x="158" y="139" text-anchor="middle" fill="var(--muted)">step 2</text>
+
+        <rect x="480" y="110" width="200" height="50" rx="9" class="box"/>
+        <rect x="498" y="124" width="72" height="22" rx="5" fill="var(--surface)" stroke="var(--rule)"/><text x="534" y="139" text-anchor="middle" fill="var(--muted)">step 1</text>
+        <rect x="582" y="124" width="72" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/><text x="618" y="139" text-anchor="middle" fill="var(--accent)">step 2&#8242;</text>
+
+        <rect x="250" y="205" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-opacity="0.5"/>
+        <rect x="268" y="219" width="72" height="22" rx="5" fill="var(--surface)" stroke="var(--accent)" stroke-opacity="0.5"/><text x="304" y="234" text-anchor="middle" fill="var(--accent)">step 1&#8242;</text>
+        <rect x="352" y="219" width="72" height="22" rx="5" fill="var(--surface)" stroke="var(--accent)" stroke-opacity="0.5"/><text x="388" y="234" text-anchor="middle" fill="var(--accent)">step 2&#8242;</text>
+      </g>
+      <g stroke="var(--ink-soft)" stroke-width="1.4" fill="none">
+        <path d="M290 62 C 200 80 160 84 130 104" marker-end="url(#ar4)"/>
+        <path d="M410 62 C 500 80 540 84 570 104" marker-end="url(#ar4)"/>
+        <path d="M130 162 C 170 196 240 205 300 208" marker-end="url(#ar4)" stroke-dasharray="5 4"/>
+        <path d="M570 162 C 530 196 460 205 400 208" marker-end="url(#ar4)" stroke-dasharray="5 4"/>
+      </g>
+      <text class="sm" x="20" y="182">improved step 1 only</text>
+      <text class="sm" x="680" y="182" text-anchor="end">improved step 2 only</text>
+      <text class="sm" x="350" y="192" text-anchor="middle">merge</text>
+      <defs><marker id="ar4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink-soft)"/></marker></defs>
+    </svg>
+  </div>
+  <figcaption>Merge helped on GPT-4.1 mini and hurt on Qwen3-8B, where it was invoked before the tree had grown genuinely distinct lineages. The paper flags the timing as unsolved.</figcaption>
+</figure>
+
+<hr>
+
+<h2>Results</h2>
+
+<p>Six benchmarks: multi-hop question answering, fact verification, strict instruction following, privacy-aware delegation, and two maths sets. Two models: an open 8B model and a commercial mini model. Aggregate scores on GPT-4.1 mini, all optimisers given a comparable attempt budget:</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 340" role="img" aria-label="Horizontal bars of aggregate score on GPT-4.1 mini: baseline 53.0, Trace 56.3, MIPROv2 58.7, TextGrad 59.1, GEPA 65.2, GEPA plus Merge 66.4.">
+      <line x1="528" y1="30" x2="528" y2="316" stroke="var(--rule)" stroke-dasharray="4 4"/>
+      <text class="sm" x="534" y="28">starting point</text>
+
+      <text class="lbl" x="0" y="58">no optimiser</text>
+      <rect x="180" y="40" width="348" height="24" rx="5" fill="var(--surface-2)" stroke="var(--rule)"/>
+      <text class="num" x="538" y="58" fill="var(--muted)">53.0</text>
+
+      <text class="lbl" x="0" y="104">Trace</text>
+      <rect x="180" y="86" width="370" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.3"/>
+      <text class="num" x="560" y="104" fill="var(--blue)">56.3</text>
+
+      <text class="lbl" x="0" y="150">MIPROv2</text>
+      <rect x="180" y="132" width="386" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.3"/>
+      <text class="num" x="576" y="150" fill="var(--blue)">58.7</text>
+
+      <text class="lbl" x="0" y="196">TextGrad</text>
+      <rect x="180" y="178" width="389" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.3"/>
+      <text class="num" x="579" y="196" fill="var(--blue)">59.1</text>
+
+      <text class="lbl" x="0" y="242">GEPA</text>
+      <rect x="180" y="224" width="429" height="24" rx="5" fill="var(--accent)"/>
+      <text class="num" x="619" y="242" fill="var(--accent)">65.2</text>
+
+      <text class="lbl" x="0" y="288">GEPA + Merge</text>
+      <rect x="180" y="270" width="436" height="24" rx="5" fill="var(--accent)"/>
+      <text class="num" x="626" y="288" fill="var(--accent)">66.4</text>
+
+      <line x1="180" y1="316" x2="680" y2="316" stroke="var(--rule)"/>
+      <text class="sm" x="180" y="334">0</text>
+      <text class="sm" x="680" y="334" text-anchor="end">70</text>
+    </svg>
+  </div>
+  <figcaption>Mean across six benchmarks. Bars share a common zero.</figcaption>
+</figure>
+
+<p>On the open model, where retraining is actually possible, the comparison against GRPO is the headline:</p>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th>Qwen3-8B</th><th>HotpotQA</th><th>IFBench</th><th>HoVer</th><th>PUPA</th><th>Aggregate</th><th>Attempts</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>no optimiser</td><td class="n">42.3</td><td class="n">36.9</td><td class="n">35.3</td><td class="n">80.8</td><td class="n">45.2</td><td class="n">&#8212;</td></tr>
+    <tr><td>GRPO</td><td class="n">43.3</td><td class="n">35.9</td><td class="n">38.7</td><td class="n">86.7</td><td class="n">48.9</td><td class="n">24,000</td></tr>
+    <tr><td>MIPROv2</td><td class="n">55.3</td><td class="n">36.2</td><td class="n">47.3</td><td class="n">81.6</td><td class="n">47.8</td><td class="n">&#8776;3,900</td></tr>
+    <tr class="hi"><td>GEPA</td><td class="n">62.3</td><td class="n">38.6</td><td class="n">52.3</td><td class="n">91.9</td><td class="n">54.9</td><td class="n">&#8776;3,900</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Three further findings are worth pulling out.</p>
+
+<p><strong>Written rules beat worked examples.</strong> The previous best optimiser, MIPROv2, spends most of its prompt budget on few-shot demonstrations. GEPA writes instructions instead — and its prompts came out up to 9.2 times shorter while scoring higher. Shorter prompts are also cheaper to run forever afterwards, since every request pays for those tokens.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 190" role="img" aria-label="Bar comparison of prompt length: MIPROv2's prompt is mostly few-shot examples and much longer than GEPA's instruction-only prompt.">
+      <text class="lbl" x="0" y="52">MIPROv2</text>
+      <rect x="110" y="34" width="74" height="26" rx="4" fill="var(--accent)" opacity="0.85"/>
+      <rect x="184" y="34" width="546" height="26" rx="4" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.3"/>
+      <text class="sm" x="124" y="88" fill="var(--accent)">instructions</text>
+      <text class="sm" x="380" y="52" text-anchor="middle" fill="var(--blue)">few-shot examples</text>
+      <line x1="146" y1="64" x2="146" y2="76" stroke="var(--accent)" stroke-opacity="0.5"/>
+
+      <text class="lbl" x="0" y="140">GEPA</text>
+      <rect x="110" y="122" width="67" height="26" rx="4" fill="var(--accent)"/>
+      <text class="sm" x="190" y="140">instructions only &#8212; up to 9.2&#215; shorter overall</text>
+    </svg>
+  </div>
+</figure>
+
+<p><strong>The prompts travel.</strong> Instructions evolved entirely on the small open model, then dropped unchanged into GPT-4.1 mini, gained 9 points — beating every optimiser that had been tuned directly on GPT-4.1 mini.</p>
+
+<p><strong>It is cheap.</strong> Every GPT-4.1 mini experiment in the paper cost under $500 in total; GEPA's own share was $86.</p>
+
+<hr>
+
+<h2>Two side uses</h2>
+
+<p>If you feed GEPA the very problems you want solved rather than a training set, it stops generalising and starts grinding: it overfits to those problems, carrying lessons from one across to the others. Used that way on GPU and NPU kernel generation, with compiler errors fed back as written feedback, it lifted mean hardware utilisation from about 4% to about 30%, with individual kernels reaching 70%.</p>
+
+<p>Flip the score and it becomes an attack. Asked to find instruction text that makes a model worse while still stating the task correctly, GEPA discovered that padding a maths prompt with irrelevant true trivia — about honey, rivers, dolphins — collided with a strict output-format rule and caused the model to emit the format placeholder literally instead of an answer.</p>
+
+<figure>
+  <div class="frame">
+    <svg class="d" viewBox="0 0 700 180" role="img" aria-label="Accuracy on AIME 2025 falls from 76 percent with a clean instruction to 10 percent when harmless trivia is added.">
+      <text class="lbl" x="0" y="48">clean instruction</text>
+      <rect x="260" y="30" width="319" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-opacity="0.35"/>
+      <text class="num" x="589" y="48" fill="var(--blue)">76%</text>
+      <text class="lbl" x="0" y="112">same task, plus harmless trivia</text>
+      <rect x="260" y="94" width="42" height="26" rx="5" fill="var(--clay)"/>
+      <text class="num" x="312" y="112" fill="var(--clay)">10%</text>
+      <text class="sm" x="0" y="160">AIME-2025, GPT-5 Mini. The task description and answer format were both preserved.</text>
+    </svg>
+  </div>
+</figure>
+
+<hr>
+
+<h2>Where it falls short</h2>
+
+<ul>
+  <li><strong>Maths is the exception.</strong> On AIME, retraining won clearly — 38.0 against GEPA's 32.0. Better instructions cannot install a reasoning skill the model does not have.</li>
+  <li><strong>Merge is unreliable.</strong> It added points on one model and removed them on the other, using identical settings. When to trigger it is unresolved.</li>
+  <li><strong>The attempt count flatters slightly.</strong> Most of GEPA's budget goes on re-scoring survivors for bookkeeping, not on learning. That is honest accounting, but it means the headline ratio would look very different under a different validation scheme — the authors say as much.</li>
+  <li><strong>It needs something to read.</strong> The method leans on graders that produce text. Where the only signal is a bare number, the central advantage thins out.</li>
+  <li><strong>Prompt optimisation and retraining are not rivals.</strong> Nothing here prevents doing both, and the paper does not test the combination.</li>
+</ul>
+
+<hr>
+
+<h2>The one-line version</h2>
+
+<p>Failure already explains itself in English. Reinforcement learning throws that explanation away and reconstructs it, slowly, from scores. GEPA reads it.</p>
+
+<p class="foot">Source: Lakshya A Agrawal et al., <em>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</em>, arXiv:2507.19457v2. Full paper: <a href="https://arxiv.org/abs/2507.19457">arxiv.org/abs/2507.19457</a>. Code: <a href="https://github.com/gepa-ai/gepa">github.com/gepa-ai/gepa</a>. All figures above are redrawn simplifications; numbers are quoted from the paper's tables.</p>
+
+</main>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var btns = document.querySelectorAll('.switch button');
+  function apply(v){
+    root.setAttribute('data-theme', v);
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.set === v)); });
+    try { localStorage.setItem('gepa-theme', v); } catch(e){}
+  }
+  var saved = null;
+  try { saved = localStorage.getItem('gepa-theme'); } catch(e){}
+  if (saved === 'light' || saved === 'sepia' || saved === 'dark') {
+    apply(saved);
+  } else {
+    root.removeAttribute('data-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    btns.forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.dataset.set === (prefersDark ? 'dark' : 'light')));
+    });
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ apply(b.dataset.set); }); });
+})();
+</script>
+</body>
+</html>
