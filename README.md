@@ -15,3 +15,6 @@
 - STAIR (STructure Aware Information Retriever): A novel dataset and LLM based retriever for document structure augmentation
   - https://arxiv.org/html/2609.03874v1
   - https://edangx100.github.io/interesting_papers/stair
+- GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning
+  - https://arxiv.org/html/2507.19457v2
+  - https://edangx100.github.io/interesting_papers/gepa
