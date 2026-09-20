@@ -18,3 +18,6 @@
 - GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning
   - https://arxiv.org/html/2507.19457v2
   - https://edangx100.github.io/interesting_papers/gepa
+- Where LLM Agents Fail and How They can Learn From Failures
+  - https://arxiv.org/html/2509.25370v1
+  - https://edangx100.github.io/interesting_papers/agentDebug
