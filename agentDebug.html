@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Where AI agents go wrong</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+
+  --bg:#E9EDEE;
+  --surface:#F5F7F7;
+  --ink:#27343A;
+  --ink-2:#5C6E76;
+  --line:#CBD5D8;
+  --teal:#2F6F69;
+  --fault:#9E5D57;
+  --ochre:#87692C;
+
+  --serif:"Newsreader","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:"Atkinson Hyperlegible","Segoe UI",Helvetica,Arial,sans-serif;
+
+  --fs:1.15rem;
+  --measure:34rem;
+}
+*,*::before,*::after{box-sizing:inherit}
+
+html[data-size="large"]{--fs:1.3rem;--measure:36rem}
+
+/* Dim: lower contrast, for evening reading */
+:root[data-theme="dim"]{
+  --bg:#2B3237;--surface:#333C41;--ink:#D5DCDE;--ink-2:#9BA9AF;--line:#4A565C;
+  --teal:#7FB6AE;--fault:#CE928B;--ochre:#C3A45F;
+}
+/* Night */
+:root[data-theme="dark"]{
+  --bg:#12181B;--surface:#1B2327;--ink:#C6D0D3;--ink-2:#84939A;--line:#2F3B41;
+  --teal:#74AEA7;--fault:#C78B85;--ochre:#BB9C54;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dim"]){
+    --bg:#12181B;--surface:#1B2327;--ink:#C6D0D3;--ink-2:#84939A;--line:#2F3B41;
+    --teal:#74AEA7;--fault:#C78B85;--ochre:#BB9C54;
+  }
+}
+
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-optical-sizing:auto;
+  font-size:var(--fs);
+  font-weight:380;
+  line-height:1.78;
+  letter-spacing:.004em;
+  text-rendering:optimizeLegibility;
+}
+
+.wrap{max-width:53rem;margin:0 auto;padding:0 1.35rem 6rem}
+.col{max-width:var(--measure);margin-inline:auto}
+
+/* ---- comfort controls ---- */
+.comfort{
+  display:flex;flex-wrap:wrap;gap:.9rem;align-items:center;justify-content:flex-end;
+  font-family:var(--sans);font-size:.78rem;color:var(--ink-2);
+  padding:1.1rem 0 .2rem;
+}
+.comfort .set{display:flex;gap:.3rem;align-items:center}
+.comfort span{margin-right:.15rem}
+.comfort button{
+  font-family:var(--sans);font-size:.78rem;color:var(--ink-2);
+  background:transparent;border:1px solid var(--line);border-radius:999px;
+  padding:.36rem .74rem;min-height:32px;cursor:pointer;
+}
+.comfort button[aria-pressed="true"]{color:var(--bg);background:var(--ink-2);border-color:var(--ink-2)}
+.comfort button:hover{color:var(--ink);border-color:var(--ink-2)}
+.comfort button[aria-pressed="true"]:hover{color:var(--bg)}
+:where(a,button):focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:3px}
+
+/* ---- type ---- */
+h1{
+  font-weight:450;font-size:clamp(2.1rem,6.2vw,3.35rem);line-height:1.1;
+  letter-spacing:-.018em;margin:1.6rem 0 0;text-wrap:balance;
+}
+.deck{
+  font-size:clamp(1.18rem,3.1vw,1.42rem);line-height:1.5;font-weight:380;
+  margin:1.15rem 0 0;text-wrap:pretty;
+}
+.source{
+  font-family:var(--sans);font-size:.8rem;line-height:1.6;color:var(--ink-2);
+  margin:1.5rem 0 0;max-width:30rem;
+}
+.source a{color:inherit}
+h2{
+  font-weight:450;font-size:clamp(1.42rem,3.6vw,1.72rem);line-height:1.25;
+  letter-spacing:-.01em;margin:0 0 .9rem;text-wrap:balance;
+}
+p{margin:0 0 1.25rem;text-wrap:pretty}
+section{margin-top:4.6rem}
+strong{font-weight:600}
+em{font-style:italic}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:.18em;text-decoration-color:var(--line)}
+a:hover{text-decoration-color:var(--teal)}
+
+.lede{font-size:1.06em}
+.pull{
+  border-left:2px solid var(--ochre);
+  padding:.1rem 0 .1rem 1.15rem;margin:2.2rem 0;
+  font-size:1.06em;line-height:1.6;color:var(--ink);
+}
+ul{margin:0 0 1.25rem;padding-left:1.15rem}
+li{margin-bottom:.6rem}
+li::marker{color:var(--ink-2)}
+
+/* ---- figures ---- */
+figure{margin:2.6rem 0 2.8rem}
+figure.wide{max-width:none}
+.scroller{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+svg{display:block;width:100%;height:auto}
+.scroller svg{min-width:34rem}
+figcaption{
+  font-family:var(--sans);font-size:.8rem;line-height:1.6;color:var(--ink-2);
+  margin-top:.9rem;max-width:32rem;
+}
+.s-label{font-family:var(--sans);font-size:12px;fill:var(--ink-2)}
+.s-label.big{font-size:13.5px;fill:var(--ink)}
+.s-label.tiny{font-size:10.5px}
+.s-box{fill:var(--surface);stroke:var(--line);stroke-width:1}
+.s-line{stroke:var(--line);stroke-width:1.4;fill:none}
+.s-ink{fill:var(--ink)}
+.s-teal{fill:var(--teal)}
+.s-fault{fill:var(--fault)}
+.s-ochre{fill:var(--ochre)}
+
+footer{margin-top:5.5rem;padding-top:1.6rem;border-top:1px solid var(--line)}
+footer p{font-family:var(--sans);font-size:.85rem;color:var(--ink-2);margin:0 0 .5rem}
+
+/* ---- one orchestrated entrance ---- */
+.cascade-step{opacity:0;animation:appear .5s ease-out forwards}
+.ghost-run{opacity:0;animation:appear .7s ease-out .95s forwards}
+@keyframes appear{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .cascade-step,.ghost-run{animation:none;opacity:1}
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="comfort" role="group" aria-label="Reading comfort">
+    <div class="set">
+      <span>Light</span>
+      <button type="button" data-theme-btn="light" aria-pressed="false">Paper</button>
+      <button type="button" data-theme-btn="dim" aria-pressed="false">Dim</button>
+      <button type="button" data-theme-btn="dark" aria-pressed="false">Night</button>
+    </div>
+    <div class="set">
+      <span>Text</span>
+      <button type="button" data-size-btn="normal" aria-pressed="true">Normal</button>
+      <button type="button" data-size-btn="large" aria-pressed="false">Larger</button>
+    </div>
+  </div>
+
+  <header class="col">
+    <h1>Where AI agents go wrong</h1>
+    <p class="deck">Most agent failures trace back to a single early mistake. Find that one step, tell the agent what happened, and let it run again from there: it succeeds far more often.</p>
+    <p class="source">An explainer of <em>Where LLM Agents Fail and How They Can Learn From Failures</em> by Kunlun Zhu and colleagues at UIUC, OpenManus, AMD and Stanford (<a href="https://arxiv.org/abs/2509.25370">arXiv:2509.25370</a>, September 2025).</p>
+  </header>
+
+  <figure class="wide" aria-labelledby="fig1cap">
+    <div class="scroller">
+      <svg viewBox="0 0 640 230" role="img" aria-label="A run of sixteen steps. Step six is circled as the root cause; every step after it darkens as errors compound, and the run fails. A faint branch shows the corrected run succeeding.">
+        <!-- ghost / corrected run -->
+        <g class="ghost-run">
+          <path d="M 232 100 C 248 74 252 58 272 54" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="4 4" opacity=".75"/>
+          <line x1="272" y1="54" x2="595" y2="54" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="4 4" opacity=".55"/>
+          <g fill="var(--bg)" stroke="var(--teal)" stroke-width="1.4" opacity=".85">
+            <circle cx="299" cy="54" r="6"/><circle cx="336" cy="54" r="6"/><circle cx="373" cy="54" r="6"/>
+            <circle cx="410" cy="54" r="6"/><circle cx="447" cy="54" r="6"/><circle cx="484" cy="54" r="6"/>
+            <circle cx="521" cy="54" r="6"/><circle cx="558" cy="54" r="6"/>
+          </g>
+          <circle cx="595" cy="54" r="11" fill="var(--teal)"/>
+          <path d="M 590 54 l 3.4 3.8 l 6.6 -8" fill="none" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <text class="s-label" x="286" y="31" fill="var(--teal)">the same run, corrected at step 6</text>
+        </g>
+
+        <!-- baseline -->
+        <line x1="40" y1="110" x2="225" y2="110" class="s-line"/>
+        <line x1="225" y1="110" x2="596" y2="110" stroke="var(--fault)" stroke-width="1.6" opacity=".45"/>
+
+        <!-- clean steps -->
+        <g fill="var(--surface)" stroke="var(--line)" stroke-width="1.5">
+          <circle cx="40" cy="110" r="8"/><circle cx="77" cy="110" r="8"/><circle cx="114" cy="110" r="8"/>
+          <circle cx="151" cy="110" r="8"/><circle cx="188" cy="110" r="8"/>
+        </g>
+
+        <!-- root cause -->
+        <circle cx="225" cy="110" r="17" fill="none" stroke="var(--ochre)" stroke-width="1.2" stroke-dasharray="3 3.4" opacity=".9"/>
+        <circle cx="225" cy="110" r="8.5" fill="var(--bg)" stroke="var(--ochre)" stroke-width="2.4"/>
+
+        <!-- compounding steps -->
+        <g fill="var(--fault)">
+          <circle class="cascade-step" style="animation-delay:.10s" cx="262" cy="110" r="8" opacity=".20"/>
+          <circle class="cascade-step" style="animation-delay:.17s" cx="299" cy="110" r="8" opacity=".28"/>
+          <circle class="cascade-step" style="animation-delay:.24s" cx="336" cy="110" r="8" opacity=".36"/>
+          <circle class="cascade-step" style="animation-delay:.31s" cx="373" cy="110" r="8" opacity=".45"/>
+          <circle class="cascade-step" style="animation-delay:.38s" cx="410" cy="110" r="8" opacity=".54"/>
+          <circle class="cascade-step" style="animation-delay:.45s" cx="447" cy="110" r="8" opacity=".63"/>
+          <circle class="cascade-step" style="animation-delay:.52s" cx="484" cy="110" r="8" opacity=".72"/>
+          <circle class="cascade-step" style="animation-delay:.59s" cx="521" cy="110" r="8" opacity=".80"/>
+          <circle class="cascade-step" style="animation-delay:.66s" cx="558" cy="110" r="8" opacity=".88"/>
+          <circle class="cascade-step" style="animation-delay:.73s" cx="595" cy="110" r="8"/>
+        </g>
+
+        <!-- labels -->
+        <text class="s-label" x="40" y="146" text-anchor="middle">step 1</text>
+        <text class="s-label" x="225" y="146" text-anchor="middle" fill="var(--ochre)">root cause</text>
+        <text class="s-label" x="428" y="146" text-anchor="middle" fill="var(--fault)">everything after it inherits the mistake</text>
+        <text class="s-label" x="595" y="146" text-anchor="middle" fill="var(--fault)">fails</text>
+
+        <line x1="40" y1="176" x2="596" y2="176" stroke="var(--line)" stroke-width="1"/>
+        <text class="s-label tiny" x="40" y="196">one task, one run, sixteen decisions</text>
+      </svg>
+    </div>
+    <figcaption id="fig1cap">The shape of a typical failure. The last step is where the run dies; step&nbsp;6 is where it was decided.</figcaption>
+  </figure>
+
+  <div class="col">
+    <p class="lede">An AI agent is a language model given a job and a set of steps to do it in. It looks at what is in front of it, decides on one move, makes the move, sees what happened, and goes round again. Buying a shirt on a shopping site, tidying a virtual kitchen, answering a question that needs three web searches: all of these are dozens of small decisions in a row.</p>
+
+    <p>When a run like that fails, the obvious place to look is the end, where things visibly fell apart. This paper's argument is that the end is almost never the cause. One step early on goes quietly wrong, the agent carries that mistake forward as if it were true, and every later decision is built on it. The authors read through more than 500 failed runs by hand to check, and this pattern is what they kept finding.</p>
+
+    <p>So they did three things: named the ways a step can break, hand-labelled 200 failures using those names, and built a tool that reads a failed run, points at the one step that mattered, and hands the agent a note before it tries again.</p>
+  </div>
+
+  <section class="col">
+    <h2>One step, four small jobs</h2>
+    <p>To talk about where a step breaks, you first need the parts of a step. The authors split every decision into four jobs, done in order.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig2cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 250" role="img" aria-label="A loop: the world feeds into memory, then reflection, then planning, then action, which feeds back into the world.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-2)"/>
+          </marker>
+        </defs>
+
+        <rect x="250" y="14" width="120" height="36" rx="18" fill="none" stroke="var(--ink-2)" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text class="s-label big" x="310" y="37" text-anchor="middle">the world</text>
+
+        <path d="M 248 32 C 168 32 96 58 96 102" fill="none" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar)" opacity=".75"/>
+        <path d="M 515 102 C 515 58 452 32 374 32" fill="none" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar)" opacity=".75"/>
+
+        <g>
+          <rect x="40" y="108" width="112" height="60" rx="8" class="s-box"/>
+          <text class="s-label big" x="96" y="133" text-anchor="middle">Memory</text>
+          <text class="s-label tiny" x="96" y="151" text-anchor="middle">what has happened</text>
+
+          <rect x="180" y="108" width="112" height="60" rx="8" class="s-box"/>
+          <text class="s-label big" x="236" y="133" text-anchor="middle">Reflection</text>
+          <text class="s-label tiny" x="236" y="151" text-anchor="middle">did that work?</text>
+
+          <rect x="320" y="108" width="112" height="60" rx="8" class="s-box"/>
+          <text class="s-label big" x="376" y="133" text-anchor="middle">Planning</text>
+          <text class="s-label tiny" x="376" y="151" text-anchor="middle">what to do next</text>
+
+          <rect x="460" y="108" width="112" height="60" rx="8" class="s-box"/>
+          <text class="s-label big" x="516" y="133" text-anchor="middle">Action</text>
+          <text class="s-label tiny" x="516" y="151" text-anchor="middle">do exactly that</text>
+        </g>
+
+        <g stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar)" opacity=".75">
+          <line x1="154" y1="138" x2="176" y2="138"/>
+          <line x1="294" y1="138" x2="316" y2="138"/>
+          <line x1="434" y1="138" x2="456" y2="138"/>
+        </g>
+
+        <path d="M 40 196 L 572 196" stroke="var(--line)" stroke-width="1"/>
+        <text class="s-label tiny" x="40" y="218">Each job reads the one before it, so a wrong answer early in the step is already wrong by the end of it.</text>
+      </svg>
+    </div>
+    <figcaption id="fig2cap">One step of a run. Four jobs, in order, then out into the world and round again.</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>Failure travels forward</h2>
+    <p>Because each job feeds the next, and each step feeds the next step, a small wrong belief has a long life. An agent that misremembers what is in a cupboard will plan around a cupboard that does not exist, then read the resulting non-events as bad luck, then plan around those.</p>
+    <p class="pull">Memory and reflection are the quiet ones. They rarely look like errors at the time, they usually happen five to fifteen steps in, and they are the most likely to cascade. A malformed action is loud and often survivable. A misremembered fact is silent and usually fatal.</p>
+    <p>Laid out side by side, failed runs make the pattern visible: a first bad step somewhere in the middle, then a widening stain.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig3cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 300" role="img" aria-label="Fourteen failed runs shown as rows of cells. In each row one cell is outlined as the first critical error, and the cells after it grow steadily darker.">
+        <g id="grid">
+          <rect x="46" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="38" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="233.5" y="36.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="256" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="277" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="298" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="319" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="340" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="361" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="382" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="403" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="424" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="445" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="466" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="487" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="508" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="529" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="550" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="38" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="46" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="54" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="254.5" y="52.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="277" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="298" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="319" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="340" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="361" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="382" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="403" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="424" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="445" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="466" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="487" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="508" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="529" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="550" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="54" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="46" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="233.5" y="68.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="256" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="277" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="298" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="319" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="340" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="361" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="382" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="403" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="424" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="445" y="70" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="466" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="70" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="86" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="254.5" y="84.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="277" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="298" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="319" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="340" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="361" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="382" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="403" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="424" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="445" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="466" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="487" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="508" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="529" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="550" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="86" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="46" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="256" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="275.5" y="100.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="298" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="319" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="340" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="361" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="382" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="403" y="102" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="424" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="445" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="466" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="102" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="128.5" y="116.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="151" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="172" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="193" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="214" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="235" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="256" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="277" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="298" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="319" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="340" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="361" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="382" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="403" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="424" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="445" y="118" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="466" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="118" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="254.5" y="132.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="277" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="298" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="319" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="340" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="361" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="382" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="403" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="424" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="445" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="466" y="134" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="487" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="134" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="256" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="277" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="296.5" y="148.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="319" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="340" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="361" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="382" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="403" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="424" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="445" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="466" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="487" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="508" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="529" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="550" y="150" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="150" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="128.5" y="164.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="151" y="166" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="172" y="166" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="193" y="166" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="214" y="166" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="235" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="256" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="277" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="298" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="319" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="340" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="361" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="382" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="403" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="424" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="445" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="466" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="166" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="233.5" y="180.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="256" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="277" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="298" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="319" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="340" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="361" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="382" y="182" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="403" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="424" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="445" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="466" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="182" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="128.5" y="196.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="151" y="198" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="172" y="198" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="193" y="198" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="214" y="198" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="235" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="256" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="277" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="298" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="319" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="340" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="361" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="382" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="403" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="424" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="445" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="466" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="198" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="46" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="214" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="254.5" y="212.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="277" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="298" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="319" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="340" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="361" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="382" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="403" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="424" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="445" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="466" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="487" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="508" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="529" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="550" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="214" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="46" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="88" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="109" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="130" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="151" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="172" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="193" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="214" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="235" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="256" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="277" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="298" y="230" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="317.5" y="228.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="340" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="361" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="382" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="403" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="424" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="445" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="466" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="487" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="508" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="529" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="550" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="571" y="230" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="46" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="67" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".5"/>
+          <rect x="86.5" y="244.5" width="20" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="1.8"/>
+          <rect x="109" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.26"/>
+          <rect x="130" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.32"/>
+          <rect x="151" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.39"/>
+          <rect x="172" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.45"/>
+          <rect x="193" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.51"/>
+          <rect x="214" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.57"/>
+          <rect x="235" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.63"/>
+          <rect x="256" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.70"/>
+          <rect x="277" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.76"/>
+          <rect x="298" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.82"/>
+          <rect x="319" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="340" y="246" width="17" height="11" rx="2" fill="var(--fault)" opacity="0.88"/>
+          <rect x="361" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="382" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="403" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="424" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="445" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="466" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="487" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="508" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="529" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="550" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+          <rect x="571" y="246" width="17" height="11" rx="2" fill="var(--line)" opacity=".13"/>
+        </g>
+        <text class="s-label tiny" x="46" y="288">step 1</text>
+        <text class="s-label tiny" x="588" y="288" text-anchor="end">step 26</text>
+        <text class="s-label tiny" x="8" y="26">14 failed runs</text>
+        <g transform="translate(300,26)">
+          <circle cx="0" cy="-4" r="6" fill="none" stroke="var(--ochre)" stroke-width="2"/>
+          <text class="s-label tiny" x="12" y="0">first critical error</text>
+          <rect x="128" y="-10" width="14" height="10" fill="var(--fault)" opacity=".3"/>
+          <rect x="146" y="-10" width="14" height="10" fill="var(--fault)" opacity=".6"/>
+          <rect x="164" y="-10" width="14" height="10" fill="var(--fault)" opacity=".9"/>
+          <text class="s-label tiny" x="186" y="0">compounding</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption id="fig3cap">Schematic, drawn after the paper's error-propagation figure. Once a cascade starts it is rarely reversed, which is why the authors care so much about the first cell rather than the last.</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>Five places a step can break</h2>
+    <p>The hand analysis produced a vocabulary: seventeen named failure modes, sorted into the four jobs of a step plus a fifth bucket for problems that are not the agent's fault at all. The point of naming them is that a name can be pointed at. "Something went wrong around step 6" is not actionable. "At step 6 you planned around an object you never saw" is.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig4cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 330" role="img" aria-label="Seventeen error types grouped into five columns: memory, reflection, planning, action and system.">
+        <g>
+          <!-- Memory -->
+          <g transform="translate(6,0)">
+            <rect x="0" y="18" width="112" height="3" fill="var(--ochre)" opacity=".85"/>
+            <text class="s-label big" x="0" y="44">Memory</text>
+            <rect x="0" y="58" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="75">Summarised the</text><text class="s-label tiny" x="10" y="88">past too crudely</text>
+            <rect x="0" y="104" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="121">Recalled things</text><text class="s-label tiny" x="10" y="134">that never happened</text>
+            <rect x="0" y="150" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="167">Had the detail but</text><text class="s-label tiny" x="10" y="180">did not retrieve it</text>
+          </g>
+          <!-- Reflection -->
+          <g transform="translate(130,0)">
+            <rect x="0" y="18" width="112" height="3" fill="var(--ochre)" opacity=".85"/>
+            <text class="s-label big" x="0" y="44">Reflection</text>
+            <rect x="0" y="58" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="75">Misjudged how far</text><text class="s-label tiny" x="10" y="88">along it was</text>
+            <rect x="0" y="104" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="121">Misread what the</text><text class="s-label tiny" x="10" y="134">last move did</text>
+            <rect x="0" y="150" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="167">Blamed the wrong</text><text class="s-label tiny" x="10" y="180">cause for a failure</text>
+            <rect x="0" y="196" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="213">Reflected on events</text><text class="s-label tiny" x="10" y="226">that did not occur</text>
+          </g>
+          <!-- Planning -->
+          <g transform="translate(254,0)">
+            <rect x="0" y="18" width="112" height="3" fill="var(--line)"/>
+            <text class="s-label big" x="0" y="44">Planning</text>
+            <rect x="0" y="58" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="75">Ignored a limit it</text><text class="s-label tiny" x="10" y="88">had been given</text>
+            <rect x="0" y="104" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="121">Planned a move</text><text class="s-label tiny" x="10" y="134">that cannot be made</text>
+            <rect x="0" y="150" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="167">Took a long route</text><text class="s-label tiny" x="10" y="180">and ran out of room</text>
+          </g>
+          <!-- Action -->
+          <g transform="translate(378,0)">
+            <rect x="0" y="18" width="112" height="3" fill="var(--line)"/>
+            <text class="s-label big" x="0" y="44">Action</text>
+            <rect x="0" y="58" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="75">Did something other</text><text class="s-label tiny" x="10" y="88">than the plan said</text>
+            <rect x="0" y="104" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="121">Wrote the move in</text><text class="s-label tiny" x="10" y="134">an invalid form</text>
+            <rect x="0" y="150" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="167">Passed the wrong</text><text class="s-label tiny" x="10" y="180">details to a tool</text>
+          </g>
+          <!-- System -->
+          <g transform="translate(502,0)">
+            <rect x="0" y="18" width="112" height="3" fill="var(--line)"/>
+            <text class="s-label big" x="0" y="44">System</text>
+            <rect x="0" y="58" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="75">Hit the cap on</text><text class="s-label tiny" x="10" y="88">number of steps</text>
+            <rect x="0" y="104" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="121">A tool or API</text><text class="s-label tiny" x="10" y="134">failed on its own</text>
+            <rect x="0" y="150" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="167">Ran into a model</text><text class="s-label tiny" x="10" y="180">or token limit</text>
+            <rect x="0" y="196" width="112" height="38" rx="6" class="s-box"/><text class="s-label tiny" x="10" y="213">The environment</text><text class="s-label tiny" x="10" y="226">itself misbehaved</text>
+          </g>
+        </g>
+        <path d="M 6 258 L 6 266 L 242 266 L 242 258" fill="none" stroke="var(--ochre)" stroke-width="1.2" opacity=".85"/>
+        <text class="s-label tiny" x="124" y="284" text-anchor="middle" fill="var(--ochre)">the two most common sources of a cascade</text>
+        <path d="M 502 258 L 502 266 L 614 266 L 614 258" fill="none" stroke="var(--line)" stroke-width="1.2"/>
+        <text class="s-label tiny" x="558" y="284" text-anchor="middle">ends a run outright rather than poisoning it</text>
+      </svg>
+    </div>
+    <figcaption id="fig4cap">The vocabulary, paraphrased. The paper's own wording is stricter; each type comes with a definition annotators were trained on.</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>Two hundred failures, labelled by hand</h2>
+    <p>A vocabulary is only useful if someone has applied it carefully to real runs. Ten graduate annotators went through 200 failed runs step by step, tagging each of the four jobs at each step. The instruction that makes this dataset unusual: do not flag every mistake you see. Flag the smallest set that explains the rest.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig5cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 210" role="img" aria-label="Pipeline: over 500 failed runs, read by hand into a taxonomy, producing 200 labelled runs split across three benchmarks.">
+        <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-2)"/></marker></defs>
+        <g opacity=".9">
+          <rect x="24" y="52" width="66" height="84" rx="4" class="s-box"/>
+          <rect x="32" y="44" width="66" height="84" rx="4" class="s-box"/>
+          <rect x="40" y="36" width="66" height="84" rx="4" class="s-box"/>
+          <g stroke="var(--fault)" stroke-width="1.4" opacity=".55">
+            <line x1="52" y1="56" x2="94" y2="56"/><line x1="52" y1="68" x2="88" y2="68"/>
+            <line x1="52" y1="80" x2="94" y2="80"/><line x1="52" y1="92" x2="80" y2="92"/>
+            <line x1="52" y1="104" x2="90" y2="104"/>
+          </g>
+        </g>
+        <text class="s-label big" x="65" y="156" text-anchor="middle">500+ failed runs</text>
+        <text class="s-label tiny" x="65" y="174" text-anchor="middle">read by hand</text>
+
+        <line x1="130" y1="86" x2="182" y2="86" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar2)" opacity=".75"/>
+
+        <rect x="198" y="36" width="150" height="100" rx="8" class="s-box"/>
+        <g>
+          <rect x="216" y="54" width="114" height="12" rx="3" fill="var(--ochre)" opacity=".55"/>
+          <rect x="216" y="72" width="114" height="12" rx="3" fill="var(--ochre)" opacity=".4"/>
+          <rect x="216" y="90" width="114" height="12" rx="3" fill="var(--line)"/>
+          <rect x="216" y="108" width="114" height="12" rx="3" fill="var(--line)"/>
+        </g>
+        <text class="s-label big" x="273" y="156" text-anchor="middle">a shared vocabulary</text>
+        <text class="s-label tiny" x="273" y="174" text-anchor="middle">17 named failure modes</text>
+
+        <line x1="364" y1="86" x2="416" y2="86" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar2)" opacity=".75"/>
+
+        <rect x="432" y="36" width="164" height="100" rx="8" class="s-box"/>
+        <text class="s-label" x="448" y="60">200 runs, labelled step by step</text>
+        <g>
+          <rect x="448" y="72" width="66" height="14" rx="3" fill="var(--teal)" opacity=".8"/>
+          <rect x="516" y="72" width="33" height="14" rx="3" fill="var(--teal)" opacity=".55"/>
+          <rect x="551" y="72" width="33" height="14" rx="3" fill="var(--teal)" opacity=".35"/>
+        </g>
+        <text class="s-label tiny" x="448" y="102">100 tidying a house</text>
+        <text class="s-label tiny" x="448" y="118">50 shopping · 50 research</text>
+        <text class="s-label big" x="514" y="156" text-anchor="middle">every run double-checked</text>
+        <text class="s-label tiny" x="514" y="174" text-anchor="middle">annotator agreement κ = 0.55</text>
+      </svg>
+    </div>
+    <figcaption id="fig5cap">The three settings are ALFWorld (following instructions in a simulated house), WebShop (buying a specified item) and GAIA (questions that need tools and web search).</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>Finding the one step that mattered</h2>
+    <p>Their tool, AgentDebug, reads a failed run and works in three passes. First it goes over every step and asks, for each of the four jobs, whether it matches one of the seventeen named modes. That gives a map of everything that went wrong, which is usually a lot.</p>
+    <p>Then it picks one: the earliest point at which the run became unrecoverable. Not the first blemish, and not the loudest one. The test is counterfactual. Had this step gone right, could the run have succeeded?</p>
+    <p>Finally it writes the agent a note naming that step, that job and that failure mode, and restarts the run from exactly there rather than from the beginning. Five attempts at most. If an attempt still fails, the note gets sharper.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig6cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 280" role="img" aria-label="Three panels: label every job at every step, pick the earliest step that mattered, re-run from that step with a note.">
+        <defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-2)"/></marker></defs>
+        <g>
+          <rect x="10" y="30" width="185" height="200" rx="10" class="s-box"/>
+          <text class="s-label big" x="28" y="58">1. Label everything</text>
+          <text class="s-label tiny" x="28" y="76">every job, every step</text>
+          <g transform="translate(28,92)">
+            <text class="s-label tiny" x="-2" y="10">mem</text><text class="s-label tiny" x="-2" y="34">refl</text>
+            <text class="s-label tiny" x="-2" y="58">plan</text><text class="s-label tiny" x="-2" y="82">act</text>
+            <g transform="translate(34,0)">
+              <g fill="var(--line)">
+                <rect x="0" y="0" width="16" height="12" rx="2"/><rect x="22" y="0" width="16" height="12" rx="2"/><rect x="44" y="0" width="16" height="12" rx="2"/><rect x="66" y="0" width="16" height="12" rx="2"/><rect x="88" y="0" width="16" height="12" rx="2"/><rect x="110" y="0" width="16" height="12" rx="2"/>
+                <rect x="0" y="24" width="16" height="12" rx="2"/><rect x="22" y="24" width="16" height="12" rx="2"/><rect x="44" y="24" width="16" height="12" rx="2"/><rect x="66" y="24" width="16" height="12" rx="2"/><rect x="88" y="24" width="16" height="12" rx="2"/><rect x="110" y="24" width="16" height="12" rx="2"/>
+                <rect x="0" y="48" width="16" height="12" rx="2"/><rect x="22" y="48" width="16" height="12" rx="2"/><rect x="44" y="48" width="16" height="12" rx="2"/><rect x="66" y="48" width="16" height="12" rx="2"/><rect x="88" y="48" width="16" height="12" rx="2"/><rect x="110" y="48" width="16" height="12" rx="2"/>
+                <rect x="0" y="72" width="16" height="12" rx="2"/><rect x="22" y="72" width="16" height="12" rx="2"/><rect x="44" y="72" width="16" height="12" rx="2"/><rect x="66" y="72" width="16" height="12" rx="2"/><rect x="88" y="72" width="16" height="12" rx="2"/><rect x="110" y="72" width="16" height="12" rx="2"/>
+              </g>
+              <g fill="var(--fault)" opacity=".65">
+                <rect x="44" y="0" width="16" height="12" rx="2"/><rect x="88" y="24" width="16" height="12" rx="2"/>
+                <rect x="66" y="48" width="16" height="12" rx="2"/><rect x="110" y="48" width="16" height="12" rx="2"/>
+                <rect x="110" y="72" width="16" height="12" rx="2"/>
+              </g>
+            </g>
+          </g>
+          <text class="s-label tiny" x="28" y="212">lots of marks, most harmless</text>
+        </g>
+
+        <line x1="199" y1="130" x2="219" y2="130" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar3)" opacity=".75"/>
+
+        <g>
+          <rect x="223" y="30" width="185" height="200" rx="10" class="s-box"/>
+          <text class="s-label big" x="241" y="58">2. Pick the one</text>
+          <text class="s-label tiny" x="241" y="76">earliest step that decided it</text>
+          <g transform="translate(241,92)" opacity=".38">
+            <g fill="var(--line)">
+              <rect x="34" y="0" width="16" height="12" rx="2"/><rect x="56" y="0" width="16" height="12" rx="2"/><rect x="78" y="0" width="16" height="12" rx="2"/><rect x="100" y="0" width="16" height="12" rx="2"/><rect x="122" y="0" width="16" height="12" rx="2"/><rect x="144" y="0" width="16" height="12" rx="2"/>
+              <rect x="34" y="24" width="16" height="12" rx="2"/><rect x="56" y="24" width="16" height="12" rx="2"/><rect x="78" y="24" width="16" height="12" rx="2"/><rect x="100" y="24" width="16" height="12" rx="2"/><rect x="122" y="24" width="16" height="12" rx="2"/><rect x="144" y="24" width="16" height="12" rx="2"/>
+              <rect x="34" y="48" width="16" height="12" rx="2"/><rect x="56" y="48" width="16" height="12" rx="2"/><rect x="100" y="48" width="16" height="12" rx="2"/><rect x="122" y="48" width="16" height="12" rx="2"/><rect x="144" y="48" width="16" height="12" rx="2"/>
+              <rect x="34" y="72" width="16" height="12" rx="2"/><rect x="56" y="72" width="16" height="12" rx="2"/><rect x="78" y="72" width="16" height="12" rx="2"/><rect x="100" y="72" width="16" height="12" rx="2"/><rect x="122" y="72" width="16" height="12" rx="2"/><rect x="144" y="72" width="16" height="12" rx="2"/>
+            </g>
+          </g>
+          <rect x="316" y="139" width="18" height="14" rx="3" fill="none" stroke="var(--ochre)" stroke-width="2.2"/>
+          <text class="s-label tiny" x="241" y="200" fill="var(--ochre)">step 4, planning:</text>
+          <text class="s-label tiny" x="241" y="214" fill="var(--ochre)">searched only the cupboards</text>
+        </g>
+
+        <line x1="412" y1="130" x2="432" y2="130" stroke="var(--ink-2)" stroke-width="1.2" marker-end="url(#ar3)" opacity=".75"/>
+
+        <g>
+          <rect x="436" y="30" width="174" height="200" rx="10" class="s-box"/>
+          <text class="s-label big" x="454" y="58">3. Run it again</text>
+          <text class="s-label tiny" x="454" y="76">from that step, with the note</text>
+          <g transform="translate(454,110)">
+            <line x1="0" y1="20" x2="46" y2="20" stroke="var(--line)" stroke-width="1.4"/>
+            <circle cx="6" cy="20" r="5" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+            <circle cx="26" cy="20" r="5" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+            <circle cx="46" cy="20" r="6.5" fill="var(--bg)" stroke="var(--ochre)" stroke-width="2.2"/>
+            <path d="M 46 20 C 70 20 78 -2 100 -2 L 132 -2" fill="none" stroke="var(--fault)" stroke-width="1.3" stroke-dasharray="3 3" opacity=".6"/>
+            <path d="M 46 20 C 70 20 78 42 100 42 L 132 42" fill="none" stroke="var(--fault)" stroke-width="1.3" stroke-dasharray="3 3" opacity=".6"/>
+            <path d="M 46 20 L 132 20" fill="none" stroke="var(--teal)" stroke-width="1.8"/>
+            <circle cx="132" cy="20" r="8" fill="var(--teal)"/>
+            <path d="M 128 20 l 2.8 3.2 l 5.6 -6.8" fill="none" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <text class="s-label tiny" x="132" y="-8" text-anchor="end" fill="var(--fault)">tries that still fail</text>
+          </g>
+          <text class="s-label tiny" x="454" y="212">up to five attempts</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption id="fig6cap">Restarting mid-run rather than from scratch is the cheap part of the idea: the agent keeps the work that was fine and only redoes what followed the bad step.</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>What changed</h2>
+    <p>Two questions, measured separately. Can it find the right step? And does finding it actually help?</p>
+    <p>On finding it, the bar was low. Asking a model outright to name the faulty step got the exact step 28% of the time, and got step, job and failure mode all correct in well under one case in a hundred. Working through the run step by step, or halving it repeatedly, did worse. AgentDebug got the step right 45% of the time and all three right in 24% of cases.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig7cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 400" role="img" aria-label="Bar chart of detection accuracy averaged over three benchmarks. AgentDebug leads on all three metrics, most dramatically on getting step, job and error type all correct.">
+        <g stroke="var(--line)" stroke-width="1">
+          <line x1="126" y1="40" x2="126" y2="360"/>
+          <line x1="341" y1="40" x2="341" y2="360" opacity=".6"/>
+          <line x1="556" y1="40" x2="556" y2="360" opacity=".6"/>
+        </g>
+        <text class="s-label tiny" x="126" y="378">0</text>
+        <text class="s-label tiny" x="341" y="378" text-anchor="middle">25%</text>
+        <text class="s-label tiny" x="556" y="378" text-anchor="middle">50%</text>
+
+        <g>
+          <text class="s-label big" x="0" y="36">Right step</text>
+          <g>
+            <text class="s-label tiny" x="118" y="63" text-anchor="end">asking directly</text>
+            <rect x="126" y="52" width="241" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="375" y="64">28.0</text>
+            <text class="s-label tiny" x="118" y="84" text-anchor="end">step by step</text>
+            <rect x="126" y="73" width="103" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="237" y="85">12.0</text>
+            <text class="s-label tiny" x="118" y="105" text-anchor="end">binary search</text>
+            <rect x="126" y="94" width="161" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="295" y="106">18.7</text>
+            <text class="s-label tiny" x="118" y="126" text-anchor="end">AgentDebug</text>
+            <rect x="126" y="115" width="387" height="15" fill="var(--teal)"/><text class="s-label tiny" x="521" y="127">45.0</text>
+          </g>
+        </g>
+
+        <g>
+          <text class="s-label big" x="0" y="154">Right step and job</text>
+          <g>
+            <text class="s-label tiny" x="118" y="181" text-anchor="end">asking directly</text>
+            <rect x="126" y="170" width="86" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="220" y="182">10.0</text>
+            <text class="s-label tiny" x="118" y="202" text-anchor="end">step by step</text>
+            <rect x="126" y="191" width="37" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="171" y="203">4.3</text>
+            <text class="s-label tiny" x="118" y="223" text-anchor="end">binary search</text>
+            <rect x="126" y="212" width="69" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="203" y="224">8.0</text>
+            <text class="s-label tiny" x="118" y="244" text-anchor="end">AgentDebug</text>
+            <rect x="126" y="233" width="269" height="15" fill="var(--teal)"/><text class="s-label tiny" x="403" y="245">31.3</text>
+          </g>
+        </g>
+
+        <g>
+          <text class="s-label big" x="0" y="272">All three right</text>
+          <g>
+            <text class="s-label tiny" x="118" y="299" text-anchor="end">asking directly</text>
+            <rect x="126" y="288" width="3" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="137" y="300">0.3</text>
+            <text class="s-label tiny" x="118" y="320" text-anchor="end">step by step</text>
+            <rect x="126" y="309" width="1" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="135" y="321">0.0</text>
+            <text class="s-label tiny" x="118" y="341" text-anchor="end">binary search</text>
+            <rect x="126" y="330" width="3" height="15" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="137" y="342">0.3</text>
+            <text class="s-label tiny" x="118" y="362" text-anchor="end">AgentDebug</text>
+            <rect x="126" y="351" width="209" height="15" fill="var(--teal)"/><text class="s-label tiny" x="343" y="363">24.3</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <figcaption id="fig7cap">Averages across the three settings. "All three right" means naming the step, which of the four jobs broke, and which of the seventeen modes it was.</figcaption>
+  </figure>
+
+  <section class="col">
+    <p>On whether it helps: in the simulated-house tasks, every backbone model improved, and the weakest improved most. A small model that solved 21 tasks on its first attempt solved 55 with debugging. Across all three settings the gain reaches 26% relative to the starting score. The comparison was held to the same total token budget as the alternatives, so this is not simply the result of letting the agent think for longer.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig8cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 215" role="img" aria-label="Three backbone models on the house-tidying benchmark: first-attempt score versus score after debugging. 21 to 55, 48 to 74, 60 to 84.">
+        <g stroke="var(--line)" stroke-width="1">
+          <line x1="140" y1="52" x2="140" y2="190"/>
+          <line x1="355" y1="52" x2="355" y2="190" opacity=".55"/>
+          <line x1="570" y1="52" x2="570" y2="190" opacity=".55"/>
+        </g>
+        <text class="s-label tiny" x="140" y="205">0</text>
+        <text class="s-label tiny" x="355" y="205" text-anchor="middle">50</text>
+        <text class="s-label tiny" x="570" y="205" text-anchor="middle">100 tasks solved</text>
+
+        <g transform="translate(140,30)">
+          <circle cx="0" cy="-4" r="5.5" fill="none" stroke="var(--ink-2)" stroke-width="1.6"/>
+          <text class="s-label tiny" x="12" y="0">first attempt</text>
+          <circle cx="112" cy="-4" r="6.5" fill="var(--teal)"/>
+          <text class="s-label tiny" x="126" y="0">after debugging</text>
+        </g>
+
+        <g>
+          <text class="s-label big" x="130" y="80" text-anchor="end">GPT-4o-mini</text>
+          <line x1="230" y1="75" x2="377" y2="75" stroke="var(--teal)" stroke-width="2" opacity=".5"/>
+          <circle cx="230" cy="75" r="5.5" fill="var(--bg)" stroke="var(--ink-2)" stroke-width="1.6"/>
+          <circle cx="377" cy="75" r="6.5" fill="var(--teal)"/>
+          <text class="s-label tiny" x="230" y="61" text-anchor="middle">21</text>
+          <text class="s-label tiny" x="377" y="61" text-anchor="middle" fill="var(--teal)">55</text>
+        </g>
+        <g>
+          <text class="s-label big" x="130" y="130" text-anchor="end">Qwen3-8B</text>
+          <line x1="346" y1="125" x2="458" y2="125" stroke="var(--teal)" stroke-width="2" opacity=".5"/>
+          <circle cx="346" cy="125" r="5.5" fill="var(--bg)" stroke="var(--ink-2)" stroke-width="1.6"/>
+          <circle cx="458" cy="125" r="6.5" fill="var(--teal)"/>
+          <text class="s-label tiny" x="346" y="111" text-anchor="middle">48</text>
+          <text class="s-label tiny" x="458" y="111" text-anchor="middle" fill="var(--teal)">74</text>
+        </g>
+        <g>
+          <text class="s-label big" x="130" y="180" text-anchor="end">Qwen3-Next-80B</text>
+          <line x1="398" y1="175" x2="501" y2="175" stroke="var(--teal)" stroke-width="2" opacity=".5"/>
+          <circle cx="398" cy="175" r="5.5" fill="var(--bg)" stroke="var(--ink-2)" stroke-width="1.6"/>
+          <circle cx="501" cy="175" r="6.5" fill="var(--teal)"/>
+          <text class="s-label tiny" x="398" y="161" text-anchor="middle">60</text>
+          <text class="s-label tiny" x="501" y="161" text-anchor="middle" fill="var(--teal)">84</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption id="fig8cap">The house-tidying benchmark, five attempts allowed. The smaller the model, the more the targeted note is worth.</figcaption>
+  </figure>
+
+  <section class="col">
+    <h2>What this doesn't settle</h2>
+    <p>The debugger is itself a language model reading a transcript, and it turns out to be a demanding job. Swap the strong model behind it for a weaker one and the diagnosis mostly collapses, which puts a floor under how cheap this can get.</p>
+  </section>
+
+  <figure class="wide" aria-labelledby="fig9cap">
+    <div class="scroller">
+      <svg viewBox="0 0 620 195" role="img" aria-label="Detection accuracy by the model doing the debugging: GPT-4.1 reaches 42%, while Llama-3.3-70B, GPT-4o-mini and Qwen3-Next-80B reach 16, 14 and 4 percent.">
+        <line x1="150" y1="30" x2="150" y2="172" stroke="var(--line)" stroke-width="1"/>
+        <line x1="580" y1="30" x2="580" y2="172" stroke="var(--line)" stroke-width="1" opacity=".55"/>
+        <text class="s-label tiny" x="150" y="188">0</text>
+        <text class="s-label tiny" x="580" y="188" text-anchor="middle">50% of steps found</text>
+
+        <text class="s-label big" x="140" y="52" text-anchor="end">GPT-4.1</text>
+        <rect x="150" y="40" width="361" height="17" fill="var(--teal)"/><text class="s-label tiny" x="519" y="53">42.0</text>
+
+        <text class="s-label big" x="140" y="88" text-anchor="end">Llama-3.3-70B</text>
+        <rect x="150" y="76" width="138" height="17" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="296" y="89">16.0</text>
+
+        <text class="s-label big" x="140" y="124" text-anchor="end">GPT-4o-mini</text>
+        <rect x="150" y="112" width="120" height="17" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="278" y="125">14.0</text>
+
+        <text class="s-label big" x="140" y="160" text-anchor="end">Qwen3-Next-80B</text>
+        <rect x="150" y="148" width="34" height="17" fill="var(--ink-2)" opacity=".4"/><text class="s-label tiny" x="192" y="161">4.0</text>
+      </svg>
+    </div>
+    <figcaption id="fig9cap">Accuracy at naming the right step, by the model doing the diagnosis. The method depends heavily on one strong reader.</figcaption>
+  </figure>
+
+  <section class="col">
+    <ul>
+      <li>Three benchmarks, all text-based and all simulated. Nothing here covers long-running, multimodal or high-stakes work, and the authors say so.</li>
+      <li>Agreement between human annotators was moderate rather than high, which is honest but also a reminder that "the root cause" is partly a judgement call.</li>
+      <li>The description of the second stage is not quite consistent inside the paper: the prose describes testing corrected actions to see whether the run would have succeeded, while the accompanying procedure notes that the stage runs as a single model judgement with no re-execution.</li>
+      <li>The debugger reads a transcript that already labels each step's four jobs. Agents that do not narrate themselves this way would need that structure added before any of this applies.</li>
+    </ul>
+    <p>What survives all of that is the central habit, which is cheap to adopt and does not need their code: when an agent fails, stop reading the end of the transcript. Look for the first step where it started believing something untrue, and start again from there.</p>
+  </section>
+
+  <footer class="col">
+    <p><a href="https://arxiv.org/abs/2509.25370">The paper on arXiv</a></p>
+    <p><a href="https://github.com/ulab-uiuc/AgentDebug">Code and data</a></p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function read(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function write(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+  function setTheme(t){
+    if(t){root.setAttribute('data-theme',t)}else{root.removeAttribute('data-theme')}
+    document.querySelectorAll('[data-theme-btn]').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-btn')===t));
+    });
+  }
+  function setSize(s){
+    root.setAttribute('data-size',s);
+    document.querySelectorAll('[data-size-btn]').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-size-btn')===s));
+    });
+  }
+
+  document.querySelectorAll('[data-theme-btn]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.getAttribute('data-theme-btn');
+      setTheme(t); write('explainer-theme',t);
+    });
+  });
+  document.querySelectorAll('[data-size-btn]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var s=b.getAttribute('data-size-btn');
+      setSize(s); write('explainer-size',s);
+    });
+  });
+
+  var savedTheme=read('explainer-theme');
+  if(savedTheme){setTheme(savedTheme)}
+  var savedSize=read('explainer-size');
+  setSize(savedSize==='large'?'large':'normal');
+})();
+</script>
+</body>
+</html>
