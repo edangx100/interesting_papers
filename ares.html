@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARES, explained: grading RAG systems with a few hundred human labels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F4F0; --surface:#FAFBF8; --ink:#2A3035; --muted:#5D696F; --faint:#8A959A; --line:#D3DAD4;
+  --cr:#3D7C84; --af:#6A8C4F; --ar:#6568A8; --human:#96668A; --off:#A9716F;
+  --fs:1.1875rem;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1F22; --surface:#21272B; --ink:#D3D9D8; --muted:#9CA7AA; --faint:#6F7A7E; --line:#343C41;
+    --cr:#7FB3B8; --af:#A2BF89; --ar:#A6A9DB; --human:#C9A0C0; --off:#D29C99;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1F22; --surface:#21272B; --ink:#D3D9D8; --muted:#9CA7AA; --faint:#6F7A7E; --line:#343C41;
+  --cr:#7FB3B8; --af:#A2BF89; --ar:#A6A9DB; --human:#C9A0C0; --off:#D29C99;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Literata",Georgia,"Times New Roman",serif;
+  font-size:var(--fs); line-height:1.72; font-optical-sizing:auto;
+  text-rendering:optimizeLegibility;
+}
+.wrap{max-width:40rem;margin:0 auto;padding:0 1.4rem}
+.wide{max-width:50rem;margin:0 auto;padding:0 1.4rem}
+
+/* comfort controls */
+.comfort{display:flex;justify-content:flex-end;gap:.5rem;padding-top:1.4rem;font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:.8rem;color:var(--muted)}
+.comfort button{
+  font:inherit;color:var(--muted);background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:.35rem .8rem;cursor:pointer;min-height:2.2rem
+}
+.comfort button:hover{color:var(--ink);border-color:var(--faint)}
+:focus-visible{outline:2px solid var(--cr);outline-offset:3px;border-radius:4px}
+
+/* hero */
+header.hero{padding:4.5rem 0 1rem}
+h1{
+  font-weight:500;font-size:clamp(2.1rem,5.4vw,3.1rem);line-height:1.12;
+  letter-spacing:-.012em;margin:0 0 1.6rem;max-width:18ch
+}
+.summary{
+  font-size:1.28em;line-height:1.5;color:var(--ink);margin:0 0 2rem;max-width:36ch;
+}
+.byline{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:.85rem;color:var(--muted);line-height:1.6}
+.byline a{color:var(--muted)}
+.intro{font-size:1.02em;margin:3rem 0 0}
+
+section{padding:4.2rem 0 0}
+h2{font-weight:500;font-size:1.6rem;line-height:1.25;margin:0 0 1.1rem;letter-spacing:-.005em}
+h3{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-weight:700;font-size:1.02rem;margin:2.2rem 0 .5rem;color:var(--ink)}
+p{margin:0 0 1.15rem}
+a{color:var(--cr);text-underline-offset:.18em;text-decoration-thickness:1px}
+strong{font-weight:600}
+.k-cr{color:var(--cr);font-weight:600}
+.k-af{color:var(--af);font-weight:600}
+.k-ar{color:var(--ar);font-weight:600}
+.k-h{color:var(--human);font-weight:600}
+
+/* figures */
+figure{margin:2.2rem 0 2.4rem}
+.figbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.4rem 1.2rem}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll svg{min-width:600px}
+svg{display:block;width:100%;height:auto;max-width:100%}
+figcaption{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:.86rem;line-height:1.6;color:var(--muted);margin-top:.85rem;max-width:62ch}
+
+/* svg primitives */
+.lb{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;fill:var(--ink);font-size:14px}
+.lb-s{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;fill:var(--muted);font-size:12.5px}
+.lb-b{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;fill:var(--ink);font-size:15px;font-weight:700}
+.box{fill:var(--bg);stroke:var(--line);stroke-width:1.2}
+.box-s{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+.ln{stroke:var(--faint);stroke-width:1.5;fill:none}
+.grid{stroke:var(--line);stroke-width:1}
+.c-cr{fill:var(--cr)} .c-af{fill:var(--af)} .c-ar{fill:var(--ar)} .c-h{fill:var(--human)} .c-m{fill:var(--faint)} .c-off{fill:var(--off)}
+.s-cr{stroke:var(--cr)} .s-af{stroke:var(--af)} .s-ar{stroke:var(--ar)} .s-h{stroke:var(--human)} .s-off{stroke:var(--off)}
+.t-cr{fill:var(--cr)} .t-af{fill:var(--af)} .t-ar{fill:var(--ar)} .t-h{fill:var(--human)} .t-off{fill:var(--off)}
+.tint-cr{fill:color-mix(in srgb,var(--cr) 13%,var(--surface))}
+.tint-af{fill:color-mix(in srgb,var(--af) 14%,var(--surface))}
+.tint-ar{fill:color-mix(in srgb,var(--ar) 13%,var(--surface))}
+.tint-h{fill:color-mix(in srgb,var(--human) 13%,var(--surface))}
+.tint-off{fill:color-mix(in srgb,var(--off) 12%,var(--surface))}
+
+/* three-part definition list */
+.checks{display:grid;gap:1.1rem;margin:1.4rem 0 1.6rem}
+.check{padding-left:1.1rem;border-left:3px solid var(--line)}
+.check.cr{border-color:var(--cr)} .check.af{border-color:var(--af)} .check.ar{border-color:var(--ar)}
+.check p{margin:0}
+
+/* stage heading */
+.stage{display:flex;gap:.9rem;align-items:baseline}
+.stage .n{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-weight:700;font-size:.9rem;color:var(--bg);background:var(--ink);border-radius:999px;min-width:1.7rem;height:1.7rem;display:inline-grid;place-items:center;transform:translateY(-.15rem)}
+
+/* interactive */
+.ppi-ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:.8rem 1.2rem;font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:.92rem;color:var(--muted);margin-bottom:1rem}
+.ppi-ctrl label{color:var(--ink)}
+.ppi-ctrl output{font-weight:700;color:var(--human);min-width:3ch;display:inline-block}
+input[type=range]{accent-color:var(--human);width:min(18rem,100%);height:2rem}
+
+.takeaways p{padding-left:1.1rem;border-left:3px solid var(--line)}
+.sources{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:.9rem;color:var(--muted);padding:4rem 0 5rem}
+
+@media (max-width:560px){
+  :root{--fs:1.09rem}
+  header.hero{padding-top:2.6rem}
+  .figbox{padding:1rem .8rem;border-radius:12px}
+}
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+}
+</style>
+</head>
+<body>
+
+<!-- shared arrowheads -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--faint)"/></marker>
+    <marker id="ah-cr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--cr)"/></marker>
+    <marker id="ah-af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--af)"/></marker>
+    <marker id="ah-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--ar)"/></marker>
+    <marker id="ah-h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--human)"/></marker>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="comfort" role="group" aria-label="Reading comfort">
+    <button id="smaller" type="button" aria-label="Smaller text">A−</button>
+    <button id="larger" type="button" aria-label="Larger text">A+</button>
+    <button id="theme" type="button">Dim</button>
+  </div>
+
+  <header class="hero">
+    <h1>How ARES grades an AI that looks things up</h1>
+    <p class="summary">ARES trains three small judges on practice questions it writes itself, then uses a few hundred human-checked examples to correct their mistakes and attach honest error bars to every score.</p>
+    <p class="byline">A plain-language guide to “ARES: An Automated Evaluation Framework for Retrieval-Augmented Generation Systems” by Jon Saad-Falcon, Omar Khattab, Christopher Potts and Matei Zaharia (Stanford University and Databricks). <a href="https://arxiv.org/abs/2311.09476">Read the paper</a>.</p>
+    <p class="intro">Many AI assistants don’t answer from memory alone. They first search a library of documents, pick a passage that seems useful, and then write an answer based on it. Building one of these means making dozens of choices, and the only reliable way to know which choices work has been to have people read and grade hundreds of answers for every version you try. That is slow and expensive. This paper describes a way to do most of that grading automatically, while still being able to say how much you should trust the result.</p>
+  </header>
+</div>
+
+<!-- ============ WHAT IS RAG ============ -->
+<div class="wrap">
+<section id="rag">
+  <h2>First, what is being graded</h2>
+  <p>The kind of system in question is called <strong>retrieval-augmented generation</strong>, or RAG. It has two working parts: a <em>retriever</em> that searches a collection of documents, and a <em>language model</em> that reads what was found and writes the reply.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 720 210" role="img" aria-labelledby="f1t">
+    <title id="f1t">A question goes to a retriever, which pulls a passage from a document collection; a language model reads the passage and writes the answer.</title>
+    <!-- boxes -->
+    <rect class="box" x="4" y="40" width="116" height="70" rx="10"/>
+    <text class="lb-b" x="62" y="70" text-anchor="middle">Question</text>
+    <text class="lb-s" x="62" y="90" text-anchor="middle">from a user</text>
+
+    <rect class="box" x="153" y="40" width="116" height="70" rx="10"/>
+    <text class="lb-b" x="211" y="70" text-anchor="middle">Retriever</text>
+    <text class="lb-s" x="211" y="90" text-anchor="middle">searches</text>
+
+    <rect class="box" x="302" y="40" width="116" height="70" rx="10"/>
+    <text class="lb-b" x="360" y="70" text-anchor="middle">Passage</text>
+    <text class="lb-s" x="360" y="90" text-anchor="middle">what it found</text>
+
+    <rect class="box" x="451" y="40" width="116" height="70" rx="10"/>
+    <text class="lb-b" x="509" y="64" text-anchor="middle">Language</text>
+    <text class="lb-b" x="509" y="82" text-anchor="middle">model</text>
+    <text class="lb-s" x="509" y="100" text-anchor="middle">writes</text>
+
+    <rect class="box" x="600" y="40" width="116" height="70" rx="10"/>
+    <text class="lb-b" x="658" y="70" text-anchor="middle">Answer</text>
+    <text class="lb-s" x="658" y="90" text-anchor="middle">shown to user</text>
+
+    <line class="ln" x1="122" y1="75" x2="150" y2="75" marker-end="url(#ah)"/>
+    <line class="ln" x1="271" y1="75" x2="299" y2="75" marker-end="url(#ah)"/>
+    <line class="ln" x1="420" y1="75" x2="448" y2="75" marker-end="url(#ah)"/>
+    <line class="ln" x1="569" y1="75" x2="597" y2="75" marker-end="url(#ah)"/>
+    <!-- question also goes to LM -->
+    <path class="ln" d="M62,40 C62,8 509,8 509,37" stroke-dasharray="4 5" marker-end="url(#ah)"/>
+    <text class="lb-s" x="285" y="32" text-anchor="middle">the model sees the question too</text>
+
+    <!-- document stack -->
+    <g transform="translate(176,150)">
+      <rect class="box-s" x="12" y="0" width="46" height="44" rx="4"/>
+      <rect class="box-s" x="6" y="5" width="46" height="44" rx="4"/>
+      <rect class="box-s" x="0" y="10" width="46" height="44" rx="4"/>
+      <line class="grid" x1="8" y1="22" x2="38" y2="22"/><line class="grid" x1="8" y1="30" x2="38" y2="30"/><line class="grid" x1="8" y1="38" x2="30" y2="38"/>
+    </g>
+    <text class="lb-s" x="240" y="185">document collection</text>
+    <line class="ln" x1="211" y1="112" x2="211" y2="146" stroke-dasharray="3 4"/>
+  </svg>
+  </div>
+  <figcaption>Every stage is a design choice: which search method, how to cut documents into passages, which model writes the answer. The best combination depends on your documents and your budget, so you have to measure.</figcaption>
+</figure>
+</div>
+
+<!-- ============ THREE CHECKS ============ -->
+<div class="wrap">
+<section id="checks">
+  <h2>Three questions every answer has to pass</h2>
+  <p>ARES doesn’t hand out a single “quality” score. It splits the job into three yes-or-no checks, each about the link between two of the three pieces: the question, the passage, and the answer.</p>
+  <div class="checks">
+    <div class="check cr"><p><span class="k-cr">Context relevance.</span> Did the retriever find a passage that actually helps answer this question?</p></div>
+    <div class="check af"><p><span class="k-af">Answer faithfulness.</span> Does the answer stick to what the passage says, or does it invent or stretch things?</p></div>
+    <div class="check ar"><p><span class="k-ar">Answer relevance.</span> Does the answer respond to what was asked?</p></div>
+  </div>
+  <p>Splitting it up is useful because the three can fail independently. A system can fetch the perfect passage and still write a reply that wanders off topic. Knowing <em>which</em> link broke tells you whether to fix the search or the writing.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 720 380" role="img" aria-labelledby="f2t">
+    <title id="f2t">A triangle linking question, passage and answer. The question-passage edge is context relevance, the passage-answer edge is answer faithfulness, the question-answer edge is answer relevance.</title>
+    <!-- edges -->
+    <line x1="170" y1="80" x2="550" y2="80" class="s-cr" stroke-width="3"/>
+    <line x1="550" y1="80" x2="360" y2="300" class="s-af" stroke-width="3"/>
+    <line x1="170" y1="80" x2="360" y2="300" class="s-ar" stroke-width="3"/>
+    <!-- nodes -->
+    <rect class="box-s" x="60" y="48" width="220" height="64" rx="12"/>
+    <text class="lb-b" x="170" y="76" text-anchor="middle">Question</text>
+    <text class="lb-s" x="170" y="96" text-anchor="middle">what the user asked</text>
+    <rect class="box-s" x="440" y="48" width="220" height="64" rx="12"/>
+    <text class="lb-b" x="550" y="76" text-anchor="middle">Passage</text>
+    <text class="lb-s" x="550" y="96" text-anchor="middle">what the retriever found</text>
+    <rect class="box-s" x="250" y="276" width="220" height="64" rx="12"/>
+    <text class="lb-b" x="360" y="304" text-anchor="middle">Answer</text>
+    <text class="lb-s" x="360" y="324" text-anchor="middle">what the model wrote</text>
+    <!-- edge labels -->
+    <rect class="tint-cr" x="262" y="124" width="196" height="46" rx="8"/>
+    <text class="lb t-cr" x="360" y="143" text-anchor="middle" font-weight="700">Context relevance</text>
+    <text class="lb-s" x="360" y="161" text-anchor="middle">Is the passage useful?</text>
+    <rect class="tint-af" x="486" y="186" width="196" height="46" rx="8"/>
+    <text class="lb t-af" x="584" y="205" text-anchor="middle" font-weight="700">Answer faithfulness</text>
+    <text class="lb-s" x="584" y="223" text-anchor="middle">Is it grounded in the passage?</text>
+    <rect class="tint-ar" x="38" y="186" width="196" height="46" rx="8"/>
+    <text class="lb t-ar" x="136" y="205" text-anchor="middle" font-weight="700">Answer relevance</text>
+    <text class="lb-s" x="136" y="223" text-anchor="middle">Does it address the question?</text>
+  </svg>
+  </div>
+  <figcaption>A good RAG system passes all three. One of the paper’s examples fails the first check outright: asked about a 2006 film on Pushkin’s death, the retriever returned a passage about Einstein visiting New York.</figcaption>
+</figure>
+</div>
+
+<!-- ============ THE PROBLEM ============ -->
+<div class="wrap">
+<section id="problem">
+  <h2>Why this is hard to measure</h2>
+  <p>Before ARES, teams had two broad options. They could have people label test answers by hand, which is trustworthy but costly and often needs domain experts. Or they could ask a large language model to do the grading using a fixed, hand-written prompt. That is cheap, and it is what an open-source tool called RAGAS does, but the prompt is the same whatever your documents are about, and nothing tells you how far off its grades might be.</p>
+  <p>ARES aims for the corner neither option reaches: little human effort <em>and</em> a stated margin of error.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox">
+  <svg viewBox="0 0 640 360" role="img" aria-labelledby="f3t">
+    <title id="f3t">Conceptual map. Hand labelling needs lots of human effort but gives trustworthy results. Generic prompted judges need little effort but offer no guarantees. ARES targets little effort with guarantees.</title>
+    <line class="ln" x1="80" y1="310" x2="610" y2="310" marker-end="url(#ah)"/>
+    <line class="ln" x1="80" y1="310" x2="80" y2="30" marker-end="url(#ah)"/>
+    <text class="lb-s" x="345" y="345" text-anchor="middle">human effort per system you test →</text>
+    <text class="lb-s" x="30" y="170" text-anchor="middle" transform="rotate(-90 30 170)">how far you can trust the score →</text>
+    <!-- hand labels -->
+    <circle cx="520" cy="95" r="12" class="c-h"/>
+    <text class="lb" x="520" y="130" text-anchor="middle">Hand labels</text>
+    <text class="lb-s" x="520" y="148" text-anchor="middle">hundreds per system</text>
+    <!-- generic judge -->
+    <circle cx="170" cy="245" r="12" class="c-m"/>
+    <text class="lb" x="190" y="240">Generic prompted judge</text>
+    <text class="lb-s" x="190" y="258">e.g. RAGAS: one prompt for every domain</text>
+    <!-- ARES -->
+    <circle cx="175" cy="95" r="14" class="c-cr"/>
+    <circle cx="175" cy="95" r="22" fill="none" class="s-cr" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <text class="lb-b" x="208" y="92">ARES</text>
+    <text class="lb-s" x="208" y="110">a few hundred labels, reused</text>
+    <text class="lb-s" x="208" y="126">across every system</text>
+  </svg>
+  </div>
+  <figcaption>A conceptual sketch, not measured data. The positions show the trade-off the paper is trying to escape.</figcaption>
+</figure>
+</div>
+
+<!-- ============ OVERVIEW ============ -->
+<div class="wrap">
+<section id="how">
+  <h2>How ARES works, in three stages</h2>
+  <p>You give ARES three things: the documents your system searches, <span class="k-h">about 150 or more examples that a person has labelled</span> as good or bad on the three checks, and at least five sample question-and-answer pairs from your domain. It then runs three stages in order.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 760 320" role="img" aria-labelledby="f4t">
+    <title id="f4t">Pipeline. Inputs: your documents, a few example questions, and about 150 human labels. Stage 1 writes practice data, stage 2 trains three judges, stage 3 scores systems with error bars using the human labels. Output: scores and a ranking.</title>
+    <text class="lb-s" x="10" y="22">You provide</text>
+    <rect class="box" x="10" y="36" width="190" height="56" rx="10"/>
+    <text class="lb" x="24" y="60">Your documents</text>
+    <text class="lb-s" x="24" y="78">the searchable collection</text>
+    <rect class="box" x="10" y="106" width="190" height="56" rx="10"/>
+    <text class="lb" x="24" y="130">5+ example Q&amp;As</text>
+    <text class="lb-s" x="24" y="148">to show the style</text>
+    <rect class="tint-h" x="10" y="222" width="190" height="56" rx="10" stroke="var(--human)" stroke-width="1.2"/>
+    <text class="lb t-h" x="24" y="246" font-weight="700">~150+ human labels</text>
+    <text class="lb-s" x="24" y="264">good / bad on each check</text>
+
+    <rect class="box-s" x="240" y="56" width="150" height="120" rx="12"/>
+    <circle cx="264" cy="82" r="12" style="fill:var(--ink)"/><text x="264" y="87" text-anchor="middle" class="lb-b" style="fill:var(--bg);font-size:13px">1</text>
+    <text class="lb-b" x="254" y="118">Write practice</text>
+    <text class="lb-b" x="254" y="136">data</text>
+    <text class="lb-s" x="254" y="158">Q&amp;As plus fakes</text>
+
+    <rect class="box-s" x="420" y="56" width="150" height="120" rx="12"/>
+    <circle cx="444" cy="82" r="12" style="fill:var(--ink)"/><text x="444" y="87" text-anchor="middle" class="lb-b" style="fill:var(--bg);font-size:13px">2</text>
+    <text class="lb-b" x="434" y="118">Train three</text>
+    <text class="lb-b" x="434" y="136">judges</text>
+    <g transform="translate(518,82)">
+      <circle cx="0" cy="0" r="6" class="c-cr"/><circle cx="16" cy="0" r="6" class="c-af"/><circle cx="32" cy="0" r="6" class="c-ar"/>
+    </g>
+    <text class="lb-s" x="434" y="158">one per check</text>
+
+    <rect class="box-s" x="600" y="56" width="150" height="120" rx="12"/>
+    <circle cx="624" cy="82" r="12" style="fill:var(--ink)"/><text x="624" y="87" text-anchor="middle" class="lb-b" style="fill:var(--bg);font-size:13px">3</text>
+    <text class="lb-b" x="614" y="118">Score systems,</text>
+    <text class="lb-b" x="614" y="136">fix judge bias</text>
+    <text class="lb-s" x="614" y="158">adds error bars</text>
+
+    <path class="ln" d="M202,64 C222,64 220,100 237,100" marker-end="url(#ah)"/>
+    <path class="ln" d="M202,134 C222,134 220,116 237,116" marker-end="url(#ah)"/>
+    <line class="ln" x1="392" y1="116" x2="417" y2="116" marker-end="url(#ah)"/>
+    <line class="ln" x1="572" y1="116" x2="597" y2="116" marker-end="url(#ah)"/>
+    <path d="M202,250 L675,250 L675,179" fill="none" class="s-h" stroke-width="1.6" marker-end="url(#ah-h)"/>
+    <path d="M495,250 L495,179" fill="none" class="s-h" stroke-width="1.2" stroke-dasharray="3 4" marker-end="url(#ah-h)"/>
+    <text class="lb-s" x="503" y="206">checks training</text>
+    <text class="lb-s" x="503" y="222">progress</text>
+    <text class="lb-s" x="683" y="206">corrects</text>
+    <text class="lb-s" x="683" y="222">the judges</text>
+
+    <text class="lb-s" x="240" y="302">You get three scores per system, each with a 95% range, plus a ranking of all systems.</text>
+  </svg>
+  </div>
+  <figcaption>The human labels are used twice: lightly during training, to decide when to stop, and heavily in stage 3, to measure and remove the judges’ systematic errors.</figcaption>
+</figure>
+</div>
+
+<!-- ============ STAGE 1 ============ -->
+<div class="wrap">
+<section id="stage1">
+  <h2 class="stage"><span class="n">1</span><span>It writes its own practice exam</span></h2>
+  <p>To train a judge you need lots of examples of good and bad question–passage–answer combinations. Nobody wants to write those by hand, so ARES has a language model (the paper uses FLAN-T5 XXL) read each passage in your collection and write a question that the passage answers, plus an answer to it.</p>
+  <p>Some of those generated questions are poor. ARES weeds them out with a neat round-trip test: it runs the question through a search and keeps it only if the passage it came from comes back as the top result. If a question can’t find its own source, it is probably too vague.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 720 230" role="img" aria-labelledby="f5t">
+    <title id="f5t">A passage is given to a language model that writes a question and answer. The question is searched; if the original passage comes back first it is kept, otherwise it is discarded.</title>
+    <g transform="translate(10,60)">
+      <rect class="box-s" x="0" y="0" width="84" height="104" rx="6"/>
+      <line class="grid" x1="12" y1="22" x2="72" y2="22"/><line class="grid" x1="12" y1="34" x2="72" y2="34"/><line class="grid" x1="12" y1="46" x2="66" y2="46"/><line class="grid" x1="12" y1="58" x2="72" y2="58"/><line class="grid" x1="12" y1="70" x2="56" y2="70"/>
+      <text class="lb-s" x="42" y="126" text-anchor="middle">passage P</text>
+    </g>
+    <line class="ln" x1="98" y1="112" x2="138" y2="112" marker-end="url(#ah)"/>
+    <rect class="box" x="142" y="80" width="130" height="64" rx="10"/>
+    <text class="lb" x="207" y="108" text-anchor="middle">Language model</text>
+    <text class="lb-s" x="207" y="126" text-anchor="middle">writes Q and A</text>
+    <line class="ln" x1="274" y1="112" x2="314" y2="112" marker-end="url(#ah)"/>
+    <rect class="box" x="318" y="80" width="130" height="64" rx="10"/>
+    <text class="lb" x="383" y="108" text-anchor="middle">Search with Q</text>
+    <text class="lb-s" x="383" y="126" text-anchor="middle">what comes first?</text>
+    <!-- branches -->
+    <path d="M450,100 C490,100 490,50 526,50" fill="none" class="s-cr" stroke-width="1.6" marker-end="url(#ah-cr)"/>
+    <path d="M450,124 C490,124 490,174 526,174" fill="none" class="s-off" stroke-width="1.6" stroke-dasharray="4 4"/>
+    <rect class="tint-cr" x="530" y="24" width="180" height="54" rx="10"/>
+    <text class="lb t-cr" x="546" y="47" font-weight="700">P comes back first</text>
+    <text class="lb-s" x="546" y="66">keep this question</text>
+    <rect class="tint-off" x="530" y="148" width="180" height="54" rx="10"/>
+    <text class="lb t-off" x="546" y="171" font-weight="700">Another comes first</text>
+    <text class="lb-s" x="546" y="190">throw it away</text>
+  </svg>
+  </div>
+  <figcaption>The round-trip filter: a good question should lead straight back to the passage that inspired it.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>A judge also needs to see what <em>wrong</em> looks like, so ARES manufactures bad examples in two strengths, in equal numbers.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 720 300" role="img" aria-labelledby="f6t">
+    <title id="f6t">Weak fakes versus strong fakes. Weak: a random passage from elsewhere, or an answer written for a different passage. Strong: a passage from the same document, or an answer deliberately written to contradict the passage.</title>
+    <!-- difficulty axis -->
+    <defs>
+      <linearGradient id="diff" x1="0" x2="1">
+        <stop offset="0" style="stop-color:var(--line)"/>
+        <stop offset="1" style="stop-color:var(--faint)"/>
+      </linearGradient>
+    </defs>
+    <rect x="20" y="30" width="680" height="6" rx="3" fill="url(#diff)"/>
+    <text class="lb-s" x="20" y="22">easy to spot</text>
+    <text class="lb-s" x="700" y="22" text-anchor="end">hard to spot</text>
+
+    <text class="lb-b" x="20" y="74">Weak fakes</text>
+    <text class="lb-b" x="380" y="74">Strong fakes</text>
+
+    <!-- weak: passage -->
+    <rect class="tint-cr" x="20" y="90" width="320" height="86" rx="10"/>
+    <text class="lb t-cr" x="36" y="114" font-weight="700">Wrong passage</text>
+    <text class="lb-s" x="36" y="136">a random passage from anywhere in</text>
+    <text class="lb-s" x="36" y="154">the collection, unrelated to the question</text>
+    <!-- weak: answer -->
+    <rect class="tint-ar" x="20" y="190" width="320" height="86" rx="10"/>
+    <text class="lb t-ar" x="36" y="214" font-weight="700">Wrong answer</text>
+    <text class="lb-s" x="36" y="236">an answer that was generated</text>
+    <text class="lb-s" x="36" y="254">for a different passage</text>
+
+    <!-- strong: passage -->
+    <rect class="tint-cr" x="380" y="90" width="320" height="86" rx="10" stroke="var(--cr)" stroke-width="1.2"/>
+    <text class="lb t-cr" x="396" y="114" font-weight="700">Near-miss passage</text>
+    <text class="lb-s" x="396" y="136">another passage from the same document,</text>
+    <text class="lb-s" x="396" y="154">on the same topic but without the answer</text>
+    <!-- strong: answer -->
+    <rect class="tint-ar" x="380" y="190" width="320" height="86" rx="10" stroke="var(--ar)" stroke-width="1.2"/>
+    <text class="lb t-ar" x="396" y="214" font-weight="700">Contradicting answer</text>
+    <text class="lb-s" x="396" y="236">the model is asked to write an answer</text>
+    <text class="lb-s" x="396" y="254">that plausibly contradicts the passage</text>
+  </svg>
+  </div>
+  <figcaption>Weak fakes teach the obvious cases; strong fakes teach the subtle ones, which are the mistakes real systems actually make.</figcaption>
+</figure>
+</div>
+
+<!-- ============ STAGE 2 ============ -->
+<div class="wrap">
+<section id="stage2">
+  <h2 class="stage"><span class="n">2</span><span>It trains three small, specialised judges</span></h2>
+  <p>With that practice data, ARES fine-tunes three separate classifiers, one per check. Each reads the question, passage and answer joined together and outputs a single verdict: pass or fail on its one check.</p>
+  <p>The judges are deliberately small. The paper uses DeBERTa-v3-Large, a model of about 304 million parameters, which runs on your own hardware without calling a paid API. Being trained on your documents is the whole point: a judge tuned to your legal contracts or product manuals has seen what good and bad look like <em>there</em>, not just in general.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 720 270" role="img" aria-labelledby="f7t">
+    <title id="f7t">One question-passage-answer triple is fed to three separate judges. Each returns pass or fail on its own check.</title>
+    <!-- triple strip -->
+    <rect class="box-s" x="20" y="105" width="80" height="50" rx="8"/><text class="lb" x="60" y="135" text-anchor="middle">Q</text>
+    <rect class="box-s" x="100" y="105" width="110" height="50" rx="0"/><text class="lb" x="155" y="135" text-anchor="middle">Passage</text>
+    <rect class="box-s" x="210" y="105" width="80" height="50" rx="8"/><text class="lb" x="250" y="135" text-anchor="middle">A</text>
+    <text class="lb-s" x="155" y="180" text-anchor="middle">one example, joined together</text>
+
+    <path d="M292,120 C340,120 340,50 390,50" class="ln" marker-end="url(#ah)"/>
+    <line x1="292" y1="130" x2="388" y2="130" class="ln" marker-end="url(#ah)"/>
+    <path d="M292,140 C340,140 340,210 390,210" class="ln" marker-end="url(#ah)"/>
+
+    <rect class="tint-cr" x="394" y="22" width="190" height="56" rx="10"/>
+    <text class="lb t-cr" x="410" y="46" font-weight="700">Context judge</text>
+    <text class="lb-s" x="410" y="64">useful passage?</text>
+    <rect class="tint-af" x="394" y="102" width="190" height="56" rx="10"/>
+    <text class="lb t-af" x="410" y="126" font-weight="700">Faithfulness judge</text>
+    <text class="lb-s" x="410" y="144">grounded answer?</text>
+    <rect class="tint-ar" x="394" y="182" width="190" height="56" rx="10"/>
+    <text class="lb t-ar" x="410" y="206" font-weight="700">Relevance judge</text>
+    <text class="lb-s" x="410" y="224">on-topic answer?</text>
+
+    <line class="ln" x1="586" y1="50" x2="626" y2="50" marker-end="url(#ah)"/>
+    <line class="ln" x1="586" y1="130" x2="626" y2="130" marker-end="url(#ah)"/>
+    <line class="ln" x1="586" y1="210" x2="626" y2="210" marker-end="url(#ah)"/>
+    <text class="lb-b" x="636" y="55">pass</text>
+    <text class="lb-b" x="636" y="135">pass</text>
+    <text class="lb-b t-off" x="636" y="215">fail</text>
+  </svg>
+  </div>
+  <figcaption>Averaging a judge’s verdicts over many answers from one system gives that system’s raw score on that check.</figcaption>
+</figure>
+</div>
+
+<!-- ============ STAGE 3 ============ -->
+<div class="wrap">
+<section id="stage3">
+  <h2 class="stage"><span class="n">3</span><span>It corrects the judges using real human labels</span></h2>
+  <p>Here is the clever part. The judges were trained on made-up data, so they will be wrong in some consistent way. Perhaps they are a little too generous, or too strict. If you simply averaged their verdicts, that bias would flow straight into your scores.</p>
+  <p>ARES uses a recent statistical method called <strong>prediction-powered inference</strong> (PPI). The idea is simple even if the maths isn’t:</p>
+  <p>Let the judge grade thousands of unlabelled answers, which is cheap. Then run the same judge on the <span class="k-h">small set that humans labelled</span> and see how often, and in which direction, it disagrees with people. That tells you the judge’s typical error, which you subtract from the big estimate. Because you know how noisy the correction itself is, you also get a range that should contain the true score 95% of the time.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 740 300" role="img" aria-labelledby="f8t">
+    <title id="f8t">Three panels. Many unlabelled answers graded by the judge give a raw estimate. On a small human-labelled set, the judge's disagreement with people is measured. The raw estimate is shifted by that error and given a 95 percent range.</title>
+    <!-- panel 1: many dots -->
+    <text class="lb-b" x="20" y="28">Many answers, judge only</text>
+    <g id="many" transform="translate(20,46)"></g>
+    <text class="lb-s" x="20" y="222">judge says 82% pass</text>
+    <text class="lb-s" x="20" y="240">(cheap, but possibly biased)</text>
+
+    <!-- panel 2: few dots with human comparison -->
+    <text class="lb-b" x="282" y="28">Few, also human-labelled</text>
+    <g id="few" transform="translate(282,46)"></g>
+    <text class="lb-s" x="282" y="222">judge over-passes by about 4 points</text>
+    <text class="lb-s" x="282" y="240">compared with people</text>
+
+    <!-- panel 3: interval -->
+    <text class="lb-b" x="560" y="28">Corrected score</text>
+    <line class="grid" x1="560" y1="180" x2="720" y2="180"/>
+    <text class="lb-s" x="560" y="198" text-anchor="middle">70%</text>
+    <text class="lb-s" x="720" y="198" text-anchor="end">90%</text>
+    <!-- raw -->
+    <circle cx="656" cy="90" r="6" class="c-m"/>
+    <text class="lb-s" x="668" y="94">raw 82%</text>
+    <path d="M656,100 C656,120 624,122 624,138" class="ln" stroke-dasharray="3 4" marker-end="url(#ah)"/>
+    <!-- corrected with interval -->
+    <line x1="592" y1="150" x2="656" y2="150" class="s-h" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="624" cy="150" r="7" class="c-h"/>
+    <text class="lb t-h" x="584" y="155" text-anchor="end" font-weight="700">78%</text>
+    <text class="lb-s" x="624" y="232" text-anchor="middle">95% range: about 74–82%</text>
+    <line x1="624" y1="160" x2="624" y2="180" class="grid"/>
+  </svg>
+  </div>
+  <figcaption>Illustrative numbers, chosen to show the idea. Each dot is one answer; filled means the judge passed it. In the middle panel, a ring shows where the human disagreed.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>Why not just use the human labels on their own? You could, but a few hundred labels give a wide, blurry range. PPI borrows strength from the thousands of cheap judge verdicts, so the same human effort buys a much tighter range. Try it:</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox">
+    <div class="ppi-ctrl">
+      <label for="nlab">Human-labelled examples</label>
+      <input id="nlab" type="range" min="25" max="600" step="25" value="150" aria-describedby="nlab-out">
+      <output id="nlab-out" for="nlab">150</output>
+    </div>
+    <div class="scroll"><svg id="ppisvg" viewBox="0 0 700 190" role="img" aria-labelledby="f9t">
+      <title id="f9t">Two ranges around a true score of 78 percent. The range from human labels alone is wider than the range from ARES with PPI, and both shrink as you add labels.</title>
+      <g id="ppi-axis"></g>
+      <text class="lb" x="0" y="60">Human labels only</text>
+      <line id="r-human" y1="80" y2="80" class="s-m" stroke="var(--faint)" stroke-width="6" stroke-linecap="round"/>
+      <text id="w-human" class="lb-s" y="85"></text>
+      <text class="lb t-h" x="0" y="132" font-weight="700">ARES (judges + PPI)</text>
+      <line id="r-ppi" y1="152" y2="152" class="s-h" stroke-width="6" stroke-linecap="round"/>
+      <text id="w-ppi" class="lb-s" y="157"></text>
+    </svg></div>
+  </div>
+  <figcaption>A simplified model, not the paper’s data: it assumes a true score of 78%, 5,000 judge-graded answers, and a judge that disagrees with people about 7% of the time. At 150 labels it gives a range roughly 8 points wide, in line with the 6–9 point ranges the paper reports.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>Finally, ARES ranks systems by the midpoint of each range. And because the judges are trained once per domain and the same human labels serve for every system, testing a tenth configuration costs no more human effort than testing the first.</p>
+</div>
+
+<!-- ============ HOW THEY TESTED ============ -->
+<div class="wrap">
+<section id="test">
+  <h2>How the authors checked that it works</h2>
+  <p>To grade a grader, you need systems whose true quality you already know. The authors built fake RAG systems out of six standard question-answering datasets (such as Natural Questions, HotpotQA and FEVER) by mixing correct and incorrect examples in controlled proportions. For each dataset they made nine systems whose true pass rates run from 70% to 90% in steps of 2.5 points.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 220" role="img" aria-labelledby="f10t">
+    <title id="f10t">Nine mock systems with true pass rates from 70 to 90 percent in 2.5 point steps.</title>
+    <g id="ladder"></g>
+  </svg>
+  </div>
+  <figcaption>Neighbouring systems differ by just 2.5 points, about the size of difference a real tweak might make. A good evaluator has to put all nine in the right order.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>They measured success with <strong>Kendall’s tau</strong>, a score for how well one ranking matches another. It looks at every pair of systems and asks whether the evaluator put them in the right order. With nine systems there are 36 pairs, which makes the numbers easy to read: a tau of 1.0 means every pair is right, 0.94 means one pair is swapped, 0.89 means two, and 0.83 means three. The authors treat anything above 0.9 as a success.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 640 330" role="img" aria-labelledby="f11t">
+    <title id="f11t">The true ranking of nine systems beside an evaluator's ranking. Seven lines run straight across; systems 4 and 5 are swapped, making one crossing, which gives Kendall's tau of 0.94.</title>
+    <text class="lb-b" x="140" y="24" text-anchor="middle">True order</text>
+    <text class="lb-b" x="500" y="24" text-anchor="middle">Evaluator’s order</text>
+    <g id="taufig"></g>
+    <text class="lb-s" x="320" y="318" text-anchor="middle">one crossing out of 36 pairs → tau = (35 − 1) ÷ 36 ≈ 0.94</text>
+  </svg>
+  </div>
+  <figcaption>Each crossing line is a pair the evaluator got backwards. Here the evaluator swaps two neighbours that are only 2.5 points apart.</figcaption>
+</figure>
+</div>
+
+<!-- ============ RESULTS ============ -->
+<div class="wrap">
+<section id="results">
+  <h2>What they found</h2>
+  <h3>The judges are much more accurate than a generic prompt</h3>
+  <p>On individual examples, ARES’s trained judges got the context-relevance verdict right about 83% of the time on average, against 23% for RAGAS. RAGAS did better on answer relevance, but ARES still led by about 14 points. A GPT-3.5 judge given a few examples landed in between.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 300" role="img" aria-labelledby="f12t">
+    <title id="f12t">Average judge accuracy across six datasets. Context relevance: RAGAS 23 percent, GPT-3.5 judge 75 percent, ARES 83 percent. Answer relevance: RAGAS 74, GPT-3.5 judge 73, ARES 88.</title>
+    <g id="accchart"></g>
+  </svg>
+  </div>
+  <figcaption>Averages computed from the paper’s Table 1 across NQ, HotpotQA, Wizard of Wikipedia, FEVER, MultiRC and ReCoRD.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <h3>ARES ranks systems in the right order more often</h3>
+  <p>What matters most is whether the final ranking is right. ARES had the highest average tau of every method tried, clearing the 0.9 bar on both checks. The same judges without the PPI correction scored lower on average and never higher on any dataset, so the human-label correction is doing real work.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 330" role="img" aria-labelledby="f13t">
+    <title id="f13t">Average Kendall's tau by method. Sampled human labels: context 0.81, answer 0.86. RAGAS: 0.87 and 0.79. GPT-3.5 judge: 0.82 and 0.90. ARES judges without PPI: 0.88 and 0.89. ARES: 0.92 and 0.92.</title>
+    <g id="tauchart"></g>
+  </svg>
+  </div>
+  <figcaption>Average tau across the six datasets in Table 1. The dashed line marks 0.9, the paper’s threshold for success.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <h3>It needs far fewer human labels</h3>
+  <p>The most striking comparison is with plain hand-labelling. Labelling 150 answers from each of the nine systems takes 1,350 labels. ARES used 300 labels in total and still ranked the systems better, 0.08 higher in tau on average. That is 78% less human work.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 250" role="img" aria-labelledby="f14t">
+    <title id="f14t">Each dot is 10 human labels. Hand-labelling nine systems: 135 dots, 1,350 labels. ARES: 30 dots, 300 labels.</title>
+    <g id="dots"></g>
+  </svg>
+  </div>
+  <figcaption>Each dot stands for ten human labels.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <h3>But there is a floor</h3>
+  <p>How few labels can you get away with? The authors tried sets from 25 to 400. Below about 150, ARES could no longer reliably tell the close-together systems apart, especially on context relevance. More labels kept helping above that.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 330" role="img" aria-labelledby="f15t">
+    <title id="f15t">Kendall's tau for context relevance versus number of human labels on three datasets. All three rise sharply between 100 and 200 labels, reaching roughly 0.9 at 300 to 400.</title>
+    <g id="labchart"></g>
+  </svg>
+  </div>
+  <figcaption>Context relevance, from the paper’s Table 3. Around 150 labels is where ranking quality stops collapsing.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <h3>It spots made-up answers in real systems</h3>
+  <p>The fake systems couldn’t test faithfulness, so the authors turned to a benchmark called AIS, where people had marked real generated answers as supported by their source or not. Using 200 human labels, ARES estimated the share of faithful answers to within 2.5 points of the truth on both datasets.</p>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox">
+  <svg viewBox="0 0 640 190" role="img" aria-labelledby="f16t">
+    <title id="f16t">Share of faithful answers. Wizard of Wikipedia: ARES 47.8 percent, true 45.8 percent. CNN and Daily Mail: ARES 83.5 percent, true 85.9 percent.</title>
+    <g id="aischart"></g>
+  </svg>
+  </div>
+  <figcaption>From the paper’s Table 2. Hollow circles are the true share; filled circles are ARES’s estimate.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>They also ranked ten real RAG systems, built from three retrievers (BM25, OpenAI embeddings and ColBERTv2) and three writers (MPT-7B-Instruct, GPT-3.5 and GPT-4), plus Facebook’s original RAG model. ARES averaged a tau of 0.91 on context relevance and 0.97 on answer relevance, again ahead of RAGAS, and its 95% ranges really did contain the true score more than 95% of the time. For the record, ColBERTv2 was the best retriever and GPT-4 the best writer.</p>
+</div>
+
+<!-- ============ LIMITS ============ -->
+<div class="wrap">
+<section id="limits">
+  <h2>Where it stops working</h2>
+  <p>A judge trained on one dataset held up well on another when the questions changed style, when the documents changed, or both, staying near the 0.9 line. Even when a judge’s own accuracy dropped away from home, the PPI correction mostly rescued the ranking.</p>
+  <p>Bigger leaps broke it. A judge trained on English questions about Wikipedia fell apart on other languages, on searching code, and on a task that pulls out named entities rather than answering questions.</p>
+</section>
+</div>
+<div class="wide">
+<figure>
+  <div class="figbox scroll">
+  <svg viewBox="0 0 700 320" role="img" aria-labelledby="f17t">
+    <title id="f17t">Kendall's tau when a judge trained on one dataset is used on another. Different question style 0.90, different documents 0.93, both 0.88. Other languages 0.33, code 0.28, entity extraction 0.38.</title>
+    <g id="xdchart"></g>
+  </svg>
+  </div>
+  <figcaption>Nearby shifts are averaged from the paper’s Table 6; far shifts use a judge trained on Natural Questions (section 5.4). The fix for a far shift is to retrain the judges on passages and examples from the new domain.</figcaption>
+</figure>
+</div>
+<div class="wrap">
+  <p>The authors also note the practical costs. The human labels have to come from someone who understands the domain, which is easy for general knowledge but harder for law, medicine or finance. The models need a GPU with roughly 32 GB of memory, and generating data and training take several hours. And every test was in English.</p>
+</div>
+
+<!-- ============ TAKEAWAYS ============ -->
+<div class="wrap">
+<section id="takeaways" class="takeaways">
+  <h2>What to take away</h2>
+  <p>Grading a RAG system works better as three separate questions than as one: is the passage useful, is the answer grounded in it, and does the answer address the question.</p>
+  <p>A small judge trained on your own documents beats a big general model following a generic prompt, and you can build its training data automatically.</p>
+  <p>A few hundred human labels are still essential, but their job changes: rather than doing the grading, they check and correct the automatic graders, and give you a margin of error you can trust.</p>
+</section>
+
+<p class="sources">Paper: <a href="https://arxiv.org/abs/2311.09476">arXiv 2311.09476</a>. Code and datasets: <a href="https://github.com/stanford-futuredata/ARES">github.com/stanford-futuredata/ARES</a>.</p>
+</div>
+
+<script>
+(function(){
+  var NS="http://www.w3.org/2000/svg";
+  function el(tag,attrs,parent,text){
+    var e=document.createElementNS(NS,tag);
+    for(var k in attrs){e.setAttribute(k,attrs[k]);}
+    if(text!==undefined){e.textContent=text;}
+    if(parent){parent.appendChild(e);}
+    return e;
+  }
+
+  /* ---------- comfort controls ---------- */
+  var root=document.documentElement, sizes=[1.0,1.09,1.1875,1.3,1.42], idx=2;
+  function store(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  function load(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  var s=parseInt(load("ares-fs"),10); if(!isNaN(s)&&s>=0&&s<sizes.length){idx=s;}
+  function applySize(){ if(window.matchMedia("(max-width:560px)").matches && idx===2){root.style.removeProperty("--fs");} else {root.style.setProperty("--fs",sizes[idx]+"rem");} }
+  if(load("ares-fs")!==null){applySize();}
+  document.getElementById("smaller").onclick=function(){if(idx>0){idx--;store("ares-fs",idx);applySize();}};
+  document.getElementById("larger").onclick=function(){if(idx<sizes.length-1){idx++;store("ares-fs",idx);applySize();}};
+  var tb=document.getElementById("theme");
+  function isDark(){var t=root.getAttribute("data-theme"); if(t){return t==="dark";} return window.matchMedia("(prefers-color-scheme: dark)").matches;}
+  function label(){tb.textContent=isDark()?"Light":"Dim"; tb.setAttribute("aria-label",isDark()?"Switch to light theme":"Switch to dim theme");}
+  var t=load("ares-theme"); if(t==="dark"||t==="light"){root.setAttribute("data-theme",t);}
+  label();
+  tb.onclick=function(){var n=isDark()?"light":"dark"; root.setAttribute("data-theme",n); store("ares-theme",n); label();};
+
+  /* ---------- PPI dots panels ---------- */
+  (function(){
+    var g=document.getElementById("many"), cols=16, rows=10, n=cols*rows, pass=Math.round(n*0.82);
+    // deterministic scatter of fails
+    var fails={}, seed=7, c=0;
+    while(c<n-pass){seed=(seed*9301+49297)%233280; var i=Math.floor(seed/233280*n); if(!fails[i]){fails[i]=1;c++;}}
+    for(var r=0;r<rows;r++)for(var q=0;q<cols;q++){
+      var id=r*cols+q, x=q*14+5, y=r*15+5;
+      if(fails[id]) el("circle",{cx:x,cy:y,r:4.2,fill:"none",stroke:"var(--faint)","stroke-width":1.3},g);
+      else el("circle",{cx:x,cy:y,r:4.2,"class":"c-m"},g);
+    }
+    var f=document.getElementById("few"), fc=6, fr=4;
+    var fFail={3:1,10:1,17:1,21:1}, disagree={6:1,14:1};
+    for(var r2=0;r2<fr;r2++)for(var q2=0;q2<fc;q2++){
+      var id2=r2*fc+q2, x2=q2*30+14, y2=r2*32+16;
+      if(fFail[id2]) el("circle",{cx:x2,cy:y2,r:7,fill:"none",stroke:"var(--faint)","stroke-width":1.4},f);
+      else el("circle",{cx:x2,cy:y2,r:7,"class":"c-m"},f);
+      if(disagree[id2]) el("circle",{cx:x2,cy:y2,r:12,fill:"none",stroke:"var(--human)","stroke-width":2},f);
+    }
+    el("circle",{cx:14,cy:146,r:7,"class":"c-m"},f);
+    el("circle",{cx:14,cy:146,r:12,fill:"none",stroke:"var(--human)","stroke-width":2},f);
+    el("text",{x:32,y:150,"class":"lb-s"},f,"ring: human said fail");
+  })();
+
+  /* ---------- PPI interactive ---------- */
+  (function(){
+    var x0=190,x1=680, lo=0.60, hi=0.96, p=0.78, N=5000, d=0.07;
+    function X(v){return x0+(v-lo)/(hi-lo)*(x1-x0);}
+    var ax=document.getElementById("ppi-axis");
+    el("line",{x1:x0,y1:20,x2:x1,y2:20,"class":"grid"},ax);
+    [0.6,0.7,0.8,0.9].forEach(function(v){
+      el("line",{x1:X(v),y1:16,x2:X(v),y2:24,"class":"grid"},ax);
+      el("text",{x:X(v),y:12,"class":"lb-s","text-anchor":"middle"},ax,Math.round(v*100)+"%");
+    });
+    el("line",{x1:X(p),y1:24,x2:X(p),y2:170,stroke:"var(--ink)","stroke-width":1,"stroke-dasharray":"2 4",opacity:.55},ax);
+    el("text",{x:X(p)+6,y:38,"class":"lb-s"},ax,"true score");
+    var rh=document.getElementById("r-human"), rp=document.getElementById("r-ppi"),
+        wh=document.getElementById("w-human"), wp=document.getElementById("w-ppi"),
+        s=document.getElementById("nlab"), o=document.getElementById("nlab-out");
+    function upd(){
+      var n=+s.value; o.value=n; o.textContent=n;
+      var hh=1.96*Math.sqrt(p*(1-p)/n), hp=1.96*Math.sqrt(d*(1-d)/n + p*(1-p)/N);
+      var a=Math.max(lo,p-hh), b=Math.min(hi,p+hh);
+      rh.setAttribute("x1",X(a)); rh.setAttribute("x2",X(b));
+      rp.setAttribute("x1",X(p-hp)); rp.setAttribute("x2",X(p+hp));
+      wh.setAttribute("x",Math.min(X(b)+14,560));
+      wp.setAttribute("x",X(p+hp)+14);
+      wh.textContent=(2*hh*100).toFixed(1)+" points wide";
+      wp.textContent=(2*hp*100).toFixed(1)+" points wide";
+    }
+    s.addEventListener("input",upd); upd();
+  })();
+
+  /* ---------- ladder of mock systems ---------- */
+  (function(){
+    var g=document.getElementById("ladder"), base=190, top=20, lo=60, hi=92;
+    function Y(v){return base-(v-lo)/(hi-lo)*(base-top);}
+    for(var i=0;i<9;i++){
+      var v=70+i*2.5, x=30+i*74;
+      el("rect",{x:x,y:Y(v),width:50,height:base-Y(v),rx:6,"class":"tint-cr",stroke:"var(--cr)","stroke-width":1},g);
+      el("text",{x:x+25,y:Y(v)-8,"class":"lb","text-anchor":"middle"},g,(v%1?v.toFixed(1):v)+"%");
+    }
+    el("line",{x1:20,y1:base,x2:690,y2:base,"class":"grid"},g);
+    el("text",{x:30,y:212,"class":"lb-s"},g,"mock system 1");
+    el("text",{x:672,y:212,"class":"lb-s","text-anchor":"end"},g,"mock system 9");
+  })();
+
+  /* ---------- kendall tau crossing ---------- */
+  (function(){
+    var g=document.getElementById("taufig"), right=[1,2,3,5,4,6,7,8,9];
+    function y(i){return 50+i*29;}
+    for(var i=0;i<9;i++){
+      var sys=i+1, j=right.indexOf(sys), swapped=(sys===4||sys===5);
+      el("line",{x1:200,y1:y(i),x2:440,y2:y(j),stroke:swapped?"var(--off)":"var(--line)","stroke-width":swapped?2.4:1.6},g);
+      el("rect",{x:90,y:y(i)-11,width:100,height:22,rx:11,"class":"box-s"},g);
+      el("text",{x:140,y:y(i)+5,"class":"lb","text-anchor":"middle"},g,"System "+sys);
+      el("rect",{x:450,y:y(i)-11,width:100,height:22,rx:11,"class":"box-s"},g);
+      el("text",{x:500,y:y(i)+5,"class":swapped?"lb t-off":"lb","text-anchor":"middle"},g,"System "+right[i]);
+    }
+    el("circle",{cx:320,cy:(y(3)+y(4))/2,r:5,"class":"c-off"},g);
+  })();
+
+  /* ---------- grouped horizontal bars: accuracy ---------- */
+  (function(){
+    var g=document.getElementById("accchart"), x0=200, x1=660;
+    function X(v){return x0+v/100*(x1-x0);}
+    [0,25,50,75,100].forEach(function(v){
+      el("line",{x1:X(v),y1:28,x2:X(v),y2:270,"class":"grid"},g);
+      el("text",{x:X(v),y:290,"class":"lb-s","text-anchor":"middle"},g,v+"%");
+    });
+    var groups=[["Context relevance","cr",[["RAGAS",23.3],["GPT-3.5 judge",74.5],["ARES",83.2]]],
+                ["Answer relevance","ar",[["RAGAS",73.7],["GPT-3.5 judge",73.0],["ARES",88.0]]]];
+    groups.forEach(function(gr,gi){
+      var gy=24+gi*128;
+      el("text",{x:0,y:gy+18,"class":"lb-b t-"+gr[1]},g,gr[0]);
+      gr[2].forEach(function(row,ri){
+        var y=gy+32+ri*30, ares=row[0]==="ARES";
+        el("text",{x:x0-12,y:y+15,"class":"lb","text-anchor":"end"},g,row[0]);
+        el("rect",{x:x0,y:y,width:X(row[1])-x0,height:20,rx:4,
+          fill:ares?"var(--"+gr[1]+")":"color-mix(in srgb,var(--"+gr[1]+") 30%,var(--surface))"},g);
+        el("text",{x:X(row[1])+8,y:y+15,"class":"lb"},g,Math.round(row[1])+"%");
+      });
+    });
+  })();
+
+  /* ---------- tau dot plot ---------- */
+  (function(){
+    var g=document.getElementById("tauchart"), x0=230, x1=670, lo=0.75, hi=0.95;
+    function X(v){return x0+(v-lo)/(hi-lo)*(x1-x0);}
+    [0.75,0.8,0.85,0.9,0.95].forEach(function(v){
+      el("line",{x1:X(v),y1:40,x2:X(v),y2:280,"class":"grid"},g);
+      el("text",{x:X(v),y:300,"class":"lb-s","text-anchor":"middle"},g,v.toFixed(2));
+    });
+    el("line",{x1:X(0.9),y1:30,x2:X(0.9),y2:282,stroke:"var(--ink)","stroke-dasharray":"4 4","stroke-width":1.2,opacity:.6},g);
+    el("text",{x:X(0.9),y:22,"class":"lb-s","text-anchor":"middle"},g,"success line");
+    var rows=[["Hand labels (150 per system)",0.805,0.86],["RAGAS",0.868,0.785],["GPT-3.5 judge",0.823,0.897],["ARES judges, no correction",0.878,0.887],["ARES",0.923,0.917]];
+    rows.forEach(function(r,i){
+      var y=62+i*48, ares=(r[0]==="ARES");
+      el("text",{x:x0-16,y:y+5,"class":ares?"lb-b":"lb","text-anchor":"end"},g,r[0]);
+      el("line",{x1:X(Math.min(r[1],r[2])),y1:y,x2:X(Math.max(r[1],r[2])),y2:y,stroke:"var(--line)","stroke-width":3},g);
+      el("circle",{cx:X(r[1]),cy:y,r:ares?8:6.5,"class":"c-cr"},g);
+      el("rect",{x:X(r[2])-(ares?7.5:6),y:y-(ares?7.5:6),width:ares?15:12,height:ares?15:12,rx:2,"class":"c-ar"},g);
+    });
+    el("circle",{cx:x0,cy:320,r:6,"class":"c-cr"},g);
+    el("text",{x:x0+12,y:324,"class":"lb-s"},g,"context relevance");
+    el("rect",{x:x0+150,y:314,width:12,height:12,rx:2,"class":"c-ar"},g);
+    el("text",{x:x0+170,y:324,"class":"lb-s"},g,"answer relevance");
+  })();
+
+  /* ---------- annotation dots ---------- */
+  (function(){
+    var g=document.getElementById("dots");
+    function block(y,count,label,sub,cls){
+      el("text",{x:0,y:y,"class":"lb-b"},g,label);
+      el("text",{x:0,y:y+18,"class":"lb-s"},g,sub);
+      for(var i=0;i<count;i++){
+        var c=i%27, r=Math.floor(i/27);
+        el("circle",{cx:210+c*18,cy:y-8+r*18,r:6,"class":cls},g);
+      }
+    }
+    block(34,135,"Hand-labelling","1,350 labels","c-m");
+    block(170,30,"ARES","300 labels","c-h");
+  })();
+
+  /* ---------- labels vs tau line chart ---------- */
+  (function(){
+    var g=document.getElementById("labchart"), x0=60, x1=560, y0=280, y1=30, xs=[25,50,100,150,200,300,400];
+    function X(v){return x0+v/400*(x1-x0);}
+    function Y(v){return y0-(v-0.4)/0.6*(y0-y1);}
+    [0.4,0.6,0.8,0.9,1.0].forEach(function(v){
+      el("line",{x1:x0,y1:Y(v),x2:x1,y2:Y(v),"class":"grid","stroke-dasharray":v===0.9?"4 4":null,stroke:v===0.9?"var(--faint)":null},g);
+      el("text",{x:x0-10,y:Y(v)+4,"class":"lb-s","text-anchor":"end"},g,v.toFixed(1));
+    });
+    xs.forEach(function(v){ if(v!==25&&v!==50) el("text",{x:X(v),y:y0+22,"class":"lb-s","text-anchor":"middle"},g,v); });
+    el("text",{x:(x0+x1)/2,y:y0+44,"class":"lb-s","text-anchor":"middle"},g,"human labels used");
+    el("rect",{x:X(150)-1,y:y1,width:2,height:y0-y1,fill:"var(--human)",opacity:.5},g);
+    el("text",{x:X(150)+6,y:y1+12,"class":"lb-s t-h"},g,"~150");
+    var series=[["NQ",[.44,.44,.44,.72,.83,.89,1.0],"var(--cr)","0"],["MultiRC",[.56,.61,.67,.83,.83,.94,.89],"var(--ar)","6 4"],["ReCoRD",[.44,.56,.67,.72,.83,.83,.89],"var(--af)","2 4"]];
+    series.forEach(function(s,si){
+      var d=s[1].map(function(v,i){return (i?"L":"M")+X(xs[i])+","+Y(v);}).join(" ");
+      el("path",{d:d,fill:"none",stroke:s[2],"stroke-width":2.4,"stroke-dasharray":s[3],"stroke-linejoin":"round"},g);
+      s[1].forEach(function(v,i){el("circle",{cx:X(xs[i]),cy:Y(v),r:3.5,fill:s[2]},g);});
+      el("line",{x1:590,y1:120+si*30,x2:620,y2:120+si*30,stroke:s[2],"stroke-width":2.4,"stroke-dasharray":s[3]},g);
+      el("text",{x:630,y:124+si*30,"class":"lb"},g,s[0]);
+    });
+  })();
+
+  /* ---------- AIS dumbbell ---------- */
+  (function(){
+    var g=document.getElementById("aischart"), x0=190, x1=620;
+    function X(v){return x0+v*(x1-x0);}
+    [0,0.25,0.5,0.75,1].forEach(function(v){
+      el("line",{x1:X(v),y1:30,x2:X(v),y2:150,"class":"grid"},g);
+      el("text",{x:X(v),y:170,"class":"lb-s","text-anchor":"middle"},g,Math.round(v*100)+"%");
+    });
+    [["Wizard of Wikipedia",0.478,0.458],["CNN / Daily Mail",0.835,0.859]].forEach(function(r,i){
+      var y=66+i*58;
+      el("text",{x:x0-14,y:y+5,"class":"lb","text-anchor":"end"},g,r[0]);
+      el("line",{x1:X(r[1]),y1:y,x2:X(r[2]),y2:y,stroke:"var(--af)","stroke-width":3},g);
+      el("circle",{cx:X(r[2]),cy:y,r:8,fill:"var(--surface)",stroke:"var(--af)","stroke-width":2},g);
+      el("circle",{cx:X(r[1]),cy:y,r:6,"class":"c-af"},g);
+      el("text",{x:X((r[1]+r[2])/2),y:y-16,"class":"lb-s","text-anchor":"middle"},g,"ARES "+(r[1]*100).toFixed(1)+"% vs true "+(r[2]*100).toFixed(1)+"%");
+    });
+  })();
+
+  /* ---------- cross-domain bars ---------- */
+  (function(){
+    var g=document.getElementById("xdchart"), x0=250, x1=640;
+    function X(v){return x0+v*(x1-x0);}
+    [0,0.25,0.5,0.75,1].forEach(function(v){
+      el("line",{x1:X(v),y1:20,x2:X(v),y2:292,"class":"grid"},g);
+      el("text",{x:X(v),y:312,"class":"lb-s","text-anchor":"middle"},g,v.toFixed(2));
+    });
+    el("line",{x1:X(0.9),y1:14,x2:X(0.9),y2:294,stroke:"var(--ink)","stroke-dasharray":"4 4","stroke-width":1.2,opacity:.6},g);
+    var rows=[["Different question style",0.90,1],["Different documents",0.93,1],["Both different",0.88,1],["Other languages",0.33,0],["Code instead of text",0.28,0],["Extracting entities",0.38,0]];
+    rows.forEach(function(r,i){
+      var y=30+i*42+(i>2?18:0);
+      el("text",{x:x0-14,y:y+17,"class":"lb","text-anchor":"end"},g,r[0]);
+      el("rect",{x:x0,y:y,width:X(r[1])-x0,height:24,rx:4,fill:r[2]?"var(--cr)":"color-mix(in srgb,var(--off) 55%,var(--surface))"},g);
+      el("text",{x:X(r[1])+8,y:y+17,"class":"lb"},g,r[1].toFixed(2));
+    });
+    el("text",{x:0,y:12,"class":"lb-s"},g,"nearby shifts");
+    el("text",{x:0,y:162,"class":"lb-s"},g,"far shifts");
+  })();
+})();
+</script>
+</body>
+</html>
