@@ -21,3 +21,6 @@
 - Where LLM Agents Fail and How They can Learn From Failures
   - https://arxiv.org/html/2509.25370v1
   - https://edangx100.github.io/interesting_papers/agentDebug
+- ARES: An Automated Evaluation Framework for Retrieval-Augmented Generation Systems
+  - https://arxiv.org/html/2311.09476v2
+  - https://edangx100.github.io/interesting_papers/ares
