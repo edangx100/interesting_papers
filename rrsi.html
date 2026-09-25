@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RRSI, explained: self-improvement that holds up on new work</title>
+<meta name="description" content="A visual, plain-language guide to RRSI: Regularized Recursive Self-Improvement of Agent Harnesses.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..600&display=swap" rel="stylesheet">
+<script>
+  /* Apply saved reading preferences before first paint to avoid a flash. */
+  (function () {
+    try {
+      var t = localStorage.getItem('rrsi-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      var s = localStorage.getItem('rrsi-size');
+      if (s) document.documentElement.setAttribute('data-size', s);
+    } catch (e) {}
+  })();
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ---------- Tokens ----------
+   Light: a cool, low-glare off-white (never pure #fff), soft graphite ink (never pure #000).
+   Dark: a 3Blue1Brown-style slate, with off-white text and desaturated manim-like accents. */
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+  --bg: #F2F4F1;
+  --raise: #E8EBE7;
+  --ink: #2A2F36;
+  --ink-soft: #434B55;
+  --muted: #677079;
+  --rule: #D3D7D1;
+  --blue: #2D76A0;
+  --teal: #28836E;
+  --gold: #9A6A1B;
+  --red: #AE4E3E;
+  --purple: #6D549E;
+  --brown: #86603F;
+  --grey: #8A929B;
+  --fs: 112.5%;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1B1F25;
+    --raise: #242A32;
+    --ink: #D8DDE3;
+    --ink-soft: #B6BEC8;
+    --muted: #8D96A1;
+    --rule: #353C46;
+    --blue: #74BCD8;
+    --teal: #6CC5AC;
+    --gold: #DDB46F;
+    --red: #E38A77;
+    --purple: #AE94CE;
+    --brown: #C69C79;
+    --grey: #7C8691;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1B1F25;
+  --raise: #242A32;
+  --ink: #D8DDE3;
+  --ink-soft: #B6BEC8;
+  --muted: #8D96A1;
+  --rule: #353C46;
+  --blue: #74BCD8;
+  --teal: #6CC5AC;
+  --gold: #DDB46F;
+  --red: #E38A77;
+  --purple: #AE94CE;
+  --brown: #C69C79;
+  --grey: #7C8691;
+}
+html[data-size="s"]  { --fs: 100%; }
+html[data-size="l"]  { --fs: 125%; }
+html[data-size="xl"] { --fs: 137.5%; }
+
+html {
+  font-size: var(--fs);
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg);
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Literata, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-optical-sizing: auto;
+  font-size: 1rem;
+  line-height: 1.75;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Layout: one calm reading column, figures breathe a little wider ---------- */
+main {
+  display: grid;
+  grid-template-columns:
+    [full-start] minmax(1.25rem, 1fr)
+    [wide-start] minmax(0, 6rem)
+    [text-start] min(35rem, calc(100% - 2.5rem))
+    [text-end] minmax(0, 6rem)
+    [wide-end] minmax(1.25rem, 1fr)
+    [full-end];
+  padding: 6.5rem 0 7rem;
+}
+main > * { grid-column: text; }
+main > .wide { grid-column: wide; }
+
+/* ---------- Type ---------- */
+h1 {
+  font-size: clamp(2.1rem, 5.2vw, 2.9rem);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 0 0 1.4rem;
+  max-width: 17ch;
+  text-wrap: balance;
+}
+.summary {
+  font-size: 1.28rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0 0 1.6rem;
+  text-wrap: pretty;
+}
+.byline {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0 0 3.2rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rule);
+}
+.intro { font-size: 1.1rem; line-height: 1.75; }
+h2 {
+  font-size: 1.6rem;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+  margin: 6rem 0 1.1rem;
+  text-wrap: balance;
+}
+h3 {
+  font-size: 1.14rem;
+  line-height: 1.35;
+  font-weight: 600;
+  margin: 3rem 0 0.6rem;
+}
+p { margin: 0 0 1.15rem; text-wrap: pretty; }
+h2 + h3 { margin-top: 1.5rem; }
+a {
+  color: var(--blue);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover { text-decoration-thickness: 2px; }
+strong { font-weight: 600; }
+.m { font-style: italic; }
+.key {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.05em 0.45em;
+  border-radius: 0.3em;
+  white-space: nowrap;
+}
+.key.gold   { color: var(--gold);   background: color-mix(in srgb, var(--gold) 13%, transparent); }
+.key.blue   { color: var(--blue);   background: color-mix(in srgb, var(--blue) 13%, transparent); }
+.key.purple { color: var(--purple); background: color-mix(in srgb, var(--purple) 13%, transparent); }
+.key.brown  { color: var(--brown);  background: color-mix(in srgb, var(--brown) 13%, transparent); }
+
+.formula {
+  font-size: 1.15rem;
+  text-align: center;
+  margin: 1.6rem 0 1.8rem;
+  color: var(--ink);
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 0.2rem 0;
+}
+.formula .op { font-style: normal; padding: 0 0.22em; }
+.formula sub { font-size: 0.68em; }
+
+/* ---------- Figures ---------- */
+figure { margin: 2.6rem 0 3rem; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
+figcaption {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 35rem;
+  margin: 1rem auto 0;
+}
+
+.fig svg text {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 14px;
+  fill: var(--ink-soft);
+}
+.fig .t-sm   { font-size: 12.5px; fill: var(--muted); }
+.fig .t-b    { font-weight: 700; fill: var(--ink); }
+.fig .t-m    { font-family: Literata, Georgia, serif; font-style: italic; }
+.fig .t-code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+/* colour utilities come after type utilities so they win ties */
+.fig .f-ink    { fill: var(--ink); }
+.fig .f-soft   { fill: var(--ink-soft); }
+.fig .f-muted  { fill: var(--muted); }
+.fig .f-bg     { fill: var(--bg); }
+.fig .f-raise  { fill: var(--raise); }
+.fig .f-blue   { fill: var(--blue); }
+.fig .f-teal   { fill: var(--teal); }
+.fig .f-gold   { fill: var(--gold); }
+.fig .f-red    { fill: var(--red); }
+.fig .f-purple { fill: var(--purple); }
+.fig .f-brown  { fill: var(--brown); }
+.fig .f-grey   { fill: var(--grey); }
+.fig .f-none   { fill: none; }
+.fig .w-blue   { fill: color-mix(in srgb, var(--blue) 12%, transparent); }
+.fig .w-teal   { fill: color-mix(in srgb, var(--teal) 14%, transparent); }
+.fig .w-gold   { fill: color-mix(in srgb, var(--gold) 14%, transparent); }
+.fig .w-red    { fill: color-mix(in srgb, var(--red) 13%, transparent); }
+.fig .w-purple { fill: color-mix(in srgb, var(--purple) 14%, transparent); }
+.fig .w-brown  { fill: color-mix(in srgb, var(--brown) 14%, transparent); }
+.fig .w-grey   { fill: color-mix(in srgb, var(--grey) 14%, transparent); }
+.fig .s-ink    { stroke: var(--ink); }
+.fig .s-soft   { stroke: var(--ink-soft); }
+.fig .s-muted  { stroke: var(--muted); }
+.fig .s-rule   { stroke: var(--rule); }
+.fig .s-blue   { stroke: var(--blue); }
+.fig .s-teal   { stroke: var(--teal); }
+.fig .s-gold   { stroke: var(--gold); }
+.fig .s-red    { stroke: var(--red); }
+.fig .s-purple { stroke: var(--purple); }
+.fig .s-brown  { stroke: var(--brown); }
+.fig .s-grey   { stroke: var(--grey); }
+.fig .s-bg     { stroke: var(--bg); }
+.fig .dash     { stroke-dasharray: 4 5; }
+.fig .dot      { stroke-dasharray: 1.5 5; stroke-linecap: round; }
+.fig .faded    { opacity: 0.5; }
+
+/* ---------- Interactive: edit budget ---------- */
+.budget-controls {
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  max-width: 35rem;
+  margin: 1.2rem auto 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.budget-controls label { font-size: 0.9rem; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 1rem; }
+.budget-controls input[type="range"] { width: 100%; accent-color: var(--purple); height: 1.6rem; }
+.readout { font-size: 0.95rem; color: var(--ink); min-height: 1.6em; }
+.chips { display: flex; gap: 0.45rem; flex-wrap: wrap; min-height: 2rem; }
+.chip {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.45rem;
+  color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--purple) 35%, transparent);
+  transition: opacity 0.25s ease;
+}
+.budget-bar { transition: fill 0.2s ease; }
+
+/* ---------- Takeaway ---------- */
+.takeaway {
+  font-size: 1.42rem;
+  line-height: 1.5;
+  margin: 1.4rem 0 2.2rem;
+  padding: 0.2rem 0 0.2rem 1.4rem;
+  border-left: 3px solid var(--blue);
+  text-wrap: pretty;
+}
+.links { font-family: "Atkinson Hyperlegible", system-ui, sans-serif; font-size: 0.95rem; line-height: 2; }
+
+/* ---------- Reading controls ---------- */
+.reading {
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.7rem) calc(env(safe-area-inset-right, 0px) + 0.7rem) 0 0;
+  z-index: 20;
+}
+.reading-inner {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.reading button {
+  font: 700 0.82rem "Atkinson Hyperlegible", system-ui, sans-serif;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  width: 2.3rem;
+  height: 2.3rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.reading button:hover { background: var(--raise); color: var(--ink); }
+.reading svg { width: 1.05rem; height: 1.05rem; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
+.reading button:focus-visible { border-radius: 999px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+::selection { background: color-mix(in srgb, var(--blue) 24%, transparent); }
+
+@media (max-width: 640px) {
+  main { padding-top: 5rem; }
+  h2 { margin-top: 4.5rem; }
+  .summary { font-size: 1.16rem; }
+  .takeaway { font-size: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Shared arrowheads -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--muted)"/></marker>
+    <marker id="ah-ink" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--ink-soft)"/></marker>
+    <marker id="ah-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--blue)"/></marker>
+    <marker id="ah-purple" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--purple)"/></marker>
+    <marker id="ah-brown" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--brown)"/></marker>
+    <marker id="ah-teal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1.2 L9,5 L0,8.8 z" style="fill:var(--teal)"/></marker>
+  </defs>
+</svg>
+
+<div class="reading" role="group" aria-label="Reading preferences">
+  <div class="reading-inner">
+    <button type="button" id="size-down" aria-label="Smaller text">A−</button>
+    <button type="button" id="size-up" aria-label="Larger text">A+</button>
+    <button type="button" id="theme" aria-label="Switch colour theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4 a8 8 0 0 1 0 16 z" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+</div>
+
+<main>
+
+<h1>Self-improvement that holds up on new work</h1>
+<p class="summary">RRSI lets an AI agent keep rewriting its own setup, but only keeps changes that are small, affordable and not tailored to its practice tasks, so the gains carry over to work it has never seen.</p>
+<p class="byline">A visual guide to <a href="https://arxiv.org/abs/2609.24972">RRSI: Regularized Recursive Self-Improvement of Agent Harnesses</a> by Peng Xia, Rujun Han, Zifeng Wang and 11 co-authors at Google Cloud AI Research, Stanford, Washington University in St. Louis and UNC-Chapel Hill (2026).</p>
+
+<p class="intro">An AI assistant is more than the model underneath it. Around the model sits a layer of instructions, tools and bookkeeping that decides how it goes about a job, and that layer can be rewritten without retraining anything. A recent idea is to let the AI rewrite it by itself: try some practice tasks, look at what went wrong, change something, repeat. The catch is the same one faced by a student who drills last year's exam. The score goes up; the skill doesn't. This paper borrows a very old fix from statistics and applies it to how an agent is allowed to change itself.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 296" role="img" aria-labelledby="f1t f1d">
+    <title id="f1t">Practice gains versus gains on new tasks</title>
+    <desc id="f1d">Four earlier self-improvement methods, averaged, gain 2.3 points on their practice tasks and lose 0.3 points on new tasks. RRSI gains 1.1 points on practice tasks and 3.9 points on new tasks.</desc>
+    <g class="s-rule dot" stroke-width="1.2">
+      <line x1="370" y1="58" x2="370" y2="258"/><line x1="440" y1="58" x2="440" y2="258"/>
+      <line x1="510" y1="58" x2="510" y2="258"/><line x1="580" y1="58" x2="580" y2="258"/>
+    </g>
+    <g text-anchor="middle" class="t-sm">
+      <text x="300" y="282" class="t-sm">0</text><text x="370" y="282" class="t-sm">+1</text><text x="440" y="282" class="t-sm">+2</text><text x="510" y="282" class="t-sm">+3</text><text x="580" y="282" class="t-sm">+4</text>
+    </g>
+
+    <text x="40" y="44" class="t-b">Four earlier self-improvement methods, averaged</text>
+    <text x="60" y="82">Practice tasks</text>
+    <rect x="300" y="64" width="157.5" height="26" rx="4" class="f-gold" opacity="0.85"/>
+    <text x="466" y="82" class="t-b">+2.3</text>
+    <text x="60" y="120">New tasks</text>
+    <rect x="279" y="102" width="21" height="26" rx="4" class="f-blue" opacity="0.85"/>
+    <text x="270" y="120" text-anchor="end" class="t-b">−0.3</text>
+
+    <text x="40" y="174" class="t-b f-blue">RRSI</text>
+    <text x="60" y="210">Practice tasks</text>
+    <rect x="300" y="192" width="77" height="26" rx="4" class="f-gold" opacity="0.85"/>
+    <text x="386" y="210" class="t-b">+1.1</text>
+    <text x="60" y="248">New tasks</text>
+    <rect x="300" y="230" width="273" height="26" rx="4" class="f-blue" opacity="0.85"/>
+    <text x="582" y="248" class="t-b">+3.9</text>
+
+    <line x1="300" y1="58" x2="300" y2="136" class="s-muted" stroke-width="1.5"/>
+    <line x1="300" y1="186" x2="300" y2="264" class="s-muted" stroke-width="1.5"/>
+  </svg>
+  </div>
+  <figcaption>The whole paper in one picture. Change in score, in points, compared with the harness every method started from, on legal and office-work tasks. Practice tasks are the ones each method trained against; new tasks are three benchmarks none of them saw. Earlier methods look better where they practised and slightly worse everywhere else.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>The model stays fixed. Everything around it can change.</h2>
+
+<p>Think of an AI agent as two parts. There is the <strong>model</strong>, the trained network that actually reads and writes. In this paper it is frozen: its weights never change. Around it sits the <strong>harness</strong>: the instructions it gets, the order in which it plans and acts, the tools it can call, the notes it keeps, and what it is shown at each step. The same model can do far better or far worse depending on its harness.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 356" role="img" aria-labelledby="f2t">
+    <title id="f2t">Anatomy of an agent: a frozen model inside an editable harness, producing a deliverable that a verifier scores</title>
+    <rect x="20" y="158" width="104" height="48" rx="9" class="f-raise s-rule" stroke-width="1.2"/>
+    <text x="72" y="187" text-anchor="middle" class="t-b">A task</text>
+    <line x1="126" y1="182" x2="178" y2="182" class="s-muted" stroke-width="1.5" marker-end="url(#ah-muted)"/>
+
+    <rect x="184" y="26" width="354" height="306" rx="24" class="w-blue s-blue" stroke-width="1.5"/>
+    <text x="361" y="56" text-anchor="middle" class="t-b f-blue">The harness, fully editable</text>
+
+    <g class="s-blue dot" stroke-width="1.4">
+      <line x1="361" y1="188" x2="262" y2="104"/><line x1="361" y1="188" x2="463" y2="104"/>
+      <line x1="361" y1="188" x2="240" y2="188"/><line x1="361" y1="188" x2="474" y2="188"/>
+      <line x1="361" y1="188" x2="361" y2="290"/>
+    </g>
+    <circle cx="361" cy="188" r="56" class="f-raise s-muted" stroke-width="1.5"/>
+    <text x="361" y="185" text-anchor="middle" class="t-b">Model</text>
+    <text x="361" y="205" text-anchor="middle" class="t-sm">frozen weights</text>
+
+    <g class="f-bg s-blue" stroke-width="1.3">
+      <rect x="212" y="90" width="100" height="28" rx="14"/>
+      <rect x="408" y="90" width="110" height="28" rx="14"/>
+      <rect x="200" y="174" width="80" height="28" rx="14"/>
+      <rect x="414" y="174" width="120" height="28" rx="14"/>
+      <rect x="276" y="276" width="170" height="28" rx="14"/>
+    </g>
+    <g text-anchor="middle">
+      <text x="262" y="109">Prompts</text>
+      <text x="463" y="109">Control flow</text>
+      <text x="240" y="193">Tools</text>
+      <text x="474" y="193">Memory, skills</text>
+      <text x="361" y="295">Context management</text>
+    </g>
+
+    <path d="M538,150 L578,146" class="s-muted f-none" stroke-width="1.5" marker-end="url(#ah-muted)"/>
+    <rect x="582" y="122" width="126" height="46" rx="9" class="f-raise s-rule" stroke-width="1.2"/>
+    <text x="645" y="150" text-anchor="middle" class="t-b">Deliverable</text>
+    <line x1="645" y1="170" x2="645" y2="206" class="s-muted" stroke-width="1.5" marker-end="url(#ah-muted)"/>
+    <rect x="582" y="210" width="126" height="58" rx="9" class="f-raise s-rule" stroke-width="1.2"/>
+    <text x="645" y="236" text-anchor="middle" class="t-b">Verifier</text>
+    <text x="645" y="256" text-anchor="middle" class="t-sm">score from 0 to 1</text>
+  </svg>
+  </div>
+  <figcaption>The model stays the same throughout. Every labelled part of the harness around it can be rewritten, added or removed. A verifier grades the result: for code it is a test suite, for office work like a legal memo it is usually another AI model checking a list of criteria.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>An agent that edits its own harness</h2>
+
+<p>Harness design used to be manual: an engineer reads transcripts of failures and tweaks the setup by hand. Recent methods give that job to AI. Each round, the agent attempts a fixed set of <span class="key gold">practice tasks</span>. One model summarizes what went wrong, another proposes edits, and whichever version scores best becomes the new harness. Then the loop runs again.</p>
+<p>Because the system uses its own results to reshape itself, the authors treat this as a practical form of recursive self-improvement, happening at the level of the whole agent rather than its weights.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 390" role="img" aria-labelledby="f3t">
+    <title id="f3t">The self-improvement loop: run, analyse, propose, score on the same practice tasks, keep the best</title>
+    <circle cx="360" cy="200" r="140" class="f-none s-rule" stroke-width="1"/>
+    <g class="s-muted f-none" stroke-width="1.6" marker-end="url(#ah-muted)">
+      <path d="M389.1,63.1 A140,140 0 0 1 481.2,130.0"/>
+      <path d="M499.2,185.4 A140,140 0 0 1 464.0,293.7"/>
+      <path d="M416.9,327.9 A140,140 0 0 1 303.1,327.9"/>
+      <path d="M256.0,293.7 A140,140 0 0 1 220.8,185.4"/>
+      <path d="M238.8,130.0 A140,140 0 0 1 330.9,63.1"/>
+    </g>
+    <circle cx="360" cy="60" r="7" class="f-ink"/>
+    <circle cx="493.2" cy="156.7" r="7" class="f-ink"/>
+    <circle cx="442.3" cy="313.3" r="7" class="f-ink"/>
+    <circle cx="277.7" cy="313.3" r="8" class="f-gold"/>
+    <circle cx="226.8" cy="156.7" r="7" class="f-ink"/>
+
+    <text x="360" y="24" text-anchor="middle" class="t-b">Run the harness</text>
+    <text x="360" y="42" text-anchor="middle">on the practice tasks</text>
+    <text x="512" y="152" class="t-b">Analyst</text>
+    <text x="512" y="170">summarizes failures</text>
+    <text x="460" y="336" class="t-b">Proposer</text>
+    <text x="460" y="354">drafts harness edits</text>
+    <text x="260" y="336" text-anchor="end" class="t-b f-gold">Candidates scored on</text>
+    <text x="260" y="354" text-anchor="end" class="f-gold">the same practice tasks</text>
+    <text x="208" y="152" text-anchor="end" class="t-b">Selector</text>
+    <text x="208" y="170" text-anchor="end">keeps the top scorer</text>
+
+    <text x="360" y="198" text-anchor="middle" class="t-m f-ink" style="font-size:24px">H<tspan dy="6" style="font-size:14px">t</tspan><tspan dy="-6" style="font-style:normal"> → </tspan>H<tspan dy="6" style="font-size:14px">t+1</tspan></text>
+    <text x="360" y="226" text-anchor="middle" class="t-sm">one round of evolution</text>
+  </svg>
+  </div>
+  <figcaption>A generic round of harness evolution. The step in gold is where things go wrong: the same practice tasks are reused to judge every candidate, round after round.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>Why practising on the same tasks goes wrong</h2>
+
+<p>The practice set never changes. Every round takes another look at the same tasks, and every look is a fresh chance to fit their quirks instead of learning anything general. Statisticians call this overfitting: a curve bent to pass through every data point, which then misses every new one.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 318" role="img" aria-labelledby="f4t">
+    <title id="f4t">Overfitting: a wiggly curve passes through every practice point but misses new points that follow the smooth real pattern</title>
+    <circle cx="72" cy="24" r="5" class="f-ink"/><text x="84" y="29" class="t-sm">practice tasks</text>
+    <circle cx="200" cy="24" r="5" class="f-bg s-blue" stroke-width="2"/><text x="212" y="29" class="t-sm">new tasks</text>
+    <line x1="310" y1="24" x2="340" y2="24" class="s-red" stroke-width="2.2"/><text x="348" y="29" class="t-sm">fits every practice point</text>
+    <line x1="520" y1="24" x2="550" y2="24" class="s-blue" stroke-width="2.2"/><text x="558" y="29" class="t-sm">the real pattern</text>
+
+    <line x1="50" y1="296" x2="670" y2="296" class="s-rule" stroke-width="1.2"/>
+
+    <polyline class="f-none s-blue" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="60,230 90,228.1 120,222.6 150,213.7 180,202.1 210,188.5 240,173.8 270,158.8 300,144.5 330,131.8 360,121.5 390,114.2 420,110.5 450,110.5 480,114.2 510,121.5 540,131.8 570,144.5 600,158.8 630,173.8 660,188.5"/>
+
+    <path class="f-none s-red" stroke-width="2.2" stroke-linecap="round" d="M90,242.1 C104,284.1 136,239.7 150,197.7 C164,155.7 201,156.1 215,198.1 C229,240.1 266,182.9 280,140.9 C294,98.9 331,99.3 345,141.3 C359,183.3 396,139.3 410,97.3 C424,55.3 461,87.2 475,129.2 C489,171.2 526,161.7 540,119.7 C554,77.7 591,132.2 605,174.2"/>
+
+    <g class="f-ink">
+      <circle cx="90" cy="242.1" r="5"/><circle cx="150" cy="197.7" r="5"/><circle cx="215" cy="198.1" r="5"/>
+      <circle cx="280" cy="140.9" r="5"/><circle cx="345" cy="141.3" r="5"/><circle cx="410" cy="97.3" r="5"/>
+      <circle cx="475" cy="129.2" r="5"/><circle cx="540" cy="119.7" r="5"/><circle cx="605" cy="174.2" r="5"/>
+    </g>
+    <g class="f-bg s-blue" stroke-width="2">
+      <circle cx="120" cy="228.6" r="5.5"/><circle cx="250" cy="161.7" r="5.5"/><circle cx="380" cy="121.2" r="5.5"/>
+      <circle cx="510" cy="115.5" r="5.5"/><circle cx="640" cy="184.8" r="5.5"/>
+    </g>
+  </svg>
+  </div>
+  <figcaption>An illustration, not data from the paper. The red curve scores perfectly on the practice points and badly on the new ones. The blue curve is less impressive on practice but is the one that generalizes.</figcaption>
+</figure>
+
+<p>In harness evolution, the authors see overfitting creep in through three coupled behaviours.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 256" role="img" aria-labelledby="f5t">
+    <title id="f5t">Three ways to fake progress: memorizing tasks, chasing noise, and piling on machinery</title>
+    <text x="120" y="30" text-anchor="middle" class="t-b">Memorizing tasks</text>
+    <text x="360" y="30" text-anchor="middle" class="t-b">Chasing noise</text>
+    <text x="600" y="30" text-anchor="middle" class="t-b">Piling on machinery</text>
+
+    <!-- a: memorizing -->
+    <rect x="20" y="50" width="200" height="126" rx="9" class="f-raise"/>
+    <text x="32" y="78" class="t-code f-muted">  ## Before finishing</text>
+    <rect x="24" y="92" width="192" height="24" rx="4" class="w-red"/>
+    <text x="32" y="109" class="t-code f-red">+ if task is 'memo_17':</text>
+    <rect x="24" y="118" width="192" height="24" rx="4" class="w-red"/>
+    <text x="32" y="135" class="t-code f-red">+   answer '4.2(b)'</text>
+    <text x="32" y="162" class="t-code f-muted">  check the output</text>
+    <text x="120" y="214" text-anchor="middle" class="t-sm">Edits that name specific</text>
+    <text x="120" y="232" text-anchor="middle" class="t-sm">practice tasks or answers.</text>
+
+    <!-- b: noise -->
+    <rect x="304" y="104" width="118" height="42" rx="6" class="w-grey"/>
+    <line x1="270" y1="160" x2="450" y2="160" class="s-rule" stroke-width="1.2"/>
+    <g class="f-grey">
+      <circle cx="311" cy="125" r="6"/><circle cx="331.7" cy="125" r="6"/><circle cx="347.1" cy="125" r="6"/>
+      <circle cx="367.7" cy="125" r="6"/><circle cx="388.2" cy="125" r="6"/>
+    </g>
+    <circle cx="413.9" cy="125" r="6" class="f-gold"/>
+    <circle cx="413.9" cy="125" r="11.5" class="f-none s-gold" stroke-width="1.6"/>
+    <text x="414" y="88" text-anchor="middle" class="t-sm f-gold">picked</text>
+    <text x="363" y="178" text-anchor="middle" class="t-sm">score →</text>
+    <text x="360" y="214" text-anchor="middle" class="t-sm">One harness, rerun six times.</text>
+    <text x="360" y="232" text-anchor="middle" class="t-sm">The top score is mostly luck.</text>
+
+    <!-- c: machinery -->
+    <line x1="508" y1="176" x2="692" y2="176" class="s-rule" stroke-width="1.2"/>
+    <g class="w-purple s-purple" stroke-width="1.2">
+      <rect x="520" y="146" width="28" height="30" rx="3"/>
+      <rect x="560" y="146" width="28" height="30" rx="3"/><rect x="560" y="126" width="28" height="20" rx="3"/>
+      <rect x="600" y="146" width="28" height="30" rx="3"/><rect x="600" y="126" width="28" height="20" rx="3"/><rect x="600" y="104" width="28" height="22" rx="3"/>
+      <rect x="640" y="146" width="28" height="30" rx="3"/><rect x="640" y="126" width="28" height="20" rx="3"/><rect x="640" y="104" width="28" height="22" rx="3"/><rect x="640" y="78" width="28" height="26" rx="3"/>
+    </g>
+    <g text-anchor="middle" class="t-sm">
+      <text x="534" y="138" class="t-sm">90.1</text><text x="574" y="118" class="t-sm">90.3</text>
+      <text x="614" y="96" class="t-sm">90.2</text><text x="654" y="70" class="t-sm">90.4</text>
+      <text x="534" y="192" class="t-sm">1</text><text x="574" y="192" class="t-sm">2</text><text x="614" y="192" class="t-sm">3</text><text x="654" y="192" class="t-sm">4</text>
+    </g>
+    <text x="600" y="214" text-anchor="middle" class="t-sm">Each round adds parts. The</text>
+    <text x="600" y="232" text-anchor="middle" class="t-sm">score barely moves; cost climbs.</text>
+  </svg>
+  </div>
+  <figcaption>Illustrative sketches of the three failure modes the paper names: benchmark-specific fitting, noise chasing and complexity accumulation. Each widens the gap between the practice score and real ability.</figcaption>
+</figure>
+
+<p>The first is <strong>memorizing</strong>: edits that quietly encode task names, specific values or even answers. The second is <strong>chasing noise</strong>. An agent's score wobbles from run to run, so if you compare many candidates and crown the highest, you are partly crowning luck, and that luck then becomes a permanent part of the harness. The third is <strong>piling on machinery</strong>: extra steps, checks and context that nudge the practice score up while making every run longer and more expensive.</p>
+<p>The pattern shows up in the numbers. On legal and office tasks, the strongest earlier method raised its practice score by 3.6 points but gained less than one point on benchmarks it hadn't seen. Two others finished below the harness they started from.</p>
+
+<!-- ============================================================ -->
+<h2>The idea: constrain the path, not the destination</h2>
+
+<p>An obvious fix would be to limit what the agent may edit, say, prompts only. RRSI does the opposite. Every part of the harness stays editable: prompts, control flow, tools, skills, memory, even sub-agents. What RRSI constrains is <em>how the search moves</em>: how much it may change at once, where it looks, and which results it is willing to believe.</p>
+<p>That is the heart of regularization in statistics. When data is limited and noisy, prefer simpler explanations and ask for stronger evidence before accepting complicated ones. RRSI applies seven such rules, split across the two halves of every round: three that shape <span class="key purple">where the search looks</span> and four that decide <span class="key brown">what it is allowed to keep</span>.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 760 330" role="img" aria-labelledby="f6t">
+    <title id="f6t">Where the seven regularizers sit in the loop</title>
+    <text x="230" y="24" text-anchor="middle" class="t-b f-purple">Where the search looks</text>
+    <text x="560" y="24" text-anchor="middle" class="t-b f-brown">What it is allowed to keep</text>
+
+    <g class="w-purple s-purple" stroke-width="1.2">
+      <rect x="160" y="42" width="140" height="26" rx="13"/>
+      <rect x="160" y="76" width="140" height="26" rx="13"/>
+      <rect x="152" y="110" width="156" height="26" rx="13"/>
+    </g>
+    <g text-anchor="middle" class="f-purple">
+      <text x="230" y="60" class="f-purple">Edit budget</text>
+      <text x="230" y="94" class="f-purple">Evidence ledger</text>
+      <text x="230" y="128" class="f-purple">Explore when stuck</text>
+    </g>
+    <line x1="230" y1="136" x2="230" y2="168" class="s-purple" stroke-width="1.3"/>
+
+    <g class="w-brown s-brown" stroke-width="1.2">
+      <rect x="330" y="110" width="120" height="26" rx="13"/>
+      <rect x="620" y="76" width="130" height="26" rx="13"/>
+      <rect x="620" y="110" width="130" height="26" rx="13"/>
+    </g>
+    <g text-anchor="middle">
+      <text x="390" y="128" class="f-brown">Leakage screen</text>
+      <text x="685" y="94" class="f-brown">Noise floor</text>
+      <text x="685" y="128" class="f-brown">Cost allowance</text>
+    </g>
+    <line x1="390" y1="136" x2="390" y2="168" class="s-brown" stroke-width="1.3"/>
+    <line x1="685" y1="136" x2="685" y2="168" class="s-brown" stroke-width="1.3"/>
+
+    <g class="f-raise s-rule" stroke-width="1.2">
+      <rect x="15" y="170" width="100" height="50" rx="9"/>
+      <rect x="165" y="170" width="130" height="50" rx="9"/>
+      <rect x="340" y="170" width="100" height="50" rx="9"/>
+      <rect x="475" y="170" width="125" height="50" rx="9"/>
+      <rect x="630" y="170" width="110" height="50" rx="9"/>
+    </g>
+    <g text-anchor="middle" class="t-b">
+      <text x="65" y="200" class="t-b">Feedback</text>
+      <text x="230" y="200" class="t-b">Proposer</text>
+      <text x="390" y="200" class="t-b">Critic</text>
+      <text x="537" y="192" class="t-b f-gold">Score on</text>
+      <text x="537" y="210" class="t-b f-gold">practice tasks</text>
+      <text x="685" y="200" class="t-b">Selector</text>
+    </g>
+    <g class="s-muted" stroke-width="1.5" marker-end="url(#ah-muted)">
+      <line x1="117" y1="195" x2="161" y2="195"/>
+      <line x1="297" y1="195" x2="336" y2="195"/>
+      <line x1="442" y1="195" x2="471" y2="195"/>
+      <line x1="602" y1="195" x2="626" y2="195"/>
+    </g>
+    <text x="390" y="238" text-anchor="middle" class="t-sm">before any scoring</text>
+
+    <path d="M685,222 L685,290 L65,290 L65,226" class="f-none s-muted" stroke-width="1.5" marker-end="url(#ah-muted)"/>
+    <rect x="430" y="277" width="130" height="26" rx="13" class="f-bg s-brown" stroke-width="1.2"/>
+    <rect x="430" y="277" width="130" height="26" rx="13" class="w-brown"/>
+    <text x="495" y="295" text-anchor="middle" class="f-brown">Pruning</text>
+    <text x="250" y="312" text-anchor="middle" class="t-sm">next round: idle parts flagged for deletion</text>
+  </svg>
+  </div>
+  <figcaption>The same loop as before, with RRSI's rules attached. Purple rules steer the proposer. Brown rules stand between a candidate and the harness: a critic checks it before scoring, a selector checks it after, and a pruner revisits old parts every round.</figcaption>
+</figure>
+
+<p>Three of these rules mirror textbook regularizers. The paper is careful to call them analogies rather than exact equivalents, but the geometric intuition carries over nicely.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 290" role="img" aria-labelledby="f13t">
+    <title id="f13t">The L0, L1 and L2 analogies: counting changes, cutting parts to zero, shrinking the total</title>
+    <!-- L0 -->
+    <g class="s-rule" stroke-width="1.2"><line x1="40" y1="130" x2="200" y2="130"/><line x1="120" y1="50" x2="120" y2="210"/></g>
+    <g class="s-purple" stroke-width="4" stroke-linecap="round"><line x1="62" y1="130" x2="178" y2="130"/><line x1="120" y1="72" x2="120" y2="188"/></g>
+    <circle cx="120" cy="72" r="6.5" class="f-purple"/>
+    <circle cx="178" cy="130" r="6.5" class="f-purple"/>
+    <text x="146" y="70" class="t-m f-purple" style="font-size:22px">L<tspan dy="5" style="font-size:14px">0</tspan></text>
+    <text x="120" y="244" text-anchor="middle" class="t-b">Edit budget</text>
+    <text x="120" y="262" text-anchor="middle" class="t-sm">caps how many things</text>
+    <text x="120" y="278" text-anchor="middle" class="t-sm">may change at once</text>
+
+    <!-- L1 -->
+    <g class="s-rule" stroke-width="1.2"><line x1="280" y1="130" x2="440" y2="130"/><line x1="360" y1="50" x2="360" y2="210"/></g>
+    <path d="M360,70 L420,130 L360,190 L300,130 Z" class="w-brown s-brown" stroke-width="1.8"/>
+    <circle cx="360" cy="70" r="6.5" class="f-brown"/>
+    <text x="378" y="80" class="t-sm">one part is exactly zero</text>
+    <text x="404" y="186" class="t-m f-brown" style="font-size:22px">L<tspan dy="5" style="font-size:14px">1</tspan></text>
+    <text x="360" y="244" text-anchor="middle" class="t-b">Pruning</text>
+    <text x="360" y="262" text-anchor="middle" class="t-sm">removes whole parts</text>
+    <text x="360" y="278" text-anchor="middle" class="t-sm">that stopped earning their place</text>
+
+    <!-- L2 -->
+    <g class="s-rule" stroke-width="1.2"><line x1="520" y1="130" x2="680" y2="130"/><line x1="600" y1="50" x2="600" y2="210"/></g>
+    <circle cx="600" cy="130" r="60" class="w-brown s-brown" stroke-width="1.8"/>
+    <circle cx="642.4" cy="87.6" r="6.5" class="f-brown"/>
+    <text x="652" y="78" class="t-m f-brown" style="font-size:22px">L<tspan dy="5" style="font-size:14px">2</tspan></text>
+    <text x="600" y="244" text-anchor="middle" class="t-b">Cost allowance</text>
+    <text x="600" y="262" text-anchor="middle" class="t-sm">shrinks the total footprint</text>
+    <text x="600" y="278" text-anchor="middle" class="t-sm">without deleting any one part</text>
+  </svg>
+  </div>
+  <figcaption>Picture each axis as a part of the harness. An L0 constraint only allows solutions sitting on the axes: few things change. The L1 diamond's sharp corners make the best solution land where some parts are exactly zero, which is pruning. The round L2 region shrinks everything evenly, like a cap on total tokens.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>Where the search looks</h2>
+
+<h3>A shrinking edit budget</h3>
+<p>Early on, a candidate may bundle several edits, three or four depending on the domain, so the search can find ideas that only work together. The allowance then shrinks along a cosine curve to a single edit by the final round. Late changes are small enough that you can tell which one caused an improvement.</p>
+<p class="formula"><span class="m">b</span><sub class="m">t</sub><span class="op">=</span>⌈ <span class="m">b</span><sub>min</sub><span class="op">+</span>(<span class="m">b</span><sub>max</sub><span class="op">−</span><span class="m">b</span><sub>min</sub>)<span class="op">·</span>½(1<span class="op">+</span>cos(π<span class="m">t</span>/<span class="m">T</span>)) ⌉</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 290" role="img" aria-labelledby="f7t" id="budget-svg">
+    <title id="f7t">Edit budget per round, falling from four edits to one along a cosine curve</title>
+    <g class="s-rule dot" stroke-width="1.2">
+      <line x1="50" y1="200" x2="690" y2="200"/><line x1="50" y1="150" x2="690" y2="150"/>
+      <line x1="50" y1="100" x2="690" y2="100"/><line x1="50" y1="50" x2="690" y2="50"/>
+    </g>
+    <g text-anchor="end" class="t-sm">
+      <text x="40" y="204" class="t-sm">1</text><text x="40" y="154" class="t-sm">2</text>
+      <text x="40" y="104" class="t-sm">3</text><text x="40" y="54" class="t-sm">4</text>
+    </g>
+    <g class="w-purple" id="budget-bars">
+      <rect class="budget-bar w-purple" data-t="0"  x="52"  y="50"  width="36" height="200" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="1"  x="112" y="50"  width="36" height="200" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="2"  x="172" y="50"  width="36" height="200" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="3"  x="232" y="50"  width="36" height="200" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="4"  x="292" y="100" width="36" height="150" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="5"  x="352" y="100" width="36" height="150" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="6"  x="412" y="100" width="36" height="150" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="7"  x="472" y="150" width="36" height="100" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="8"  x="532" y="150" width="36" height="100" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="9"  x="592" y="150" width="36" height="100" rx="4"/>
+      <rect class="budget-bar w-purple" data-t="10" x="652" y="200" width="36" height="50"  rx="4"/>
+    </g>
+    <polyline class="f-none s-purple" stroke-width="2" stroke-linejoin="round" points="70,50 100,51 130,53.5 160,58 190,64.5 220,72 250,81 280,91 310,102 340,113.5 370,125 400,136.5 430,148 460,159 490,169 520,178 550,185.5 580,192 610,196.5 640,199 670,200"/>
+    <line x1="50" y1="250" x2="690" y2="250" class="s-muted" stroke-width="1.2"/>
+    <g text-anchor="middle" class="t-sm">
+      <text x="70" y="270" class="t-sm">0</text><text x="190" y="270" class="t-sm">2</text><text x="310" y="270" class="t-sm">4</text>
+      <text x="430" y="270" class="t-sm">6</text><text x="550" y="270" class="t-sm">8</text><text x="670" y="270" class="t-sm">10</text>
+    </g>
+    <text x="370" y="288" text-anchor="middle" class="t-sm">round</text>
+    <text x="54" y="30" class="t-sm">edits a candidate may bundle</text>
+  </svg>
+  </div>
+  <div class="budget-controls">
+    <label for="round">Drag through a 10-round run <span id="round-val">round 0</span></label>
+    <input type="range" id="round" min="0" max="10" step="1" value="0" aria-describedby="budget-readout">
+    <div class="readout" id="budget-readout" aria-live="polite">A candidate may bundle up to 4 independent edits.</div>
+    <div class="chips" id="chips" aria-hidden="true"></div>
+  </div>
+  <figcaption>An illustrative 10-round run with a maximum of four edits and a minimum of one. The smooth curve is the cosine schedule; the bars are what the proposer actually gets after rounding up.</figcaption>
+</figure>
+
+<h3>A ledger of everything tried</h3>
+<p>Every candidate is written down: which part it touched, the hypothesis behind it, the exact change, and how score and cost moved. The proposer reads this record each round. Ideas that failed stay on file as evidence against themselves, so the search stops spending rounds rediscovering them.</p>
+
+<h3>Exploring when progress stalls</h3>
+<p>The same record reveals when the search is stuck in a rut, endlessly rewording prompts, for example. If three rounds pass with no progress beyond the noise level, one proposal slot is set aside for a part of the harness that hasn't been touched yet.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 336" role="img" aria-labelledby="f8t">
+    <title id="f8t">An evidence ledger of past edits, and exploration of untried components when progress stalls</title>
+    <text x="20" y="28" class="t-b f-purple">Evidence ledger</text>
+    <g class="t-sm">
+      <text x="20" y="62" class="t-sm">Part</text><text x="128" y="62" class="t-sm">Hypothesis</text>
+      <text x="352" y="62" text-anchor="end" class="t-sm">Score</text><text x="408" y="62" text-anchor="end" class="t-sm">Cost</text><text x="450" y="62" text-anchor="middle" class="t-sm">Kept</text>
+    </g>
+    <g class="s-rule" stroke-width="1">
+      <line x1="20" y1="72" x2="468" y2="72"/><line x1="20" y1="104" x2="468" y2="104"/><line x1="20" y1="136" x2="468" y2="136"/>
+      <line x1="20" y1="168" x2="468" y2="168"/><line x1="20" y1="200" x2="468" y2="200"/><line x1="20" y1="232" x2="468" y2="232"/>
+    </g>
+    <text x="20" y="93">Prompt</text><text x="128" y="93">Plan before editing</text><text x="352" y="93" text-anchor="end">+0.8</text><text x="408" y="93" text-anchor="end">+2%</text><text x="450" y="93" text-anchor="middle" class="t-b f-teal">✓</text>
+    <text x="20" y="125">Tools</text><text x="128" y="125">Clearer file-read help</text><text x="352" y="125" text-anchor="end">+1.2</text><text x="408" y="125" text-anchor="end">−3%</text><text x="450" y="125" text-anchor="middle" class="t-b f-teal">✓</text>
+    <g class="faded">
+      <text x="20" y="157">Control flow</text><text x="128" y="157">Retry every command</text><text x="352" y="157" text-anchor="end">−0.9</text><text x="408" y="157" text-anchor="end">+14%</text>
+      <text x="20" y="189">Memory</text><text x="128" y="189">Keep notes across steps</text><text x="352" y="189" text-anchor="end">+0.1</text><text x="408" y="189" text-anchor="end">+19%</text>
+      <text x="20" y="221">Prompt</text><text x="128" y="221">Stricter output format</text><text x="352" y="221" text-anchor="end">−0.4</text><text x="408" y="221" text-anchor="end">0%</text>
+    </g>
+    <text x="450" y="157" text-anchor="middle" class="t-b f-red">✗</text>
+    <text x="450" y="189" text-anchor="middle" class="t-b f-red">✗</text>
+    <text x="450" y="221" text-anchor="middle" class="t-b f-red">✗</text>
+    <text x="20" y="262" class="t-sm">Rejected ideas stay in the record as negative evidence,</text>
+    <text x="20" y="280" class="t-sm">so the proposer doesn't spend rounds retesting them.</text>
+
+    <line x1="490" y1="20" x2="490" y2="316" class="s-rule" stroke-width="1"/>
+
+    <text x="510" y="28" class="t-b f-purple">Explore when stuck</text>
+    <rect x="620" y="58" width="90" height="30" rx="4" class="w-grey"/>
+    <polyline class="f-none s-ink" stroke-width="1.8" stroke-linejoin="round" points="515,134 545,116 575,100 605,86 635,76 665,78 695,74"/>
+    <g class="f-ink"><circle cx="515" cy="134" r="3.5"/><circle cx="545" cy="116" r="3.5"/><circle cx="575" cy="100" r="3.5"/><circle cx="605" cy="86" r="3.5"/><circle cx="635" cy="76" r="3.5"/><circle cx="665" cy="78" r="3.5"/><circle cx="695" cy="74" r="3.5"/></g>
+    <text x="510" y="154" class="t-sm">flat for 3 rounds, within noise</text>
+
+    <g class="w-purple s-purple" stroke-width="1.2">
+      <rect x="510" y="172" width="94" height="26" rx="13"/><rect x="614" y="172" width="94" height="26" rx="13"/>
+      <rect x="510" y="206" width="94" height="26" rx="13"/><rect x="614" y="206" width="94" height="26" rx="13"/>
+    </g>
+    <g class="f-none s-muted dash" stroke-width="1.2">
+      <rect x="510" y="240" width="94" height="26" rx="13"/>
+      <rect x="510" y="274" width="94" height="26" rx="13"/><rect x="614" y="274" width="94" height="26" rx="13"/>
+    </g>
+    <rect x="614" y="240" width="94" height="26" rx="13" class="w-purple s-purple" stroke-width="2.4"/>
+    <g text-anchor="middle">
+      <text x="557" y="190">Prompts</text><text x="661" y="190">Tools</text>
+      <text x="557" y="224">Control flow</text><text x="661" y="224">Memory</text>
+      <text x="557" y="258" class="f-muted">Skills</text><text x="661" y="258" class="t-b f-purple">Sub-agents</text>
+      <text x="557" y="292" class="f-muted">Context</text><text x="661" y="292" class="f-muted">Config</text>
+    </g>
+    <text x="510" y="324" class="t-sm">Filled: tried. Bold: reserved slot.</text>
+  </svg>
+  </div>
+  <figcaption>Left: an illustrative ledger. RRSI records each edit's part, hypothesis, source change, score change, cost change and outcome. Right: when progress flattens out, part of the next round is steered toward components the search has ignored.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>What the search is allowed to keep</h2>
+
+<h3>Screening for leaks</h3>
+<p>Before any candidate is scored, a separate critic model reads its changes and rejects anything that names practice tasks or the people and companies in them, hard-codes answers, or adds machinery that does nothing. General improvements, like clearer tool descriptions, pass. Screening before scoring matters: a leaking edit never earns the inflated score that would tempt later rounds to build on it.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 230" role="img" aria-labelledby="f9t">
+    <title id="f9t">A leaking edit is rejected by the critic; a general edit passes</title>
+    <text x="16" y="24" class="t-b f-red">Rejected before scoring</text>
+    <text x="376" y="24" class="t-b f-teal">Allowed through</text>
+    <rect x="10" y="38" width="340" height="140" rx="9" class="f-raise"/>
+    <rect x="370" y="38" width="340" height="140" rx="9" class="f-raise"/>
+
+    <text x="24" y="68" class="t-code f-muted">  ## Deliverables</text>
+    <rect x="16" y="80" width="328" height="24" rx="4" class="w-red"/>
+    <text x="24" y="97" class="t-code f-red">+ For the Acme–Brightline merger,</text>
+    <rect x="16" y="106" width="328" height="24" rx="4" class="w-red"/>
+    <text x="24" y="123" class="t-code f-red">+ the indemnity cap is $4.2M.</text>
+    <text x="24" y="156" class="t-code f-muted">  Save files as requested.</text>
+
+    <text x="384" y="68" class="t-code f-muted">  ## Deliverables</text>
+    <rect x="376" y="80" width="328" height="24" rx="4" class="w-teal"/>
+    <text x="384" y="97" class="t-code f-teal">+ Before finishing, confirm each</text>
+    <rect x="376" y="106" width="328" height="24" rx="4" class="w-teal"/>
+    <text x="384" y="123" class="t-code f-teal">+ requested file exists by name.</text>
+    <text x="384" y="156" class="t-code f-muted">  Save files as requested.</text>
+
+    <text x="16" y="206" class="t-sm">Names one practice task and its answer.</text>
+    <text x="376" y="206" class="t-sm">A general habit that helps on any task.</text>
+  </svg>
+  </div>
+  <figcaption>Invented examples of the kinds of change the critic separates. It judges the edit itself, not the score the edit might earn.</figcaption>
+</figure>
+
+<h3>A floor that accounts for noise</h3>
+<p>Before evolution starts, the unchanged harness is run several times on the practice tasks. The spread of those scores is the noise band, <span class="m">δ</span>. From then on, no candidate may score below the best result seen so far minus <span class="m">δ</span>.</p>
+<p class="formula"><span class="m">Ŝ</span>(<span class="m">H′</span>)<span class="op">≥</span><span class="m">S</span><sup>⋆</sup><span class="op">−</span><span class="m">δ</span></p>
+<p>Without that floor, the search can slide downhill through a chain of losses, each one small enough to pass for noise.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 330" role="img" aria-labelledby="f10t">
+    <title id="f10t">Measuring the noise band, and how a floor stops small losses from adding up</title>
+    <text x="30" y="30" class="t-b">Rerun the starting harness</text>
+    <rect x="90" y="115" width="80" height="44" rx="4" class="w-grey"/>
+    <g class="f-grey">
+      <circle cx="110" cy="159" r="5"/><circle cx="150" cy="153.5" r="5"/><circle cx="125" cy="145.3" r="5"/><circle cx="140" cy="139.8" r="5"/>
+      <circle cx="115" cy="134.3" r="5"/><circle cx="152" cy="126" r="5"/><circle cx="128" cy="120.5" r="5"/><circle cx="143" cy="115" r="5"/>
+    </g>
+    <path d="M180,115 L186,115 L186,159 L180,159" class="f-none s-ink" stroke-width="1.5"/>
+    <text x="194" y="143" class="t-m f-ink" style="font-size:20px">δ</text>
+    <text x="30" y="200" class="t-sm">Same harness, same tasks,</text>
+    <text x="30" y="218" class="t-sm">different scores. The spread</text>
+    <text x="30" y="236" class="t-sm">sets the noise band.</text>
+
+    <line x1="270" y1="20" x2="270" y2="310" class="s-rule" stroke-width="1"/>
+
+    <text x="300" y="30" class="t-b">Without a floor, small losses add up</text>
+    <line x1="300" y1="115" x2="700" y2="115" class="s-muted dot" stroke-width="1.3"/>
+    <text x="700" y="108" text-anchor="end" class="t-sm">best so far</text>
+    <line x1="300" y1="159" x2="700" y2="159" class="s-teal dash" stroke-width="1.6"/>
+    <text x="302" y="178" class="t-sm f-teal">floor: best − δ</text>
+
+    <polyline class="f-none s-red" stroke-width="2" stroke-dasharray="6 5" stroke-linejoin="round" points="320,115 365,131.5 410,148 455,164.5 500,181 545,197.5 590,214 635,230.5 680,247"/>
+    <text x="668" y="270" text-anchor="end" class="t-sm f-red">no floor: drifts down 2.4 points</text>
+
+    <polyline class="f-none s-teal" stroke-width="2.4" stroke-linejoin="round" points="320,115 365,131.5 410,148 455,148 500,148 545,148 590,148 635,148 680,148"/>
+    <g class="f-teal"><circle cx="320" cy="115" r="4"/><circle cx="365" cy="131.5" r="4"/><circle cx="410" cy="148" r="4"/><circle cx="680" cy="148" r="4"/></g>
+    <text x="420" y="140" class="t-sm f-teal">with floor</text>
+
+    <g class="s-red" stroke-width="1.6" stroke-linecap="round">
+      <path d="M451,167 l8,8 m0,-8 l-8,8"/><path d="M496,172 l8,8 m0,-8 l-8,8"/><path d="M541,167 l8,8 m0,-8 l-8,8"/>
+      <path d="M586,178 l8,8 m0,-8 l-8,8"/><path d="M631,170 l8,8 m0,-8 l-8,8"/><path d="M676,172 l8,8 m0,-8 l-8,8"/>
+    </g>
+    <line x1="300" y1="290" x2="700" y2="290" class="s-rule" stroke-width="1.2"/>
+    <g text-anchor="middle" class="t-sm">
+      <text x="320" y="308" class="t-sm">0</text><text x="410" y="308" class="t-sm">2</text><text x="500" y="308" class="t-sm">4</text>
+      <text x="590" y="308" class="t-sm">6</text><text x="680" y="308" class="t-sm">8</text>
+    </g>
+    <text x="500" y="326" text-anchor="middle" class="t-sm">round</text>
+  </svg>
+  </div>
+  <figcaption>Illustrative numbers. Each step down the red path is only 0.3 points, smaller than the noise band, so no single step looks like a mistake. The floor rejects the candidates marked ✗, and the harness holds its ground.</figcaption>
+</figure>
+
+<h3>Paying for extra cost</h3>
+<p>If a candidate's gain clears the noise band, it may also use more tokens, but only in proportion to how much it helps. The allowed increase starts from a small base and grows with the gain. Changes too small to tell apart from noise fall under a separate, stricter rule described in the paper's appendix.</p>
+<p class="formula">Δ<span class="m">C</span><span class="op">≤</span><span class="m">β</span><sub>0</sub><span class="op">+</span><span class="m">β</span><sub>1</sub>·Δ<span class="m">S</span></p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 330" role="img" aria-labelledby="f11t">
+    <title id="f11t">The cost allowance: token increases must stay below a line that rises with the score gain</title>
+    <rect x="176.7" y="40" width="77.3" height="250" class="w-grey"/>
+    <text transform="translate(219 165) rotate(-90)" text-anchor="middle" class="t-sm">within noise: stricter rule</text>
+    <polygon points="254,191.9 660,81.25 660,290 254,290" class="w-brown"/>
+    <line x1="254" y1="191.9" x2="660" y2="81.25" class="s-brown" stroke-width="2"/>
+    <text transform="translate(430 134) rotate(-15.2)" text-anchor="middle" class="t-m f-brown" style="font-size:16px">ΔC ≤ β₀ + β₁·ΔS</text>
+    <text x="640" y="274" text-anchor="end" class="t-sm f-brown">allowed</text>
+
+    <line x1="80" y1="227.5" x2="660" y2="227.5" class="s-muted" stroke-width="1.2"/>
+    <line x1="176.7" y1="40" x2="176.7" y2="290" class="s-muted" stroke-width="1.2"/>
+    <g text-anchor="middle" class="t-sm">
+      <text x="80" y="246" class="t-sm">−1</text><text x="273.3" y="246" class="t-sm">+1</text><text x="370" y="246" class="t-sm">+2</text>
+      <text x="466.7" y="246" class="t-sm">+3</text><text x="563.3" y="246" class="t-sm">+4</text><text x="660" y="246" class="t-sm">+5</text>
+    </g>
+    <g text-anchor="end" class="t-sm">
+      <text x="168" y="44" class="t-sm">+60%</text><text x="168" y="106.5" class="t-sm">+40%</text><text x="168" y="169" class="t-sm">+20%</text>
+      <text x="168" y="231.5" class="t-sm">0</text><text x="168" y="294" class="t-sm">−20%</text>
+    </g>
+    <text x="400" y="318" text-anchor="middle" class="t-sm">score gain ΔS (points)</text>
+    <text transform="translate(26 165) rotate(-90)" text-anchor="middle" class="t-sm">token increase ΔC</text>
+
+    <circle cx="370" cy="202.5" r="7" class="f-teal"/>
+    <circle cx="553.7" cy="165" r="7" class="f-teal"/>
+    <text x="566" y="170" class="t-sm f-teal">accepted</text>
+    <circle cx="321.7" cy="102.5" r="7" class="f-red"/>
+    <text x="334" y="98" class="t-sm f-red">rejected: too costly for its gain</text>
+    <circle cx="582.7" cy="65" r="7" class="f-red"/>
+  </svg>
+  </div>
+  <figcaption>The slope and intercept here are made up for illustration. In the paper, both constants are tuned once on the practice tasks and then held fixed. Extra cost has to be paid for with measurable improvement: the bigger the gain, the more extra cost it can justify.</figcaption>
+</figure>
+
+<h3>Pruning what stopped helping</h3>
+<p>Parts of the harness have to keep earning their place. RRSI tracks each recently exercised component, and any that hasn't produced a measurable gain over a recent window is handed back to the proposer as a candidate for deletion. Evolution that only watches the score has no reason ever to remove anything, which is how harnesses bloat.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 246" role="img" aria-labelledby="f12t">
+    <title id="f12t">Components with no positive recent contribution are flagged for deletion</title>
+    <text x="330" y="24" text-anchor="middle" class="t-sm">recent measured contribution (points)</text>
+    <line x1="330" y1="36" x2="330" y2="236" class="s-muted" stroke-width="1.3"/>
+    <text x="310" y="65" text-anchor="end">Plan-before-editing prompt</text>
+    <rect x="330" y="48" width="180" height="24" rx="4" class="f-teal" opacity="0.8"/>
+    <text x="518" y="65" class="t-b">+1.2</text>
+    <text x="310" y="105" text-anchor="end">File-exists check</text>
+    <rect x="330" y="88" width="135" height="24" rx="4" class="f-teal" opacity="0.8"/>
+    <text x="473" y="105" class="t-b">+0.9</text>
+    <text x="310" y="145" text-anchor="end" class="f-muted">Retry wrapper</text>
+    <rect x="330" y="128" width="3" height="24" class="f-muted"/>
+    <text x="344" y="145" class="t-sm">0.0</text>
+    <rect x="382" y="128" width="148" height="24" rx="12" class="w-brown s-brown" stroke-width="1"/>
+    <text x="456" y="145" text-anchor="middle" class="t-sm f-brown">deletion target</text>
+    <text x="290" y="185" text-anchor="end" class="f-muted">Cross-step notes</text>
+    <rect x="300" y="168" width="30" height="24" rx="4" class="f-grey" opacity="0.6"/>
+    <text x="344" y="185" class="t-sm">−0.2</text>
+    <rect x="382" y="168" width="148" height="24" rx="12" class="w-brown s-brown" stroke-width="1"/>
+    <text x="456" y="185" text-anchor="middle" class="t-sm f-brown">deletion target</text>
+    <text x="310" y="225" text-anchor="end">Polling guidance</text>
+    <rect x="330" y="208" width="90" height="24" rx="4" class="f-teal" opacity="0.8"/>
+    <text x="428" y="225" class="t-b">+0.6</text>
+  </svg>
+  </div>
+  <figcaption>Illustrative components. The rule is simple: anything without a strictly positive recent contribution becomes a deletion target in the next round.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>One rejected edit, one accepted edit</h2>
+
+<p>A case study from the paper's coding runs shows the rules working together. One candidate added a completion check aimed at particular practice tasks. It made runs 13.6% cheaper, but it cost 2.81 points and landed below the floor. Another added a bounded audit before finishing, plus advice to check on long-running jobs without blocking. It gained 3.93 points and was kept.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 236" role="img" aria-labelledby="f14t">
+    <title id="f14t">Two real candidates from the paper: one rejected at minus 2.81 points, one accepted at plus 3.93 points</title>
+    <rect x="10" y="10" width="345" height="214" rx="12" class="f-raise"/>
+    <rect x="365" y="10" width="345" height="214" rx="12" class="f-raise"/>
+
+    <text x="28" y="44" class="t-b">Task-specific completion check</text>
+    <text x="28" y="66" class="t-sm">13.6% cheaper, but tailored to practice tasks</text>
+    <line x1="40" y1="138" x2="330" y2="138" class="s-muted" stroke-width="1.3"/>
+    <line x1="168.9" y1="130" x2="168.9" y2="146" class="s-muted" stroke-width="1.3"/>
+    <text x="168.9" y="164" text-anchor="middle" class="t-sm">0</text>
+    <line x1="136.7" y1="108" x2="136.7" y2="160" class="s-brown dash" stroke-width="1.6"/>
+    <text x="136.7" y="100" text-anchor="middle" class="t-sm f-brown">floor</text>
+    <circle cx="78.4" cy="138" r="8" class="f-red"/>
+    <text x="78.4" y="116" text-anchor="middle" class="t-b f-red">−2.81</text>
+    <text x="28" y="204" class="t-b f-red">Rejected by the noise floor</text>
+
+    <text x="383" y="44" class="t-b">Pre-completion audit + polling tip</text>
+    <text x="383" y="66" class="t-sm">A bounded final check and non-blocking waits</text>
+    <line x1="395" y1="138" x2="685" y2="138" class="s-muted" stroke-width="1.3"/>
+    <line x1="523.9" y1="130" x2="523.9" y2="146" class="s-muted" stroke-width="1.3"/>
+    <text x="523.9" y="164" text-anchor="middle" class="t-sm">0</text>
+    <line x1="491.7" y1="108" x2="491.7" y2="160" class="s-brown dash" stroke-width="1.6"/>
+    <text x="491.7" y="100" text-anchor="middle" class="t-sm f-brown">floor</text>
+    <circle cx="650.4" cy="138" r="8" class="f-teal"/>
+    <text x="650.4" y="116" text-anchor="middle" class="t-b f-teal">+3.93</text>
+    <text x="383" y="204" class="t-b f-teal">Accepted</text>
+  </svg>
+  </div>
+  <figcaption>Score changes are the paper's reported numbers; the floor's position is drawn schematically. A cost saving doesn't rescue a candidate that falls through the floor.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>What happened on new tasks</h2>
+
+<p>The team tested RRSI in three domains. Each time, the harness evolved on one benchmark and was then run, unchanged, on benchmarks it had never seen. For coding, it evolved on Terminal-Bench 2.1 and was tested on SWE-bench Verified. For legal and office work, it evolved on 120 Harvey LAB tasks and was tested on 40 held-back Harvey tasks plus JobBench, GDPval and APEX-Agents. For engineering design, it evolved on EngDesign and was tested on Frontier-Eng. The main runs used Claude Opus 4.8 as the frozen model, and every method started from the same harness with the same search budget.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 440" role="img" aria-labelledby="f15t f15d">
+    <title id="f15t">Gain on practice tasks versus gain on new tasks, per method</title>
+    <desc id="f15d">RRSI: +1.1 practice, +3.9 new. Meta-Harness: +3.6, +0.9. Unregularized evolution: +3.4, +0.6. HarnessX: +2.4, 0.0. AHE: +1.3, −0.5. TTHE: +1.7, −1.7.</desc>
+    <rect x="80" y="275.4" width="600" height="104.6" class="w-red"/>
+    <text x="672" y="370" text-anchor="end" class="t-sm f-red">ended worse than it started</text>
+    <g class="s-rule dot" stroke-width="1.1">
+      <line x1="230" y1="40" x2="230" y2="380"/><line x1="380" y1="40" x2="380" y2="380"/><line x1="530" y1="40" x2="530" y2="380"/><line x1="680" y1="40" x2="680" y2="380"/>
+      <line x1="80" y1="327.7" x2="680" y2="327.7"/><line x1="80" y1="223.1" x2="680" y2="223.1"/><line x1="80" y1="170.8" x2="680" y2="170.8"/>
+      <line x1="80" y1="118.5" x2="680" y2="118.5"/><line x1="80" y1="66.2" x2="680" y2="66.2"/>
+    </g>
+    <line x1="80" y1="275.4" x2="680" y2="275.4" class="s-muted" stroke-width="1.3"/>
+    <line x1="80" y1="40" x2="80" y2="380" class="s-muted" stroke-width="1.3"/>
+    <line x1="80" y1="275.4" x2="680" y2="66.2" class="s-muted dash" stroke-width="1.4"/>
+    <text transform="translate(560 96) rotate(-19.2)" text-anchor="middle" class="t-sm">every practice point carries over</text>
+
+    <g text-anchor="middle" class="t-sm">
+      <text x="80" y="398" class="t-sm">0</text><text x="230" y="398" class="t-sm">+1</text><text x="380" y="398" class="t-sm">+2</text><text x="530" y="398" class="t-sm">+3</text><text x="680" y="398" class="t-sm">+4</text>
+    </g>
+    <g text-anchor="end" class="t-sm">
+      <text x="70" y="384" class="t-sm">−2</text><text x="70" y="331.7" class="t-sm">−1</text><text x="70" y="279.4" class="t-sm">0</text><text x="70" y="227.1" class="t-sm">+1</text>
+      <text x="70" y="174.8" class="t-sm">+2</text><text x="70" y="122.5" class="t-sm">+3</text><text x="70" y="70.2" class="t-sm">+4</text>
+    </g>
+    <text x="380" y="428" text-anchor="middle" class="t-sm">gain on practice tasks (points)</text>
+    <text transform="translate(24 210) rotate(-90)" text-anchor="middle" class="t-sm">gain on new tasks (points)</text>
+
+    <g class="f-grey">
+      <circle cx="620" cy="228.3" r="6.5"/><circle cx="590" cy="244" r="6.5"/><circle cx="440" cy="275.4" r="6.5"/>
+      <circle cx="275" cy="301.6" r="6.5"/><circle cx="335" cy="364.3" r="6.5"/>
+    </g>
+    <text x="620" y="212" text-anchor="middle">Meta-Harness</text>
+    <text x="578" y="264" text-anchor="end">Unregularized</text>
+    <text x="440" y="259" text-anchor="middle">HarnessX</text>
+    <text x="287" y="306">AHE</text>
+    <text x="347" y="369">TTHE</text>
+
+    <circle cx="245" cy="71.4" r="14" class="f-none s-blue" stroke-width="1.6"/>
+    <circle cx="245" cy="71.4" r="8" class="f-blue"/>
+    <text x="268" y="68" class="t-b f-blue">RRSI</text>
+    <text x="268" y="87" class="t-sm">smallest practice gain, largest real gain</text>
+  </svg>
+  </div>
+  <figcaption>Legal and office-work domain. Practice gain is the change on the 120 Harvey LAB evolution tasks; new-task gain is the change in the average of JobBench, GDPval and APEX-Agents. "Unregularized" is RRSI's own loop with every rule switched off. Only RRSI sits well above the zero line.</figcaption>
+</figure>
+
+<p>RRSI posted the smallest practice-set gain of any evolved harness, and the only new-task average that beat the starting point by more than a point: 43.6 against 39.7. That trade is exactly what the rules were designed to make.</p>
+<p>Across all three domains, every held-out benchmark improved and none got worse. The engineering results matter most here. Those tasks are graded by frozen simulators and testbenches rather than AI judges, so the gains can't come from learning to write the way a judge likes.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 300" role="img" aria-labelledby="f16t">
+    <title id="f16t">Gains on all six held-out benchmarks</title>
+    <rect x="300" y="14" width="14" height="14" rx="3" class="f-blue"/>
+    <text x="320" y="26" class="t-sm">graded by tests or simulators</text>
+    <rect x="510" y="14" width="14" height="14" rx="3" class="w-blue s-blue" stroke-width="1.2"/>
+    <text x="530" y="26" class="t-sm">graded by AI judges</text>
+    <line x1="300" y1="42" x2="300" y2="292" class="s-muted" stroke-width="1.3"/>
+
+    <text x="30" y="61">SWE-bench Verified</text><text x="30" y="77" class="t-sm">coding</text>
+    <rect x="300" y="51" width="99" height="22" rx="4" class="f-blue"/>
+    <text x="409" y="67" class="t-b">+1.8</text><text x="451" y="67" class="t-sm">82.0 → 83.8</text>
+
+    <text x="30" y="103">Harvey LAB held-out</text><text x="30" y="119" class="t-sm">legal, same benchmark</text>
+    <rect x="300" y="93" width="126.5" height="22" rx="4" class="w-blue s-blue" stroke-width="1.2"/>
+    <text x="436" y="109" class="t-b">+2.3</text><text x="478" y="109" class="t-sm">86.9 → 89.2</text>
+
+    <text x="30" y="145">JobBench</text><text x="30" y="161" class="t-sm">office work, unseen</text>
+    <rect x="300" y="135" width="258.5" height="22" rx="4" class="w-blue s-blue" stroke-width="1.2"/>
+    <text x="568" y="151" class="t-b">+4.7</text><text x="610" y="151" class="t-sm">36.0 → 40.7</text>
+
+    <text x="30" y="187">GDPval</text><text x="30" y="203" class="t-sm">office work, unseen</text>
+    <rect x="300" y="177" width="192.5" height="22" rx="4" class="w-blue s-blue" stroke-width="1.2"/>
+    <text x="502" y="193" class="t-b">+3.5</text><text x="544" y="193" class="t-sm">48.8 → 52.3</text>
+
+    <text x="30" y="229">APEX-Agents</text><text x="30" y="245" class="t-sm">office work, unseen</text>
+    <rect x="300" y="219" width="203.5" height="22" rx="4" class="w-blue s-blue" stroke-width="1.2"/>
+    <text x="513" y="235" class="t-b">+3.7</text><text x="555" y="235" class="t-sm">34.2 → 37.9</text>
+
+    <text x="30" y="271">Frontier-Eng</text><text x="30" y="287" class="t-sm">engineering, unseen</text>
+    <rect x="300" y="261" width="236.5" height="22" rx="4" class="f-blue"/>
+    <text x="546" y="277" class="t-b">+4.3</text><text x="588" y="277" class="t-sm">17.7 → 22.0</text>
+  </svg>
+  </div>
+  <figcaption>Points gained over the starting harness on every split outside the evolution set. Frontier-Eng's 4.3 points is a 24% relative improvement. On the evolution sets themselves, gains were 6.0 points on Terminal-Bench, 4.9 on EngDesign and 1.1 on Harvey LAB.</figcaption>
+</figure>
+
+<h3>Both halves are needed</h3>
+<p>Switching off either group of rules raised the practice score and lowered the new-task score. Switching off both produced the highest practice score of any run, 92.8, and a new-task average of 40.3, barely above where it began, while burning 3.80 million tokens per task against RRSI's 2.42 million.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 282" role="img" aria-labelledby="f17t">
+    <title id="f17t">Ablation: removing regularizers raises practice scores, lowers new-task scores and raises cost</title>
+    <rect x="10" y="102" width="700" height="36" rx="6" class="w-blue"/>
+    <text x="305" y="40" text-anchor="middle" class="t-b f-gold">Practice score</text>
+    <text x="485" y="40" text-anchor="middle" class="t-b f-blue">New-task average</text>
+    <text x="645" y="40" text-anchor="middle" class="t-b">Tokens/trial (M)</text>
+
+    <g class="s-rule" stroke-width="1.5" stroke-linecap="round">
+      <line x1="230" y1="80" x2="380" y2="80"/><line x1="410" y1="80" x2="560" y2="80"/><line x1="590" y1="80" x2="700" y2="80"/>
+      <line x1="230" y1="120" x2="380" y2="120"/><line x1="410" y1="120" x2="560" y2="120"/><line x1="590" y1="120" x2="700" y2="120"/>
+      <line x1="230" y1="160" x2="380" y2="160"/><line x1="410" y1="160" x2="560" y2="160"/><line x1="590" y1="160" x2="700" y2="160"/>
+      <line x1="230" y1="200" x2="380" y2="200"/><line x1="410" y1="200" x2="560" y2="200"/><line x1="590" y1="200" x2="700" y2="200"/>
+      <line x1="230" y1="240" x2="380" y2="240"/><line x1="410" y1="240" x2="560" y2="240"/><line x1="590" y1="240" x2="700" y2="240"/>
+    </g>
+
+    <text x="20" y="85">Starting harness</text>
+    <text x="20" y="125" class="t-b f-blue">RRSI</text>
+    <text x="20" y="165">Without proposal rules</text>
+    <text x="20" y="205">Without acceptance rules</text>
+    <text x="20" y="245">Neither (unregularized)</text>
+
+    <g class="f-gold">
+      <circle cx="245" cy="80" r="6"/><circle cx="286.3" cy="120" r="6"/><circle cx="293.8" cy="160" r="6"/><circle cx="323.8" cy="200" r="6"/><circle cx="372.5" cy="240" r="6"/>
+    </g>
+    <g class="f-blue">
+      <circle cx="431" cy="80" r="6"/><circle cx="548" cy="120" r="6"/><circle cx="497" cy="160" r="6"/><circle cx="470" cy="200" r="6"/><circle cx="449" cy="240" r="6"/>
+    </g>
+    <g class="f-grey">
+      <circle cx="592.6" cy="80" r="6"/><circle cx="630.5" cy="120" r="6"/><circle cx="642.4" cy="160" r="6"/><circle cx="682" cy="200" r="6"/><circle cx="691.2" cy="240" r="6"/>
+    </g>
+    <g text-anchor="middle" class="t-sm">
+      <text x="245" y="70" class="t-sm">89.4</text><text x="286.3" y="110" class="t-sm">90.5</text><text x="293.8" y="150" class="t-sm">90.7</text><text x="323.8" y="190" class="t-sm">91.5</text><text x="366" y="230" class="t-sm">92.8</text>
+      <text x="431" y="70" class="t-sm">39.7</text><text x="548" y="110" class="t-b f-blue" style="font-size:12.5px">43.6</text><text x="497" y="150" class="t-sm">41.9</text><text x="470" y="190" class="t-sm">41.0</text><text x="449" y="230" class="t-sm">40.3</text>
+      <text x="598" y="70" class="t-sm">1.56</text><text x="630.5" y="110" class="t-sm">2.42</text><text x="642.4" y="150" class="t-sm">2.69</text><text x="676" y="190" class="t-sm">3.59</text><text x="686" y="230" class="t-sm">3.80</text>
+    </g>
+    <g class="t-sm">
+      <text x="230" y="270" class="t-sm">89</text><text x="380" y="270" text-anchor="end" class="t-sm">93</text>
+      <text x="410" y="270" class="t-sm">39</text><text x="560" y="270" text-anchor="end" class="t-sm">44</text>
+      <text x="590" y="270" class="t-sm">1.5</text><text x="700" y="270" text-anchor="end" class="t-sm">4.0</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>Legal and office-work domain. Read down each column: as rules come off, the gold dots drift right (better practice score) while the blue dots drift left (worse on new tasks) and cost climbs. The paper notes the ablation removes rules in groups, so it can't rank individual rules.</figcaption>
+</figure>
+
+<h3>Cheaper than the alternatives</h3>
+<p>Every earlier method it was compared against used more tokens for less transfer. AHE, the most expensive, used 3.82 million tokens per trial, 58% more than RRSI, and scored 4.4 points lower on new tasks. The starting harness is still the cheapest of all at 1.56 million: evolution buys part of its gain with extra computation, and RRSI keeps that bill smaller.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 370" role="img" aria-labelledby="f18t">
+    <title id="f18t">Policy tokens per trial versus new-task average</title>
+    <rect x="315.4" y="84.1" width="364.6" height="235.9" class="w-grey"/>
+    <text x="670" y="106" text-anchor="end" class="t-sm">more cost and less transfer than RRSI</text>
+    <g class="s-rule dot" stroke-width="1.1">
+      <line x1="218.5" y1="40" x2="218.5" y2="320"/><line x1="333.8" y1="40" x2="333.8" y2="320"/><line x1="449.2" y1="40" x2="449.2" y2="320"/><line x1="564.6" y1="40" x2="564.6" y2="320"/>
+      <line x1="80" y1="260.9" x2="680" y2="260.9"/><line x1="80" y1="211.8" x2="680" y2="211.8"/><line x1="80" y1="162.7" x2="680" y2="162.7"/><line x1="80" y1="113.6" x2="680" y2="113.6"/><line x1="80" y1="64.5" x2="680" y2="64.5"/>
+    </g>
+    <line x1="80" y1="320" x2="680" y2="320" class="s-muted" stroke-width="1.3"/>
+    <line x1="80" y1="40" x2="80" y2="320" class="s-muted" stroke-width="1.3"/>
+    <g text-anchor="middle" class="t-sm">
+      <text x="103.1" y="338" class="t-sm">1.5</text><text x="218.5" y="338" class="t-sm">2.0</text><text x="333.8" y="338" class="t-sm">2.5</text>
+      <text x="449.2" y="338" class="t-sm">3.0</text><text x="564.6" y="338" class="t-sm">3.5</text><text x="680" y="338" class="t-sm">4.0</text>
+    </g>
+    <g text-anchor="end" class="t-sm">
+      <text x="70" y="314" class="t-sm">39</text><text x="70" y="264.9" class="t-sm">40</text><text x="70" y="215.8" class="t-sm">41</text>
+      <text x="70" y="166.7" class="t-sm">42</text><text x="70" y="117.6" class="t-sm">43</text><text x="70" y="68.5" class="t-sm">44</text>
+    </g>
+    <text x="380" y="362" text-anchor="middle" class="t-sm">policy tokens per trial (millions)</text>
+    <text transform="translate(26 180) rotate(-90)" text-anchor="middle" class="t-sm">new-task average</text>
+
+    <g class="f-grey">
+      <circle cx="116.9" cy="275.6" r="6.5"/><circle cx="377.7" cy="167.6" r="6.5"/><circle cx="585.4" cy="211.8" r="6.5"/>
+      <circle cx="633.8" cy="246.2" r="6.5"/><circle cx="638.5" cy="301.7" r="6.5"/>
+    </g>
+    <text x="128" y="298">Starting harness</text>
+    <text x="390" y="172">Without proposal rules</text>
+    <text x="573" y="216" text-anchor="end">Without acceptance rules</text>
+    <text x="621" y="251" text-anchor="end">Unregularized</text>
+    <text x="626" y="306" text-anchor="end">AHE</text>
+    <circle cx="315.4" cy="84.1" r="14" class="f-none s-blue" stroke-width="1.6"/>
+    <circle cx="315.4" cy="84.1" r="8" class="f-blue"/>
+    <text x="336" y="80" class="t-b f-blue">RRSI</text>
+  </svg>
+  </div>
+  <figcaption>Legal and office-work domain, showing every arm with a published token count. The shaded region is everything RRSI beats on both axes at once. The paper also reports that Meta-Harness, HarnessX and TTHE fall inside it.</figcaption>
+</figure>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 226" role="img" aria-labelledby="f18bt">
+    <title id="f18bt">Steps per trial for each harness</title>
+    <text x="200" y="18" class="t-sm">agent steps per trial</text>
+    <text x="185" y="45" text-anchor="end">Starting harness</text><rect x="200" y="32" width="282.7" height="18" rx="4" class="f-grey" opacity="0.7"/><text x="490" y="46" class="t-b">21.2</text>
+    <text x="185" y="77" text-anchor="end" class="t-b f-blue">RRSI</text><rect x="200" y="64" width="350.7" height="18" rx="4" class="f-blue"/><text x="558" y="78" class="t-b">26.3</text>
+    <text x="185" y="109" text-anchor="end">TTHE</text><rect x="200" y="96" width="364" height="18" rx="4" class="f-grey" opacity="0.7"/><text x="572" y="110" class="t-b">27.3</text>
+    <text x="185" y="141" text-anchor="end">Meta-Harness</text><rect x="200" y="128" width="382.7" height="18" rx="4" class="f-grey" opacity="0.7"/><text x="590" y="142" class="t-b">28.7</text>
+    <text x="185" y="173" text-anchor="end">HarnessX</text><rect x="200" y="160" width="393.3" height="18" rx="4" class="f-grey" opacity="0.7"/><text x="601" y="174" class="t-b">29.5</text>
+    <text x="185" y="205" text-anchor="end">AHE</text><rect x="200" y="192" width="461.3" height="18" rx="4" class="f-grey" opacity="0.7"/><text x="669" y="206" class="t-b">34.6</text>
+  </svg>
+  </div>
+  <figcaption>Trajectory length tells the same story: RRSI's agent takes fewer steps per task than any other evolved harness, though more than the unevolved starting point.</figcaption>
+</figure>
+
+<h3>It isn't tied to one model</h3>
+<p>Run with Gemini 3.5 Flash instead of Claude, RRSI lifted Terminal-Bench from 64.6 to 78.7, the paper's largest gain on a practice set, and still carried a 2.2-point gain over to SWE-bench. The same evolved harness, handed to the much smaller Gemini 3.1 Flash Lite, which never took part in the search, still helped it too.</p>
+
+<figure class="wide fig">
+  <div class="scroll">
+  <svg viewBox="0 0 720 290" role="img" aria-labelledby="f19t">
+    <title id="f19t">RRSI gains across different backbone models</title>
+    <g class="s-rule dot" stroke-width="1.1">
+      <line x1="330" y1="30" x2="330" y2="262"/><line x1="420" y1="30" x2="420" y2="262"/><line x1="510" y1="30" x2="510" y2="262"/>
+      <line x1="600" y1="30" x2="600" y2="262"/><line x1="690" y1="30" x2="690" y2="262"/>
+    </g>
+    <text x="20" y="40" class="t-b">Claude Opus 4.8 <tspan class="t-sm" style="font-weight:400">used during search</tspan></text>
+    <text x="40" y="67">Terminal-Bench, practised</text>
+    <line x1="597.1" y1="62" x2="618.7" y2="62" class="s-gold" stroke-width="2"/>
+    <circle cx="597.1" cy="62" r="5" class="f-bg s-gold" stroke-width="2"/><circle cx="618.7" cy="62" r="5.5" class="f-gold"/>
+    <text x="634" y="67" class="t-b">+6.0</text>
+    <text x="40" y="93">SWE-bench, never practised</text>
+    <circle cx="625.2" cy="88" r="5" class="f-bg s-blue" stroke-width="2"/><circle cx="631.7" cy="88" r="5.5" class="f-blue"/>
+    <text x="646" y="93" class="t-b">+1.8</text>
+
+    <text x="20" y="128" class="t-b">Gemini 3.5 Flash <tspan class="t-sm" style="font-weight:400">used during search</tspan></text>
+    <text x="40" y="155">Terminal-Bench, practised</text>
+    <line x1="562.6" y1="150" x2="613.3" y2="150" class="s-gold" stroke-width="2"/>
+    <circle cx="562.6" cy="150" r="5" class="f-bg s-gold" stroke-width="2"/><circle cx="613.3" cy="150" r="5.5" class="f-gold"/>
+    <text x="628" y="155" class="t-b">+14.1</text>
+    <text x="40" y="181">SWE-bench, never practised</text>
+    <circle cx="606.5" cy="176" r="5" class="f-bg s-blue" stroke-width="2"/><circle cx="614.4" cy="176" r="5.5" class="f-blue"/>
+    <text x="628" y="181" class="t-b">+2.2</text>
+
+    <text x="20" y="216" class="t-b">Gemini 3.1 Flash Lite <tspan class="t-sm" style="font-weight:400">never used during search</tspan></text>
+    <text x="40" y="243">Terminal-Bench</text>
+    <line x1="370.3" y1="238" x2="377" y2="238" class="s-blue" stroke-width="2"/>
+    <circle cx="370.3" cy="238" r="5" class="f-bg s-blue" stroke-width="2"/><circle cx="382.6" cy="238" r="5.5" class="f-blue"/>
+    <text x="396" y="243" class="t-b">+3.4 <tspan class="t-sm" style="font-weight:400">11.2 → 14.6, a 30% relative gain</tspan></text>
+
+    <line x1="330" y1="262" x2="690" y2="262" class="s-muted" stroke-width="1.2"/>
+    <g text-anchor="middle" class="t-sm">
+      <text x="330" y="280" class="t-sm">0</text><text x="420" y="280" class="t-sm">25</text><text x="510" y="280" class="t-sm">50</text><text x="600" y="280" class="t-sm">75</text><text x="690" y="280" class="t-sm">100</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>Hollow dots are the starting harness; filled dots are after RRSI. Evolution ran separately with each search model on Terminal-Bench only. The Flash Lite row uses the harness evolved with Gemini 3.5 Flash, unchanged.</figcaption>
+</figure>
+
+<!-- ============================================================ -->
+<h2>What the paper doesn't show</h2>
+
+<p>The model's weights are frozen throughout, so the results say nothing about systems that also retrain themselves. RRSI still leans on a finite practice set and several tuning knobs, including the noise band and the cost allowance, so how well it works depends on how good that feedback is. The ablation switches rules off in groups, which means it can't say which single rule matters most. Fewer tokens is not the same as less elapsed time or a cheaper search overall. And the runs are fairly short: longer self-improvement, very different agent designs and other tool ecosystems remain untested.</p>
+
+<h2>The takeaway</h2>
+<p class="takeaway">A system that improves itself should keep a change only when the gain rises above noise, stays clear of the practice answers, pays for its own cost, and holds up on work it has never seen.</p>
+<p class="links">
+  <a href="https://arxiv.org/abs/2609.24972">Read the paper on arXiv</a><br>
+  <a href="https://github.com/google-research/rrsi">Code on GitHub</a><br>
+  <a href="https://regularized-rsi.com/">Project page</a>
+</p>
+
+</main>
+
+<script>
+(function () {
+  var root = document.documentElement;
+
+  /* Theme toggle: follows the OS until the reader chooses. */
+  var themeBtn = document.getElementById('theme');
+  function effectiveTheme() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function labelTheme() {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    themeBtn.setAttribute('aria-label', 'Switch to ' + next + ' theme');
+    themeBtn.title = 'Switch to ' + next + ' theme';
+  }
+  themeBtn.addEventListener('click', function () {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('rrsi-theme', next); } catch (e) {}
+    labelTheme();
+  });
+  labelTheme();
+
+  /* Text size: four steps, remembered. */
+  var sizes = ['s', 'm', 'l', 'xl'];
+  function currentSize() { return root.getAttribute('data-size') || 'm'; }
+  function setSize(s) {
+    if (s === 'm') root.removeAttribute('data-size'); else root.setAttribute('data-size', s);
+    try { localStorage.setItem('rrsi-size', s); } catch (e) {}
+  }
+  document.getElementById('size-up').addEventListener('click', function () {
+    var i = sizes.indexOf(currentSize()); setSize(sizes[Math.min(sizes.length - 1, i + 1)]);
+  });
+  document.getElementById('size-down').addEventListener('click', function () {
+    var i = sizes.indexOf(currentSize()); setSize(sizes[Math.max(0, i - 1)]);
+  });
+
+  /* Edit-budget explorer. */
+  var B = [4, 4, 4, 4, 3, 3, 3, 2, 2, 2, 1];
+  var slider = document.getElementById('round');
+  var readout = document.getElementById('budget-readout');
+  var roundVal = document.getElementById('round-val');
+  var chips = document.getElementById('chips');
+  var bars = document.querySelectorAll('.budget-bar');
+  function renderBudget() {
+    var t = parseInt(slider.value, 10);
+    var b = B[t];
+    roundVal.textContent = 'round ' + t;
+    readout.textContent = b === 1
+      ? 'A candidate may make exactly one edit, so any change in score can be traced to it.'
+      : 'A candidate may bundle up to ' + b + ' independent edits.';
+    bars.forEach(function (r) {
+      var on = parseInt(r.getAttribute('data-t'), 10) === t;
+      r.setAttribute('class', 'budget-bar ' + (on ? 'f-purple' : 'w-purple'));
+    });
+    var html = '';
+    for (var i = 0; i < b; i++) html += '<span class="chip">edit ' + (i + 1) + '</span>';
+    chips.innerHTML = html;
+  }
+  slider.addEventListener('input', renderBudget);
+  renderBudget();
+})();
+</script>
+</body>
+</html>
