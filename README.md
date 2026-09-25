@@ -24,3 +24,6 @@
 - ARES: An Automated Evaluation Framework for Retrieval-Augmented Generation Systems
   - https://arxiv.org/html/2311.09476v2
   - https://edangx100.github.io/interesting_papers/ares
+- RRSI: Regularized Recursive Self-Improvement of Agent Harnesses
+  - https://arxiv.org/html/2609.24972v2
+  - https://edangx100.github.io/interesting_papers//rrsi
