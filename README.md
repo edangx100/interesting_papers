@@ -26,4 +26,7 @@
   - https://edangx100.github.io/interesting_papers/ares
 - RRSI: Regularized Recursive Self-Improvement of Agent Harnesses
   - https://arxiv.org/html/2609.24972v2
-  - https://edangx100.github.io/interesting_papers//rrsi
+  - https://edangx100.github.io/interesting_papers/rrsi
+- Measuring AI agent autonomy in practice
+  - https://www.anthropic.com/research/measuring-agent-autonomy
+  - https://edangx100.github.io/interesting_papers/measure_agent_autonomy
