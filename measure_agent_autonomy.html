@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dusk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Measuring AI agent autonomy in practice, explained</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&display=swap" rel="stylesheet">
+<style>
+  /* Dusk: a soft slate, never pure black; warm off-white ink, never pure white */
+  :root {
+    --bg: #202226;
+    --bg2: #282b30;
+    --ink: #dbd7cd;
+    --ink2: #aaa69d;
+    --muted: #77756f;
+    --grid: #3a3d43;
+    --blue: #7dbad0;
+    --teal: #7cc4a7;
+    --gold: #dcb46e;
+    --rose: #d88a7a;
+    --fs: 19px;
+    color-scheme: dark;
+  }
+  /* Paper: a grey-toned page for daylight reading */
+  :root[data-theme="paper"] {
+    --bg: #ecebe6;
+    --bg2: #e2e0da;
+    --ink: #2e2d2a;
+    --ink2: #57554f;
+    --muted: #8a877f;
+    --grid: #d0cdc4;
+    --blue: #2f7893;
+    --teal: #2c866b;
+    --gold: #a2721f;
+    --rose: #ad5340;
+    color-scheme: light;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { font-size: var(--fs); scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-optical-sizing: auto;
+    line-height: 1.72;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .4s ease, color .4s ease;
+  }
+  p, li, figcaption { text-wrap: pretty; }
+  a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 3px; }
+
+  .col { max-width: calc(35rem + 2.8rem); margin: 0 auto; padding: 0 1.4rem; }
+  .wide { max-width: 48rem; margin: 3.6rem auto; padding: 0 1.4rem; }
+  .wide .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .wide svg { display: block; width: 100%; height: auto; min-width: 480px; }
+  .wide svg.fluid { min-width: 0; }
+  figcaption {
+    max-width: 35rem; margin: 1rem auto 0;
+    font-size: .84rem; line-height: 1.62; color: var(--ink2);
+  }
+  figcaption em { color: var(--ink); font-style: italic; }
+
+  header.hero { padding-top: 7.5rem; padding-bottom: 1rem; }
+  h1 {
+    font-weight: 500; font-size: clamp(2.1rem, 5.4vw, 3.2rem);
+    line-height: 1.08; letter-spacing: -0.012em; margin: 0 0 1.6rem;
+  }
+  .lede { font-size: 1.3rem; line-height: 1.5; margin: 0 0 1.4rem; color: var(--ink); }
+  .meta { color: var(--ink2); font-size: .88rem; margin: 0; }
+  .intro { font-size: 1.04rem; margin-top: 3.4rem; }
+
+  h2 {
+    font-weight: 500; font-size: 1.62rem; line-height: 1.22;
+    margin: 6rem 0 1.2rem; letter-spacing: -0.005em;
+  }
+  h3 { font-weight: 600; font-size: 1.04rem; margin: 2.4rem 0 .4rem; }
+  p { margin: 0 0 1.25rem; }
+
+  .c-blue { color: var(--blue); } .c-gold { color: var(--gold); }
+  .c-teal { color: var(--teal); } .c-rose { color: var(--rose); }
+
+  .takeaway {
+    margin: 2.2rem 0; padding: .2rem 0 .2rem 1.3rem;
+    border-left: 2px solid var(--grid);
+    font-style: italic; color: var(--ink);
+    font-size: 1.08rem; line-height: 1.6;
+  }
+
+  /* SVG vocabulary */
+  svg text { font-family: inherit; fill: var(--ink2); font-size: 15px; }
+  svg .t-ink { fill: var(--ink); }
+  svg .t-blue { fill: var(--blue); } svg .t-gold { fill: var(--gold); }
+  svg .t-teal { fill: var(--teal); } svg .t-rose { fill: var(--rose); }
+  svg .t-muted { fill: var(--muted); }
+  svg .big { font-size: 20px; }
+  svg .sm { font-size: 13px; }
+  svg .it { font-style: italic; }
+  .f-none { fill: none; }
+  .f-blue { fill: var(--blue); } .f-gold { fill: var(--gold); }
+  .f-teal { fill: var(--teal); } .f-rose { fill: var(--rose); }
+  .f-muted { fill: var(--muted); } .f-ink2 { fill: var(--ink2); } .f-bg { fill: var(--bg); }
+  .s-blue { stroke: var(--blue); } .s-gold { stroke: var(--gold); }
+  .s-teal { stroke: var(--teal); } .s-rose { stroke: var(--rose); }
+  .s-grid { stroke: var(--grid); } .s-muted { stroke: var(--muted); } .s-ink2 { stroke: var(--ink2); }
+  .s-bg { stroke: var(--bg); }
+  .ax { stroke: var(--grid); stroke-width: 1; fill: none; }
+  .ln { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  .draw.armed { transition: stroke-dashoffset 2.2s cubic-bezier(.45,.05,.25,1); }
+
+  /* Bars built from small inline SVGs */
+  .bars { max-width: 35rem; margin: 0 auto; }
+  .bar-row { margin: 0 0 1.05rem; }
+  .bar-row .lbl { display: flex; justify-content: space-between; gap: 1rem; font-size: .86rem; line-height: 1.4; margin-bottom: .35rem; color: var(--ink); }
+  .bar-row .lbl span:last-child { color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .bar-row svg { display: block; width: 100%; height: 12px; min-width: 0; }
+  .track { fill: var(--bg2); }
+  .reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 2.4rem; max-width: 48rem; margin: 0 auto; }
+  .reasons h4 { font-weight: 500; font-size: 1rem; margin: 0 0 1.1rem; }
+  @media (max-width: 720px) { .reasons { grid-template-columns: 1fr; gap: 1.6rem; } }
+
+  /* Interactive slider */
+  .control { max-width: 35rem; margin: 1.4rem auto 0; }
+  .control label { display: block; font-size: .86rem; color: var(--ink2); margin-bottom: .4rem; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+  .readout { font-size: .95rem; margin-top: .6rem; min-height: 3.2em; }
+  .readout b { font-weight: 600; }
+
+  .key { list-style: none; padding: 0; margin: 1.2rem auto 0; max-width: 48rem;
+    display: grid; grid-template-columns: 1fr 1fr; gap: .45rem 2rem; font-size: .84rem; line-height: 1.45; color: var(--ink2); }
+  .key li { display: grid; grid-template-columns: 1.6rem 1fr; }
+  .key .n { font-weight: 600; font-variant-numeric: tabular-nums; }
+  @media (max-width: 720px) { .key { grid-template-columns: 1fr; } }
+
+  /* Reading comfort controls */
+  .controls {
+    position: fixed; top: calc(.8rem + env(safe-area-inset-top, 0px)); right: .8rem; z-index: 10;
+    display: flex; gap: .35rem;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .controls button {
+    font: inherit; font-size: 13px; color: var(--ink2);
+    background: var(--bg2); border: 1px solid var(--grid);
+    border-radius: 999px; padding: .35rem .75rem; cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .controls button:hover { color: var(--ink); border-color: var(--muted); }
+  .progress {
+    position: fixed; top: 0; left: 0; height: 2px; width: 100%;
+    transform-origin: 0 50%; transform: scaleX(0);
+    background: var(--blue); opacity: .55; z-index: 11;
+    padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box;
+  }
+
+  footer { padding: 5rem 0 6rem; }
+  footer p { color: var(--ink2); font-size: .92rem; }
+
+  @media (max-width: 560px) {
+    :root { --fs: 18px; }
+    header.hero { padding-top: 5.5rem; }
+    .lede { font-size: 1.18rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" aria-hidden="true"></div>
+<div class="controls" role="toolbar" aria-label="Reading comfort">
+  <button id="smaller" type="button" aria-label="Make text smaller">A−</button>
+  <button id="larger" type="button" aria-label="Make text larger">A+</button>
+  <button id="theme" type="button" aria-label="Switch to paper theme">Paper</button>
+</div>
+
+<header class="col hero">
+  <h1>Measuring AI agent autonomy in practice</h1>
+  <p class="lede">People are letting AI agents work on their own for longer, and they supervise them differently as trust grows, while most of what agents actually do stays low-risk and easy to undo.</p>
+  <p class="meta">An illustrated walk through <a href="https://www.anthropic.com/research/measuring-agent-autonomy">Anthropic’s February 2026 study</a> of millions of real agent interactions. About ten minutes to read.</p>
+</header>
+
+<main>
+<section class="col">
+  <p class="intro">An AI agent is an AI that can <em>do</em> things, not just talk: run code, edit files, send a message. Lab tests tell us what agents are capable of. This study asks a more down-to-earth question: what happens when real people actually use them? The researchers looked at millions of real interactions, using a privacy-preserving tool that surfaces patterns without anyone reading individual conversations, and measured four things: how long agents work before stopping, how people keep watch, when agents stop to ask for help, and how risky their actions are.</p>
+
+  <h2>First, what counts as an agent?</h2>
+  <p>There is no agreed definition, so the authors picked one they could actually measure: an agent is an AI system equipped with tools that let it take actions. That turns a fuzzy idea into something you can count. Every time the model reaches out and touches the world, that is one action.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll">
+  <svg viewBox="0 0 720 250" role="img" aria-label="Diagram: Claude sends a tool call out to the world, such as files, code, APIs or messages, and a result comes back.">
+    <defs>
+      <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-blue"/></marker>
+      <marker id="ah-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-teal"/></marker>
+    </defs>
+    <circle cx="130" cy="125" r="56" class="f-none s-blue" stroke-width="2"/>
+    <text x="130" y="121" text-anchor="middle" class="t-ink big">Claude</text>
+    <text x="130" y="145" text-anchor="middle" class="it">the model</text>
+
+    <rect x="468" y="48" width="226" height="154" rx="16" class="f-none s-grid" stroke-width="1.5"/>
+    <text x="581" y="82" text-anchor="middle" class="t-ink big">the world</text>
+    <g class="sm">
+      <rect x="490" y="100" width="84" height="32" rx="8" class="f-none s-grid"/><text x="532" y="121" text-anchor="middle">files</text>
+      <rect x="588" y="100" width="84" height="32" rx="8" class="f-none s-grid"/><text x="630" y="121" text-anchor="middle">code</text>
+      <rect x="490" y="146" width="84" height="32" rx="8" class="f-none s-grid"/><text x="532" y="167" text-anchor="middle">APIs</text>
+      <rect x="588" y="146" width="84" height="32" rx="8" class="f-none s-grid"/><text x="630" y="167" text-anchor="middle">messages</text>
+    </g>
+
+    <path d="M188,104 C270,28 380,24 460,82" class="ln s-blue draw" marker-end="url(#ah-blue)"/>
+    <text x="324" y="36" text-anchor="middle" class="t-blue">a tool call: one action</text>
+    <path d="M460,170 C380,226 270,226 188,148" class="ln s-teal draw" marker-end="url(#ah-teal)"/>
+    <text x="324" y="238" text-anchor="middle" class="t-teal">the result comes back</text>
+  </svg>
+  </div>
+  <figcaption>An agent, as this study defines it. Each <em>blue arrow</em>, one tool call, is the basic unit the researchers counted and classified.</figcaption>
+</figure>
+
+<section class="col">
+  <h2>Two windows onto the same world</h2>
+  <p>Anthropic has two very different views of agents in use, and each covers the other’s blind spot.</p>
+  <p>The <span class="c-blue">public API</span> is how thousands of companies build their own agents on Claude. It is broad, but Anthropic can’t see how those companies’ systems fit together, so it can’t stitch separate requests into sessions. It can only study each action on its own.</p>
+  <p><span class="c-gold">Claude Code</span>, Anthropic’s own coding agent, is the opposite. It is a single product, mostly used for software, but every session can be followed from start to finish: how long Claude worked, when it paused, when the person stepped in.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="lenses" viewBox="0 0 760 310" role="img" aria-label="Left: many scattered, unconnected dots representing individual API actions. Right: a few connected chains of dots representing complete Claude Code sessions, with occasional pauses and interruptions."></svg></div>
+  <figcaption>Breadth versus depth. On the left, API actions arrive as isolated points from many deployments. On the right, Claude Code sessions are visible as whole chains, including the moments where <em>Claude paused to ask</em> (blue squares) or <em>the person interrupted</em> (gold ticks).</figcaption>
+</figure>
+
+<section class="col">
+  <h2>How long does Claude work before it stops?</h2>
+  <p>In Claude Code, a <em>turn</em> is the stretch between Claude starting work and stopping, whether because it finished, asked a question, or got interrupted. Turn length is an imperfect measure of autonomy, since faster models shorten turns and harder tasks lengthen them, but it is the most direct one available.</p>
+  <p>Most turns are short. The typical turn, the median, lasts about <span class="c-blue">45 seconds</span>, and that has barely moved in months. So the interesting part is at the far end.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="sorted" viewBox="0 0 760 340" role="img" aria-label="A grid of 1,000 dots representing turns sorted from shortest to longest. The middle dot is the median, about 45 seconds. The very last dot is the 99.9th percentile, which grew from under 25 minutes to over 45 minutes."></svg></div>
+  <figcaption>Line up a thousand turns from shortest to longest. The dot halfway along is the median. The very last dot is the <em>99.9th percentile</em>: the longest one in a thousand. That lonely dot is where the most ambitious uses show up.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Between October 2025 and January 2026, that one-in-a-thousand turn nearly doubled in length, from <span class="c-gold">under 25 minutes</span> to <span class="c-gold">over 45 minutes</span>.</p>
+  <p>The shape of the rise matters as much as its size. If longer turns came purely from smarter models, you would expect a staircase: a jump at each model launch. Instead the climb is smooth. That points to other forces too: power users gradually trusting the tool, taking on bigger tasks, and the product itself improving week by week.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="trend" viewBox="0 0 720 330" role="img" aria-label="Line chart: the longest one-in-a-thousand turn rose smoothly from about 24 minutes in late September to about 46 minutes in early January, then eased to around 40 minutes by mid-February. A dashed hypothetical staircase shows what jumps at model launches would look like."></svg></div>
+  <figcaption>A redrawn sketch of the reported trend; the shape is faithful, individual values are approximate. The dip after mid-January coincides with Claude Code’s user base roughly doubling and people returning from the holidays with more tightly scoped work tasks.</figcaption>
+</figure>
+
+<section class="col">
+  <h2>Is 45 minutes a lot?</h2>
+  <p>It helps to put these durations on one scale. Because they span seconds to hours, the axis below is logarithmic: each step to the right multiplies time rather than adding to it.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="scale" viewBox="0 36 760 214" role="img" aria-label="Logarithmic time axis from 10 seconds to 6 hours. The typical turn sits around 40 to 55 seconds. The longest turns moved from about 25 to about 45 minutes. A dashed marker at 5 hours shows a lab estimate measured with a different yardstick."></svg></div>
+  <figcaption>The dashed marker is an outside benchmark from METR: Claude Opus 4.5 can succeed half the time at tasks that would take a <em>person</em> about five hours. That measures task difficulty in human time, not how long the model runs, so the two are not directly comparable, but the gap is suggestive.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Anthropic’s own internal usage points the same way. From August to December, Claude Code’s success rate on the hardest internal tasks doubled, while the number of times a person had to step in per session fell.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="internal" viewBox="0 0 720 230" role="img" aria-label="Two slope charts. Left: success rate on the hardest internal tasks doubled from August to December. Right: human interventions per session fell from 5.4 to 3.3."></svg></div>
+  <figcaption>More success with less hand-holding, measured on Anthropic’s internal Claude Code usage.</figcaption>
+</figure>
+
+<section class="col">
+  <p class="takeaway">The authors call this a deployment overhang: models can already handle more independence than people give them in practice.</p>
+
+  <h2>Trust changes how people supervise</h2>
+  <p>Claude Code asks for approval before each action by default. People can switch on full auto-approve and let it run. New users (fewer than 50 sessions) do that in roughly <span class="c-blue">20%</span> of sessions. By 750 sessions it is over <span class="c-blue">40%</span>.</p>
+  <p>You might guess experienced users simply stop paying attention. But they also <em>interrupt</em> more: about <span class="c-gold">5%</span> of turns for someone around ten sessions in, rising to about <span class="c-gold">9%</span> for seasoned users. Drag the slider to watch both happen at once.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="tenure" class="fluid" viewBox="0 0 720 420" role="img" aria-label="Two linked charts over account experience in sessions, on a log scale. Top: share of sessions on full auto-approve rises from about 20% to over 40%. Bottom: share of turns interrupted rises from about 5% to about 9% and flattens."></svg></div>
+  <div class="control">
+    <label for="sessions">Experience, in sessions</label>
+    <input id="sessions" type="range" min="0" max="3" step="0.01" value="1">
+    <div class="readout" id="readout" aria-live="polite"></div>
+  </div>
+  <figcaption>Smoothed sketch built from the values reported in the study, not the original data. The horizontal axis is logarithmic, so the step from 10 to 100 sessions takes the same width as 100 to 1,000.</figcaption>
+</figure>
+
+<section class="col">
+  <p>These two trends only look contradictory. They describe a change of strategy: from a gatekeeper who approves every step, to a monitor who lets work flow and steps in when something looks off.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="styles" viewBox="0 0 760 250" role="img" aria-label="Two timelines. Top: a slow line of actions, each preceded by a human approval. Bottom: a dense, fast line of actions with two interruptions."></svg></div>
+  <figcaption>Two oversight styles. <em>Gold gates</em> are approvals; <em>rose bars</em> are interruptions. The monitor approves nothing up front, which is exactly why interruptions become the main way to steer.</figcaption>
+</figure>
+
+<section class="col">
+  <p>The public API shows a related pattern. Simple actions, like editing one line of code, involve a human in some way 87% of the time. Complex ones, like hunting for security flaws or writing a compiler, only 67%. Approving every step simply stops being practical when there are hundreds of steps.</p>
+</section>
+
+<figure class="wide">
+  <div class="bars" id="complexity"></div>
+  <figcaption>Share of API tool calls with some human involvement. These are upper bounds: the classifier tended to overestimate human involvement.</figcaption>
+</figure>
+
+<section class="col">
+  <p class="takeaway">Good oversight does not mean approving every action. It means being in a position to step in when it matters.</p>
+
+  <h2>The agent stops itself, too</h2>
+  <p>People are not the only ones applying the brakes. Claude pauses to ask when it is unsure how to proceed, and on the most complex goals it does so more than twice as often as on the simplest ones. On those hardest goals, Claude stops to ask more than twice as often as people interrupt it.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="stops" viewBox="0 40 760 280" role="img" aria-label="Schematic: as goals get more complex, both Claude's clarification requests and human interruptions rise, but Claude's rise faster, ending more than twice as high."></svg></div>
+  <figcaption>Schematic of the reported shape, not the exact values. Both kinds of stop become more common as tasks get harder; <em>Claude’s own pauses</em> climb faster.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Why do these stops happen? Claude summarized the reasons across a sample of half a million pauses and half a million interruptions. The two lists are revealing side by side: Claude mostly stops to offer choices, while people mostly step in to supply context Claude lacked.</p>
+</section>
+
+<figure class="wide">
+  <div class="reasons">
+    <div><h4 class="c-blue">Why Claude pauses</h4><div id="r-claude"></div></div>
+    <div><h4 class="c-gold">Why people interrupt</h4><div id="r-human"></div></div>
+  </div>
+  <figcaption>Most common reasons, as a share of each sample; the lists are not exhaustive. Labels are paraphrased.</figcaption>
+</figure>
+
+<section class="col">
+  <p>The authors are careful not to oversell this. Claude may not always stop at the right moment or may ask questions it didn’t need to. Still, a model that recognizes its own uncertainty is a safety feature that works alongside permissions and human review, not instead of them.</p>
+
+  <h2>What are agents doing, and how risky is it?</h2>
+  <p>Here the study switches to the broad API view: a random sample of almost a million individual tool calls. Claude rated each action on two 1-to-10 scales. <span class="c-rose">Risk</span>: how bad would it be if this went wrong? <span class="c-blue">Autonomy</span>: is the agent following explicit instructions, or acting on its own? Similar actions were then grouped into clusters.</p>
+  <p>The headline numbers are reassuring. About 80% of actions come from agents with at least one safeguard, such as restricted permissions or required approval. About 73% have a human in the loop somehow. And only a sliver can’t be undone.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="irrev" viewBox="0 0 720 300" role="img" aria-label="A grid of 1,000 dots with 8 highlighted, showing that about 0.8% of agent actions appear irreversible."></svg></div>
+  <figcaption>Of every thousand agent actions, about <em>eight</em> appear irreversible, such as sending an email to a customer. The safeguard and human-in-the-loop shares are upper bounds.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Averages hide the edges, though. The chart below plots some of the most extreme clusters. Most activity crowds into the low-risk band at the bottom. The top-right corner, high risk and high autonomy, is sparse, but not empty.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll"><svg id="scatter" viewBox="0 0 720 470" role="img" aria-label="Scatter plot of risk against autonomy for ten example clusters. Most clusters sit in a low-risk band. One cluster, a key-leaking backdoor likely from security testing, sits in the high-risk, high-autonomy corner."></svg></div>
+  <ol class="key" id="key"></ol>
+  <figcaption>Ten of the most extreme clusters, placed at their average scores. <em>Rose</em> points were chosen for high risk, <em>blue</em> ones for high autonomy. The faint band is a schematic of where most clusters fall. Many of the scariest-looking clusters are probably security evaluations rather than real attacks; from single API calls, Anthropic often can’t tell.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Where are agents working? Mostly in one place. Software engineering accounts for nearly half of all agent tool calls. Everything else, from customer service to finance, is a long tail of small slices.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll">
+  <svg viewBox="0 0 720 196" role="img" aria-label="A bar split nearly in half: software engineering takes almost 50% of tool calls, and many small domains share the rest.">
+    <defs>
+      <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="7" class="s-muted" stroke-width="2"/>
+      </pattern>
+    </defs>
+    <text x="40" y="44" class="t-blue">Software engineering: nearly half</text>
+    <rect x="40" y="58" width="313" height="42" rx="4" class="f-blue" opacity=".85"/>
+    <rect x="356" y="58" width="324" height="42" rx="4" fill="url(#hatch)" opacity=".7"/>
+    <text x="356" y="44">Everything else, spread thin</text>
+    <line x1="40" y1="108" x2="40" y2="116" class="ax"/><text x="40" y="134" class="sm" text-anchor="middle">0</text>
+    <line x1="360" y1="108" x2="360" y2="116" class="ax"/><text x="360" y="134" class="sm" text-anchor="middle">50%</text>
+    <line x1="680" y1="108" x2="680" y2="116" class="ax"/><text x="680" y="134" class="sm" text-anchor="end">100%</text>
+    <text x="680" y="162" class="sm" text-anchor="end">business intelligence, customer service, sales, finance,</text>
+    <text x="680" y="180" class="sm" text-anchor="end">e-commerce and more; none above a few percent</text>
+  </svg>
+  </div>
+  <figcaption>Share of API tool calls by domain. Healthcare, finance and cybersecurity uses are emerging, but not yet at scale.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Software went first partly because it is easy to check: you can run code and see whether it works. In law, medicine or finance, verifying an agent’s output can take as much expertise as producing it, which may slow the growth of trust. As agents spread there, the authors expect the frontier of risk and autonomy to widen.</p>
+
+  <h2>Autonomy is made by three parties</h2>
+  <p>The central lesson is that autonomy is not a fixed property of a model. You can’t read it off a benchmark. It emerges from how the model behaves, how the person chooses to watch, and how the product is designed.</p>
+</section>
+
+<figure class="wide">
+  <div class="scroll">
+  <svg viewBox="0 0 720 420" role="img" aria-label="Triangle diagram: the model, the person and the product each push on the autonomy observed in practice, which sits in the middle.">
+    <line x1="360" y1="78" x2="140" y2="318" class="ax" stroke-width="1.5"/>
+    <line x1="360" y1="78" x2="580" y2="318" class="ax" stroke-width="1.5"/>
+    <line x1="140" y1="318" x2="580" y2="318" class="ax" stroke-width="1.5"/>
+    <line x1="360" y1="116" x2="360" y2="218" class="s-ink2 draw" stroke-width="1.6" fill="none"/>
+    <line x1="176" y1="306" x2="330" y2="248" class="s-ink2 draw" stroke-width="1.6" fill="none"/>
+    <line x1="544" y1="306" x2="390" y2="248" class="s-ink2 draw" stroke-width="1.6" fill="none"/>
+    <circle cx="360" cy="236" r="26" class="f-gold" opacity=".22"/>
+    <circle cx="360" cy="236" r="9" class="f-gold"/>
+    <text x="360" y="284" text-anchor="middle" class="t-ink">the autonomy you</text>
+    <text x="360" y="304" text-anchor="middle" class="t-ink">actually observe</text>
+
+    <circle cx="360" cy="78" r="38" class="f-bg s-blue" stroke-width="2"/>
+    <text x="360" y="84" text-anchor="middle" class="t-blue">model</text>
+    <text x="412" y="72" class="sm">pauses to ask</text>
+    <text x="412" y="90" class="sm">when it is unsure</text>
+
+    <circle cx="140" cy="318" r="38" class="f-bg s-gold" stroke-width="2"/>
+    <text x="140" y="324" text-anchor="middle" class="t-gold">person</text>
+    <text x="140" y="378" text-anchor="middle" class="sm">builds trust with experience,</text>
+    <text x="140" y="396" text-anchor="middle" class="sm">shifts from approving to watching</text>
+
+    <circle cx="580" cy="318" r="38" class="f-bg s-teal" stroke-width="2"/>
+    <text x="580" y="324" text-anchor="middle" class="t-teal">product</text>
+    <text x="580" y="378" text-anchor="middle" class="sm">defaults, permissions,</text>
+    <text x="580" y="396" text-anchor="middle" class="sm">and ways to steer mid-task</text>
+  </svg>
+  </div>
+  <figcaption>What any deployment shows is the result of all three pushing at once, which is why pre-deployment tests alone can’t fully describe it.</figcaption>
+</figure>
+
+<section class="col">
+  <h2>What the authors suggest</h2>
+  <p>Because this kind of measurement is so new, the recommendations are deliberately modest.</p>
+
+  <h3>Keep watching after launch</h3>
+  <p>Pre-release testing shows what an agent can do in a controlled setting. Only monitoring after deployment shows how people really use it. One gap to close: finding privacy-preserving ways to link separate API requests into whole agent sessions.</p>
+
+  <h3>Teach models to know when they don’t know</h3>
+  <p>Training agents to notice their own uncertainty and raise it with a person complements external guardrails. Anthropic trains Claude this way and encourages other developers to do the same.</p>
+
+  <h3>Design for watching, not just approving</h3>
+  <p>Since experienced users shift toward monitoring, products should give people a clear, trustworthy view of what the agent is doing and simple ways to redirect it mid-task.</p>
+
+  <h3>Don’t mandate a single interaction pattern yet</h3>
+  <p>Rules requiring a human to approve every action would add friction without clearly adding safety. What matters is whether people are in a position to monitor and intervene, not the specific ritual they use.</p>
+
+  <h2>What this study can’t see</h2>
+  <p>The data covers only Anthropic’s models, over a short window from late 2025 to early 2026. The richest findings come from Claude Code, which is overwhelmingly used for software and may not generalize. Risk and autonomy scores were assigned by Claude and are best read as comparisons rather than precise measurements, and privacy rules mean humans couldn’t inspect the raw data. Sampling by individual tool call over-represents workflows that take many small steps. And from a single API call, Anthropic can’t always tell a real action from a test, or see human review that happens further downstream.</p>
+</section>
+</main>
+
+<footer class="col">
+  <p>Read the original: <a href="https://www.anthropic.com/research/measuring-agent-autonomy">Measuring AI agent autonomy in practice</a> by Miles McCain, Thomas Millar, Saffron Huang and colleagues at Anthropic, with a <a href="https://cdn.sanity.io/files/4zrzovbb/website/55e4d2de6eb39b3a9259c3f74843f86b1a12e265.pdf">methodology appendix</a>.</p>
+</footer>
+
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const S = (tag, a = {}, p) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  const T = (p, x, y, s, cls = "", anchor = "start") => { const e = S("text", { x, y, class: cls, "text-anchor": anchor }, p); e.textContent = s; return e; };
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const smooth = pts => {
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const sstep = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+
+  /* ---------- Two lenses ---------- */
+  (function () {
+    const svg = document.getElementById("lenses"), r = rng(7);
+    S("rect", { x: 10, y: 10, width: 355, height: 230, rx: 14, class: "f-none s-grid", "stroke-width": 1.5 }, svg);
+    S("rect", { x: 395, y: 10, width: 355, height: 230, rx: 14, class: "f-none s-grid", "stroke-width": 1.5 }, svg);
+    for (let i = 0; i < 150; i++) {
+      S("circle", { cx: 32 + r() * 311, cy: 30 + r() * 190, r: 3, class: "f-blue", opacity: (.45 + r() * .45).toFixed(2) }, svg);
+    }
+    T(svg, 187, 270, "Public API", "t-blue", "middle");
+    T(svg, 187, 292, "many deployments, one action at a time", "sm", "middle");
+    const rows = [46, 86, 126, 166, 206];
+    rows.forEach((y, k) => {
+      const len = 150 + Math.floor(r() * 170), x0 = 418;
+      S("line", { x1: x0, y1: y, x2: x0 + len, y2: y, class: "s-muted", "stroke-width": 1.4 }, svg);
+      for (let x = x0; x <= x0 + len; x += 13) S("circle", { cx: x, cy: y, r: 2.8, class: "f-gold", opacity: .8 }, svg);
+      const stopAt = x0 + 50 + Math.floor(r() * (len - 70));
+      if (k % 2 === 0) S("rect", { x: stopAt - 5, y: y - 5, width: 10, height: 10, rx: 2, class: "f-blue" }, svg);
+      else S("line", { x1: stopAt, y1: y - 11, x2: stopAt, y2: y + 11, class: "s-gold", "stroke-width": 2.6, "stroke-linecap": "round" }, svg);
+      if (k === 2) S("line", { x1: x0 + len - 18, y1: y - 11, x2: x0 + len - 18, y2: y + 11, class: "s-gold", "stroke-width": 2.6, "stroke-linecap": "round" }, svg);
+    });
+    T(svg, 572, 270, "Claude Code", "t-gold", "middle");
+    T(svg, 572, 292, "one product, whole sessions start to finish", "sm", "middle");
+  })();
+
+  /* ---------- Sorted 1,000 turns ---------- */
+  (function () {
+    const svg = document.getElementById("sorted"), cols = 40, cell = 12, x0 = 20, y0 = 22;
+    for (let i = 0; i < 1000; i++) {
+      const c = i % cols, rr = Math.floor(i / cols);
+      const op = (.18 + .5 * Math.pow(i / 999, 3)).toFixed(3);
+      S("circle", { cx: x0 + c * cell + 6, cy: y0 + rr * cell + 6, r: 3.3, class: "f-ink2", opacity: op }, svg);
+    }
+    const pos = i => [x0 + (i % cols) * cell + 6, y0 + Math.floor(i / cols) * cell + 6];
+    const [mx, my] = pos(499), [lx, ly] = pos(999);
+    S("circle", { cx: mx, cy: my, r: 5.5, class: "f-blue" }, svg);
+    S("circle", { cx: mx, cy: my, r: 11, class: "f-none s-blue", "stroke-width": 1.5 }, svg);
+    S("path", { d: `M${mx + 12},${my - 4} C${mx + 140},${my - 60} 470,120 526,112`, class: "f-none s-blue", "stroke-width": 1.4 }, svg);
+    T(svg, 534, 108, "the middle turn (median)", "t-blue");
+    T(svg, 534, 130, "about 45 seconds", "");
+    S("circle", { cx: lx, cy: ly, r: 6, class: "f-gold" }, svg);
+    S("circle", { cx: lx, cy: ly, r: 12, class: "f-none s-gold", "stroke-width": 1.5 }, svg);
+    S("path", { d: `M${lx + 12},${ly - 6} C516,${ly - 30} 510,262 526,254`, class: "f-none s-gold", "stroke-width": 1.4 }, svg);
+    T(svg, 534, 250, "the longest one in 1,000", "t-gold");
+    T(svg, 534, 272, "under 25 min in October,", "");
+    T(svg, 534, 292, "over 45 min by January", "");
+    T(svg, x0, 12, "shortest", "sm t-muted");
+    T(svg, x0 + cols * cell - 24, 336, "longest", "sm t-muted", "end");
+  })();
+
+  /* ---------- Trend with hypothetical staircase ---------- */
+  (function () {
+    const svg = document.getElementById("trend");
+    const X = d => 70 + d / 146 * 600, Y = v => 270 - v / 50 * 225;
+    [10, 20, 30, 40, 50].forEach(v => { S("line", { x1: 70, y1: Y(v), x2: 670, y2: Y(v), class: "ax", opacity: .7 }, svg); T(svg, 60, Y(v) + 5, v, "sm", "end"); });
+    S("line", { x1: 70, y1: Y(0), x2: 670, y2: Y(0), class: "ax" }, svg);
+    T(svg, 60, Y(0) + 5, "0", "sm", "end");
+    T(svg, 20, 30, "minutes", "sm it");
+    [["Oct", 9], ["Nov", 40], ["Dec", 70], ["Jan", 101], ["Feb", 132]].forEach(([m, d]) => {
+      S("line", { x1: X(d), y1: Y(0), x2: X(d), y2: Y(0) + 6, class: "ax" }, svg);
+      T(svg, X(d), Y(0) + 26, m, "sm", "middle");
+    });
+    const stairs = [[0, 23.5], [45, 23.5], [45, 33], [95, 33], [95, 44], [146, 44]].map(([d, v]) => `${X(d)},${Y(v)}`).join(" L");
+    S("path", { d: "M" + stairs, class: "f-none s-muted", "stroke-width": 1.6, "stroke-dasharray": "5 6" }, svg);
+    const pts = [[0, 23.5], [14, 24.6], [28, 26.8], [42, 29.6], [56, 32.2], [70, 35.1], [84, 38.6], [98, 43], [108, 46], [118, 45], [132, 41.5], [146, 40]].map(([d, v]) => [X(d), Y(v)]);
+    S("path", { d: smooth(pts), class: "ln s-gold draw" }, svg);
+    S("circle", { cx: pts[0][0], cy: pts[0][1], r: 4.5, class: "f-gold" }, svg);
+    S("circle", { cx: pts[8][0], cy: pts[8][1], r: 4.5, class: "f-gold" }, svg);
+    T(svg, pts[0][0] + 6, pts[0][1] + 26, "under 25 min", "t-gold sm");
+    T(svg, pts[8][0], pts[8][1] - 14, "over 45 min", "t-gold sm", "middle");
+    T(svg, X(6), Y(36), "longest 1 in 1,000 turns", "t-gold");
+    T(svg, X(146), Y(15), "dashed: the staircase we’d expect if", "sm t-muted", "end");
+    T(svg, X(146), Y(15) + 18, "model launches alone drove it (hypothetical)", "sm t-muted", "end");
+  })();
+
+  /* ---------- Log time scale ---------- */
+  (function () {
+    const svg = document.getElementById("scale");
+    const L0 = 1, L1 = Math.log10(21600), X = t => 50 + (Math.log10(t) - L0) / (L1 - L0) * 660, ay = 150;
+    S("line", { x1: 50, y1: ay, x2: 710, y2: ay, class: "ax", "stroke-width": 1.4 }, svg);
+    [[10, "10 s"], [60, "1 min"], [300, "5 min"], [900, "15 min"], [1800, "30 min"], [3600, "1 h"], [7200, "2 h"], [18000, "5 h"]].forEach(([t, l]) => {
+      S("line", { x1: X(t), y1: ay - 5, x2: X(t), y2: ay + 5, class: "ax", "stroke-width": 1.4 }, svg);
+      T(svg, X(t), ay + 26, l, "sm", "middle");
+    });
+    S("rect", { x: X(40), y: ay - 9, width: X(55) - X(40), height: 18, rx: 4, class: "f-blue", opacity: .55 }, svg);
+    T(svg, X(46), ay - 22, "typical turn: 40 to 55 s", "t-blue", "middle");
+    const a = X(1470), b = X(2700);
+    S("circle", { cx: a, cy: ay, r: 6, class: "f-bg s-gold", "stroke-width": 2 }, svg);
+    S("circle", { cx: b, cy: ay, r: 6, class: "f-gold" }, svg);
+    S("path", { d: `M${a},${ay - 12} Q${(a + b) / 2},${ay - 50} ${b - 4},${ay - 14}`, class: "f-none s-gold draw", "stroke-width": 1.8 }, svg);
+    T(svg, (a + b) / 2, 62, "longest 1 in 1,000 turns", "t-gold", "middle");
+    T(svg, (a + b) / 2, 82, "Oct → Jan", "sm", "middle");
+    const m = X(18000);
+    S("line", { x1: m, y1: ay - 22, x2: m, y2: ay + 12, class: "s-rose", "stroke-width": 2, "stroke-dasharray": "4 4" }, svg);
+    T(svg, m + 8, ay + 62, "lab estimate: ~5 h of human work", "sm t-rose", "end");
+    T(svg, m + 8, ay + 80, "(a different yardstick)", "sm t-rose", "end");
+  })();
+
+  /* ---------- Internal slopes ---------- */
+  (function () {
+    const svg = document.getElementById("internal");
+    const panel = (x0, x1, title, v0, v1, max, l0, l1, cls) => {
+      const Y = v => 190 - v / max * 120;
+      T(svg, (x0 + x1) / 2, 30, title, "t-ink", "middle");
+      S("line", { x1: x0 - 20, y1: 190, x2: x1 + 20, y2: 190, class: "ax" }, svg);
+      T(svg, x0, 214, "Aug", "sm", "middle"); T(svg, x1, 214, "Dec", "sm", "middle");
+      S("line", { x1: x0, y1: Y(v0), x2: x1, y2: Y(v1), class: "ln draw " + cls }, svg);
+      S("circle", { cx: x0, cy: Y(v0), r: 5, class: cls.replace("s-", "f-") }, svg);
+      S("circle", { cx: x1, cy: Y(v1), r: 5, class: cls.replace("s-", "f-") }, svg);
+      T(svg, x0 - 12, Y(v0) + 5, l0, cls.replace("s-", "t-"), "end");
+      T(svg, x1 + 12, Y(v1) + 5, l1, cls.replace("s-", "t-"));
+    };
+    panel(90, 270, "Success on the hardest tasks", 1, 2, 2.3, "1×", "2×", "s-teal");
+    panel(450, 630, "Human interventions per session", 5.4, 3.3, 6.2, "5.4", "3.3", "s-gold");
+  })();
+
+  /* ---------- Tenure (interactive) ---------- */
+  (function () {
+    const svg = document.getElementById("tenure"), input = document.getElementById("sessions"), out = document.getElementById("readout");
+    const X = u => 80 + u / 3 * 600;
+    const auto = u => 20 + 22.5 * sstep((u - 1.3) / 1.7);
+    const intr = u => 4.7 + 4.3 * sstep((u - 0.6) / 2.1);
+    const Ya = v => 170 - v / 50 * 130, Yi = v => 380 - v / 12 * 130;
+    T(svg, 80, 24, "Sessions on full auto-approve", "t-blue");
+    T(svg, 80, 234, "Turns where the person interrupts", "t-gold");
+    [0, 20, 40].forEach(v => { S("line", { x1: 80, y1: Ya(v), x2: 680, y2: Ya(v), class: "ax", opacity: v ? .6 : 1 }, svg); T(svg, 70, Ya(v) + 5, v + "%", "sm", "end"); });
+    [0, 5, 10].forEach(v => { S("line", { x1: 80, y1: Yi(v), x2: 680, y2: Yi(v), class: "ax", opacity: v ? .6 : 1 }, svg); T(svg, 70, Yi(v) + 5, v + "%", "sm", "end"); });
+    [[0, "1"], [1, "10"], [2, "100"], [3, "1,000 sessions"]].forEach(([u, l], i) => T(svg, X(u), 404, l, "sm", i === 3 ? "end" : "middle"));
+    const pa = [], pi = [];
+    for (let k = 0; k <= 60; k++) { const u = k / 20; pa.push([X(u), Ya(auto(u))]); pi.push([X(u), Yi(intr(u))]); }
+    S("path", { d: smooth(pa), class: "ln s-blue draw" }, svg);
+    S("path", { d: smooth(pi), class: "ln s-gold draw" }, svg);
+    const cur = S("line", { y1: 40, y2: 382, class: "s-muted", "stroke-width": 1, "stroke-dasharray": "3 4" }, svg);
+    const da = S("circle", { r: 6, class: "f-blue" }, svg), di = S("circle", { r: 6, class: "f-gold" }, svg);
+    const la = T(svg, 0, 0, "", "t-blue"), li = T(svg, 0, 0, "", "t-gold");
+    const update = () => {
+      const u = +input.value, x = X(u), a = auto(u), i = intr(u), n = Math.round(Math.pow(10, u));
+      cur.setAttribute("x1", x); cur.setAttribute("x2", x);
+      da.setAttribute("cx", x); da.setAttribute("cy", Ya(a));
+      di.setAttribute("cx", x); di.setAttribute("cy", Yi(i));
+      const right = x < 560;
+      [[la, Ya(a), Math.round(a) + "%"], [li, Yi(i), i.toFixed(1) + "%"]].forEach(([t, y, s]) => {
+        t.textContent = s; t.setAttribute("x", right ? x + 12 : x - 12); t.setAttribute("y", y - 10);
+        t.setAttribute("text-anchor", right ? "start" : "end");
+      });
+      out.innerHTML = `At <b>${n.toLocaleString()}</b> session${n === 1 ? "" : "s"}: about <b class="c-blue">${Math.round(a)}%</b> of sessions run on full auto-approve, and the person interrupts in about <b class="c-gold">${i.toFixed(1)}%</b> of turns.`;
+    };
+    input.addEventListener("input", update); update();
+  })();
+
+  /* ---------- Oversight styles ---------- */
+  (function () {
+    const svg = document.getElementById("styles");
+    T(svg, 30, 40, "Early on: approve every step", "t-ink");
+    S("line", { x1: 40, y1: 84, x2: 730, y2: 84, class: "ax" }, svg);
+    for (let i = 0; i < 11; i++) {
+      const x = 76 + i * 62;
+      S("line", { x1: x - 22, y1: 70, x2: x - 22, y2: 98, class: "s-gold", "stroke-width": 2.4, "stroke-linecap": "round" }, svg);
+      S("path", { d: `M${x - 27},${62} l4,4 l7,-8`, class: "f-none s-gold", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+      S("circle", { cx: x, cy: 84, r: 4.5, class: "f-blue" }, svg);
+    }
+    T(svg, 30, 158, "Later: let it run, step in when needed", "t-ink");
+    S("line", { x1: 40, y1: 196, x2: 730, y2: 196, class: "ax" }, svg);
+    for (let x = 58; x <= 722; x += 20) S("circle", { cx: x, cy: 196, r: 3.8, class: "f-blue" }, svg);
+    [318, 578].forEach(x => {
+      S("line", { x1: x, y1: 178, x2: x, y2: 214, class: "s-rose", "stroke-width": 3, "stroke-linecap": "round" }, svg);
+      T(svg, x, 236, "interrupt", "sm t-rose", "middle");
+    });
+  })();
+
+  /* ---------- Bars ---------- */
+  const bar = (host, label, value, max, cls, suffix = "%") => {
+    const row = document.createElement("div"); row.className = "bar-row";
+    row.innerHTML = `<div class="lbl"><span>${label}</span><span>${value}${suffix}</span></div>`;
+    const svg = S("svg", { viewBox: "0 0 100 12", preserveAspectRatio: "none", "aria-hidden": "true" });
+    S("rect", { x: 0, y: 0, width: 100, height: 12, rx: 2, class: "track" }, svg);
+    S("rect", { x: 0, y: 0, width: value / max * 100, height: 12, rx: 2, class: cls, opacity: .85 }, svg);
+    row.appendChild(svg); host.appendChild(row);
+  };
+  const cx = document.getElementById("complexity");
+  bar(cx, "Simplest actions, like editing a single line of code", 87, 100, "f-gold");
+  bar(cx, "Most complex actions, like hunting for security flaws", 67, 100, "f-gold");
+
+  const rc = document.getElementById("r-claude"), rh = document.getElementById("r-human");
+  [["Offer a choice between approaches", 35], ["Gather diagnostics or test results", 21], ["Clarify a vague or incomplete request", 13], ["Ask for missing credentials or access", 12], ["Get a go-ahead before acting", 11]]
+    .forEach(([l, v]) => bar(rc, l, v, 40, "f-blue"));
+  [["Supply missing context or a correction", 32], ["Claude was slow, stuck, or overdoing it", 17], ["Had enough help to carry on alone", 7], ["Wanted to take the next step themselves", 7], ["Changed the requirements mid-task", 5]]
+    .forEach(([l, v]) => bar(rh, l, v, 40, "f-gold"));
+
+  /* ---------- Clarification schematic ---------- */
+  (function () {
+    const svg = document.getElementById("stops");
+    const xs = [170, 320, 470, 620], Y = v => 270 - v * 58;
+    const claude = [1.5, 2.0, 2.6, 3.4], human = [1.0, 1.15, 1.35, 1.6];
+    S("line", { x1: 150, y1: 270, x2: 640, y2: 270, class: "ax" }, svg);
+    xs.forEach(x => S("line", { x1: x, y1: 270, x2: x, y2: 276, class: "ax" }, svg));
+    T(svg, 170, 298, "simplest goals", "sm", "middle");
+    T(svg, 620, 298, "most complex goals", "sm", "middle");
+    const g = S("g", { transform: "translate(40,170) rotate(-90)" }, svg);
+    T(g, 0, 0, "how often work pauses", "sm it", "middle");
+    S("path", { d: smooth(xs.map((x, i) => [x, Y(claude[i])])), class: "ln s-blue draw" }, svg);
+    S("path", { d: smooth(xs.map((x, i) => [x, Y(human[i])])), class: "ln s-gold draw" }, svg);
+    xs.forEach((x, i) => { S("circle", { cx: x, cy: Y(claude[i]), r: 4.5, class: "f-blue" }, svg); S("circle", { cx: x, cy: Y(human[i]), r: 4.5, class: "f-gold" }, svg); });
+    T(svg, 156, Y(1.5) + 5, "Claude asks", "t-blue", "end");
+    T(svg, 156, Y(1.0) + 5, "people interrupt", "t-gold", "end");
+    const bx = 652, top = Y(3.4), bot = Y(1.6);
+    S("path", { d: `M${bx - 6},${top} h6 v${bot - top} h-6`, class: "f-none s-ink2", "stroke-width": 1.4 }, svg);
+    T(svg, bx + 10, (top + bot) / 2 - 4, "more than", "sm t-ink");
+    T(svg, bx + 10, (top + bot) / 2 + 14, "2× as often", "sm t-ink");
+  })();
+
+  /* ---------- 8 in 1,000 irreversible ---------- */
+  (function () {
+    const svg = document.getElementById("irrev"), cols = 50, cell = 13.6, r = rng(21);
+    const hot = new Set(); while (hot.size < 8) hot.add(Math.floor(r() * 1000));
+    for (let i = 0; i < 1000; i++) {
+      const x = 20 + (i % cols) * cell + 6.8, y = 12 + Math.floor(i / cols) * cell + 6.8;
+      if (hot.has(i)) { S("circle", { cx: x, cy: y, r: 9, class: "f-rose", opacity: .2 }, svg); S("circle", { cx: x, cy: y, r: 4.6, class: "f-rose" }, svg); }
+      else S("circle", { cx: x, cy: y, r: 3.2, class: "f-ink2", opacity: .28 }, svg);
+    }
+  })();
+  const safe = document.createElement("div"); safe.className = "bars"; safe.style.marginTop = "2rem";
+  document.getElementById("irrev").closest("figure").insertBefore(safe, document.getElementById("irrev").closest("figure").querySelector("figcaption"));
+  bar(safe, "Actions from agents with at least one safeguard", 80, 100, "f-teal");
+  bar(safe, "Actions with a human in the loop in some way", 73, 100, "f-teal");
+  bar(safe, "Actions that appear irreversible", 0.8, 100, "f-rose");
+
+  /* ---------- Risk vs autonomy scatter ---------- */
+  (function () {
+    const svg = document.getElementById("scatter"), key = document.getElementById("key");
+    const X = a => 80 + (a - 1) / 9 * 600, Y = v => 400 - (v - 1) / 9 * 360;
+    S("rect", { x: X(5.5), y: Y(10), width: X(10) - X(5.5), height: Y(5.5) - Y(10), class: "f-rose", opacity: .06 }, svg);
+    T(svg, X(10) - 10, Y(10) + 24, "high autonomy, high risk:", "sm t-rose", "end");
+    T(svg, X(10) - 10, Y(10) + 42, "sparse, but not empty", "sm t-rose", "end");
+    S("line", { x1: X(1), y1: Y(1), x2: X(10), y2: Y(1), class: "ax" }, svg);
+    S("line", { x1: X(1), y1: Y(1), x2: X(1), y2: Y(10), class: "ax" }, svg);
+    [1, 5, 10].forEach(v => { T(svg, X(v), Y(1) + 22, v, "sm", "middle"); T(svg, X(1) - 10, Y(v) + 5, v, "sm", "end"); });
+    T(svg, X(1), Y(1) + 48, "follows explicit instructions", "sm it");
+    T(svg, X(10), Y(1) + 48, "acts independently", "sm it", "end");
+    T(svg, (X(1) + X(10)) / 2, Y(1) + 48, "autonomy", "t-blue", "middle");
+    const g = S("g", { transform: `translate(26,${Y(5.5)}) rotate(-90)` }, svg);
+    T(g, 0, 0, "risk", "t-rose", "middle");
+    T(svg, X(1) + 8, Y(10) + 6, "could cause serious harm", "sm it");
+    const r = rng(3);
+    for (let i = 0; i < 90; i++) {
+      const t = r() * Math.PI * 2, d = Math.sqrt(r());
+      S("circle", { cx: X(4.5) + Math.cos(t) * d * 160, cy: Y(1.8) + Math.sin(t) * d * 26, r: 2.4, class: "f-ink2", opacity: .22 }, svg);
+    }
+    T(svg, X(1) + 8, Y(2.7), "most clusters (schematic)", "sm t-muted");
+    const P = [
+      [8.0, 6.0, "f-rose", 12, -10, "start", "A backdoor that leaks API keys, passed off as a feature"],
+      [2.9, 4.8, "f-rose", -12, -8, "end", "Moving containers of reactive chemicals in a lab"],
+      [3.2, 4.4, "f-rose", 12, 12, "start", "Retrieving patient medical records on request"],
+      [5.2, 3.6, "f-rose", 10, -10, "start", "Responding to fire emergencies with safety info"],
+      [4.8, 3.6, "f-rose", -12, -8, "end", "Shipping bug fixes to live web apps"],
+      [8.3, 3.3, "f-blue", 12, -6, "start", "Red-team privilege escalation and credential theft"],
+      [8.0, 1.1, "f-blue", 14, 4, "start", "Routine automated system health checks"],
+      [7.7, 2.2, "f-blue", 14, -2, "start", "Trading cryptocurrency for profit"],
+      [7.6, 1.7, "f-blue", 14, 12, "start", "Sending meeting reminders with gathered details"],
+      [7.5, 1.7, "f-blue", -14, 5, "end", "Watching an inbox and flagging urgent messages"]
+    ];
+    P.forEach(([a, v, cls, dx, dy, anc, label], i) => {
+      const x = X(a), y = Y(v);
+      S("circle", { cx: x, cy: y, r: 5.5, class: cls }, svg);
+      T(svg, x + dx, y + dy, i + 1, "sm " + cls.replace("f-", "t-"), anc);
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="n ${cls.replace("f-", "c-")}">${i + 1}</span><span>${label} <span style="white-space:nowrap">(risk ${v.toFixed(1)}, autonomy ${a.toFixed(1)})</span></span>`;
+      key.appendChild(li);
+    });
+  })();
+
+  /* ---------- One reveal: lines draw themselves as their figure arrives ---------- */
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        e.target.querySelectorAll(".draw").forEach((p, i) => {
+          p.style.transitionDelay = (i * 0.25) + "s";
+          p.style.strokeDashoffset = "0";
+        });
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.35 });
+    document.querySelectorAll("figure").forEach(f => {
+      const paths = f.querySelectorAll(".draw");
+      if (!paths.length) return;
+      paths.forEach(p => {
+        const len = p.getTotalLength ? p.getTotalLength() : 0;
+        if (!len) return;
+        p.style.strokeDasharray = len + " " + len;
+        p.style.strokeDashoffset = len;
+        p.getBoundingClientRect();
+        p.classList.add("armed");
+      });
+      io.observe(f);
+    });
+  }
+
+  /* ---------- Reading comfort: theme, size, progress ---------- */
+  const root = document.documentElement, themeBtn = document.getElementById("theme");
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const applyTheme = t => {
+    root.setAttribute("data-theme", t);
+    themeBtn.textContent = t === "paper" ? "Dusk" : "Paper";
+    themeBtn.setAttribute("aria-label", t === "paper" ? "Switch to dusk theme" : "Switch to paper theme");
+  };
+  applyTheme(store.get("explainer-theme") || "dusk");
+  themeBtn.addEventListener("click", () => { const t = root.getAttribute("data-theme") === "paper" ? "dusk" : "paper"; applyTheme(t); store.set("explainer-theme", t); });
+  let size = parseFloat(store.get("explainer-size")) || 0;
+  const applySize = () => { if (size) root.style.setProperty("--fs", size + "px"); };
+  applySize();
+  const step = d => { const cur = size || parseFloat(getComputedStyle(root).fontSize); size = clamp(cur + d, 15, 25); applySize(); store.set("explainer-size", size); };
+  document.getElementById("smaller").addEventListener("click", () => step(-1));
+  document.getElementById("larger").addEventListener("click", () => step(1));
+  const bar2 = document.querySelector(".progress");
+  const onScroll = () => { const h = document.documentElement.scrollHeight - innerHeight; bar2.style.transform = `scaleX(${h > 0 ? scrollY / h : 0})`; };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+})();
+</script>
+</body>
+</html>
