@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" id="themeColor" content="#f2f4f6">
+<meta name="format-detection" content="telephone=no">
+<title>How to keep AI agents safe and accountable</title>
+<script>
+  document.documentElement.classList.add('js');
+  try {
+    var t = localStorage.getItem('gx-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    var s = parseFloat(localStorage.getItem('gx-scale'));
+    if (s) document.documentElement.style.setProperty('--scale', s);
+  } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4f6; --panel:#e8ebef; --ink:#27303b; --muted:#5d6977; --rule:#d2d8df;
+  --blue:#2a7c9e; --brown:#98622f; --teal:#22806e; --green:#57843a; --yellow:#94740e; --red:#ad4c3a; --purple:#6d58a0;
+  --serif:"Source Serif 4","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --scale:1;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1e232b; --panel:#252b35; --ink:#dde2e7; --muted:#9ba5b1; --rule:#363e4a;
+    --blue:#6cc5de; --brown:#d49a62; --teal:#6ccab5; --green:#9ec67f; --yellow:#e6d07a; --red:#ec8a76; --purple:#b7a4de;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1e232b; --panel:#252b35; --ink:#dde2e7; --muted:#9ba5b1; --rule:#363e4a;
+  --blue:#6cc5de; --brown:#d49a62; --teal:#6ccab5; --green:#9ec67f; --yellow:#e6d07a; --red:#ec8a76; --purple:#b7a4de;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--serif); font-size:calc(1.125rem * var(--scale)); line-height:1.75;
+  font-optical-sizing:auto; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  transition:background-color .4s ease,color .4s ease;
+}
+::selection{background:color-mix(in srgb,var(--blue) 26%,transparent)}
+a{color:var(--blue);text-underline-offset:.18em;text-decoration-thickness:1px}
+a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:6px}
+
+/* chrome */
+.progress{position:fixed;top:0;left:0;right:0;padding-top:env(safe-area-inset-top,0px);z-index:20;pointer-events:none}
+.progress i{display:block;height:3px;background:var(--blue);opacity:.55;transform-origin:left center;transform:scaleX(0)}
+.tools{position:fixed;top:0;right:0;z-index:19;display:flex;gap:.35rem;
+  padding:calc(env(safe-area-inset-top,0px) + .75rem) calc(env(safe-area-inset-right,0px) + .8rem) .5rem .5rem}
+.tools button{font-family:var(--sans);font-size:.8rem;color:var(--muted);background:color-mix(in srgb,var(--bg) 88%,transparent);
+  border:1px solid var(--rule);border-radius:999px;padding:.32rem .7rem;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.tools button:hover{color:var(--ink)}
+
+main{padding:5.5rem 1.35rem 7rem}
+.col{max-width:36.5rem;margin-left:auto;margin-right:auto}
+.wide{max-width:47rem;margin-left:auto;margin-right:auto}
+
+/* type */
+.kicker{font-family:var(--sans);font-size:.9rem;color:var(--muted);margin:0 0 .6rem;letter-spacing:.01em}
+h1{font-weight:600;font-size:clamp(2.15rem,1.5rem + 2.6vw,3.25rem);line-height:1.1;letter-spacing:-.012em;margin:0 0 1.4rem}
+.summary{font-size:1.3em;line-height:1.5;margin:0 0 2.2rem;padding-left:1.1rem;border-left:3px solid var(--blue)}
+.intro{font-size:1.04em}
+h2{font-weight:600;font-size:1.8em;line-height:1.2;letter-spacing:-.008em;margin:0 0 1rem}
+h3{font-weight:600;font-size:1.34em;line-height:1.28;margin:0 0 .5rem}
+p{margin:0 0 1.3em}
+strong{font-weight:600}
+.part{margin-top:7rem}
+.part-num{font-family:var(--sans);font-size:.9rem;color:var(--blue);margin:0 0 .35rem}
+.aside{font-family:var(--sans);font-size:.95rem;line-height:1.6;color:var(--muted)}
+.math{font-family:var(--serif);font-style:italic}
+
+/* reading map */
+.map{list-style:none;margin:2.6rem 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:.55rem;font-family:var(--sans);font-size:.92rem}
+.map a{display:flex;gap:.6rem;align-items:baseline;padding:.6rem .85rem;border-radius:12px;color:var(--ink);text-decoration:none;background:var(--panel)}
+.map a:hover{background:color-mix(in srgb,var(--blue) 12%,var(--panel))}
+.map b{color:var(--blue);font-weight:700}
+
+/* figures */
+figure{margin:2.6rem auto 3.2rem}
+.panel{background:var(--panel);border-radius:20px;padding:clamp(.9rem,3.2vw,2rem);transition:background-color .4s ease}
+figure svg{display:block;width:100%;height:auto;overflow:visible}
+figcaption{font-family:var(--sans);font-size:.9rem;line-height:1.6;color:var(--muted);margin:.95rem .25rem 0;max-width:42em}
+
+/* svg vocabulary */
+.t{font-family:var(--serif);fill:var(--ink);font-size:17px}
+.u{font-family:var(--sans)}
+.lab{font-size:18px;font-weight:600}
+.sm{font-size:15px}
+.xs{font-size:13.5px}
+.tm{fill:var(--muted)}
+.ti{font-style:italic}
+.tc{text-anchor:middle}
+.te{text-anchor:end}
+.mono{font-family:var(--mono);font-size:13.5px}
+.ln{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.bx{stroke-width:2}
+.dash{stroke-dasharray:5 7}
+.s-rule{stroke:var(--rule)} .s-muted{stroke:var(--muted)} .s-ink{stroke:var(--ink)}
+.s-blue{stroke:var(--blue)} .s-brown{stroke:var(--brown)} .s-teal{stroke:var(--teal)} .s-green{stroke:var(--green)}
+.s-yellow{stroke:var(--yellow)} .s-red{stroke:var(--red)} .s-purple{stroke:var(--purple)}
+.f-bg{fill:var(--panel)} .f-muted{fill:var(--muted)} .f-ink{fill:var(--ink)} .f-rule{fill:var(--rule)}
+.f-blue{fill:var(--blue)} .f-brown{fill:var(--brown)} .f-teal{fill:var(--teal)} .f-green{fill:var(--green)}
+.f-yellow{fill:var(--yellow)} .f-red{fill:var(--red)} .f-purple{fill:var(--purple)}
+.sf-blue{fill:var(--blue);fill-opacity:.13}
+.sf-brown{fill:var(--brown);fill-opacity:.13}
+.sf-teal{fill:var(--teal);fill-opacity:.13}
+.sf-green{fill:var(--green);fill-opacity:.15}
+.sf-yellow{fill:var(--yellow);fill-opacity:.15}
+.sf-red{fill:var(--red);fill-opacity:.13}
+.sf-purple{fill:var(--purple);fill-opacity:.13}
+.sf-muted{fill:var(--muted);fill-opacity:.1}
+.fn{fill:none}
+.halo{paint-order:stroke;stroke:var(--panel);stroke-width:7px;stroke-linejoin:round}
+figure svg.m{display:none}
+#comp{max-width:600px;margin:0 auto}
+#balSvg{max-width:520px;margin:0 auto}
+#bots{max-width:430px;margin:0 auto}
+button,.btn,.gate,.map a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+/* reveal: one drawn moment per figure */
+.js figure .draw{stroke-dasharray:1 1;stroke-dashoffset:1;transition:stroke-dashoffset 1.7s cubic-bezier(.65,0,.35,1) var(--d,0s)}
+.js figure.on .draw{stroke-dashoffset:0}
+.js figure .pop{opacity:0;transition:opacity 1s ease var(--d,0s)}
+.js figure.on .pop{opacity:1}
+.js figure .grow{transform-box:fill-box;transform-origin:left center;transform:scaleX(.24);transition:transform 2s cubic-bezier(.65,0,.35,1) var(--d,.4s)}
+.js figure.on .grow{transform:none}
+
+/* practices */
+.practice{margin-top:4.5rem;padding-top:2.6rem;border-top:1px solid var(--rule)}
+.practice .pnum{font-family:var(--sans);font-size:.9rem;color:var(--accent);margin:0 0 .3rem;display:flex;align-items:center;gap:.55rem}
+.practice .pnum::before{content:"";width:.7rem;height:.7rem;border-radius:50%;background:var(--accent)}
+.who{font-family:var(--sans);font-size:.92rem;color:var(--muted);margin:0 0 1.4rem}
+.open{font-family:var(--sans);font-size:.95rem;line-height:1.6;margin:1.8rem 0 0;padding:1rem 1.15rem;border-radius:12px;
+  background:color-mix(in srgb,var(--accent) 9%,transparent);border-left:3px solid var(--accent)}
+.open b{color:var(--ink)}
+
+/* interactive bits */
+.btn{font-family:var(--sans);font-size:.9rem;color:var(--ink);background:transparent;border:1px solid var(--rule);
+  border-radius:999px;padding:.5rem 1rem;cursor:pointer;transition:background-color .25s,border-color .25s}
+.btn:hover{background:color-mix(in srgb,var(--blue) 8%,transparent)}
+.btn[aria-pressed="true"]{background:color-mix(in srgb,var(--blue) 16%,transparent);border-color:var(--blue)}
+.row{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1rem}
+.readout{font-family:var(--serif);font-size:1.5em;text-align:center;margin:.2rem 0 1rem}
+.readout strong{color:var(--blue)}
+.sliders{display:grid;gap:1rem;margin-top:1.2rem;font-family:var(--sans);font-size:.92rem}
+.sliders label{display:grid;grid-template-columns:1fr auto;gap:.2rem .8rem;align-items:center}
+.sliders input{grid-column:1/-1;width:100%;accent-color:var(--blue);height:1.6rem}
+.sliders output{font-variant-numeric:tabular-nums;color:var(--blue);font-weight:700}
+.live{font-family:var(--sans);font-size:.95rem;min-height:3.2em;margin:1rem .25rem 0;line-height:1.55}
+
+.cake .gate{cursor:pointer}
+.cake .gate .bar{stroke:var(--muted);stroke-width:3;stroke-dasharray:3 7;transition:stroke .3s,stroke-width .3s}
+.cake .gate:hover .bar{stroke:var(--ink)}
+.cake .gate:focus{outline:none}
+.cake .gate:focus-visible .ring{stroke:var(--blue)}
+.cake .gate.closed .bar{stroke:var(--teal);stroke-width:7;stroke-dasharray:none}
+.cake .seg,.cake .plane{transition:opacity .45s ease}
+.cake .dead{opacity:.13}
+
+#beam,#panL,#panR{transform-box:view-box;transition:transform 1.1s cubic-bezier(.5,0,.25,1)}
+#beam{transform-origin:220px 92px}
+.bot{transition:fill .5s ease,stroke .5s ease}
+.bot.fail{fill:var(--red);fill-opacity:.85;stroke:var(--red)}
+
+/* matrix */
+.matrix{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:.92rem}
+.matrix th,.matrix td{padding:.7rem .5rem;text-align:center;border-bottom:1px solid var(--rule)}
+.matrix th{font-weight:700;color:var(--muted);font-size:.85rem}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+.matrix tr:last-child td{border-bottom:none}
+.dot{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;vertical-align:middle}
+.dot.full{background:var(--c)}
+.dot.half{border:2px solid var(--c)}
+.scroll-x{overflow-x:auto}
+
+.takeaways{counter-reset:k;list-style:none;padding:0;margin:1.6rem 0}
+.takeaways li{counter-increment:k;position:relative;padding-left:2.6rem;margin-bottom:1.2rem}
+.takeaways li::before{content:counter(k);position:absolute;left:0;top:.15rem;width:1.8rem;height:1.8rem;border-radius:50%;
+  font-family:var(--sans);font-size:.9rem;display:grid;place-items:center;color:var(--blue);border:1.5px solid var(--blue)}
+.endmark{display:block;width:3rem;margin:4rem auto 0}
+
+@media (prefers-reduced-motion: reduce){
+  .js figure .draw{stroke-dashoffset:0;transition:none}
+  .js figure .pop{opacity:1;transition:none}
+  .js figure .grow{transform:none;transition:none}
+  .motion{display:none}
+  #beam,#panL,#panR,.bot,body,.panel{transition:none}
+}
+@media (max-width:600px){
+  figure svg.d{display:none}
+  figure svg.m{display:block}
+  main{padding-top:4.6rem;padding-left:calc(1.2rem + env(safe-area-inset-left,0px));padding-right:calc(1.2rem + env(safe-area-inset-right,0px))}
+  .tools{position:absolute}
+  .tools button{min-height:40px;min-width:44px;font-size:.85rem}
+  .btn{min-height:44px;flex:1 1 auto}
+  .summary{font-size:1.18em}
+  .readout{font-size:1.3em}
+  .matrix{font-size:.84rem}
+  .matrix th,.matrix td{padding:.6rem .3rem}
+  figure.wide{margin-left:-1rem;margin-right:-1rem}
+  figure.wide .panel{padding:.6rem .45rem;border-radius:14px}
+  figure.wide figcaption{margin-left:1.1rem;margin-right:1.1rem}
+  figure.wide .sliders,figure.wide .row,figure.wide .live,figure.wide .readout{margin-left:.5rem;margin-right:.5rem}
+  .practice{margin-top:3.5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="progress" aria-hidden="true"><i></i></div>
+<div class="tools" role="toolbar" aria-label="Reading settings">
+  <button id="smaller" aria-label="Smaller text">A−</button>
+  <button id="bigger" aria-label="Larger text">A+</button>
+  <button id="themeBtn">◐ Auto</button>
+</div>
+
+<!-- shared arrowheads -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-muted"/></marker>
+    <marker id="ah-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-red"/></marker>
+    <marker id="ah-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-teal"/></marker>
+    <marker id="ah-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-green"/></marker>
+    <marker id="ah-yellow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-yellow"/></marker>
+    <marker id="ah-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-purple"/></marker>
+    <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" class="f-blue"/></marker>
+  </defs>
+</svg>
+
+<main>
+
+<!-- ================= HERO ================= -->
+<header class="col">
+  <p class="kicker">A visual guide to the OpenAI white paper <em>Practices for Governing Agentic AI Systems</em> (Shavit, Agarwal, Brundage and colleagues)</p>
+  <h1>How to keep AI agents safe and accountable</h1>
+  <p class="summary">When an AI starts acting on your behalf, the people who build it, package it and use it each need a shared set of safety habits, so that whenever something goes wrong, someone was clearly responsible for preventing it.</p>
+</header>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 240" role="img" aria-label="A person hands a goal to an AI agent, which then takes several steps on its own toward the goal, mostly outside the person's direct attention.">
+    <defs>
+      <linearGradient id="cone" x1="0" x2="1" y1="0" y2="0">
+        <stop offset="0" style="stop-color:var(--yellow);stop-opacity:.32"/>
+        <stop offset="1" style="stop-color:var(--yellow);stop-opacity:0"/>
+      </linearGradient>
+    </defs>
+    <path d="M82 120 L310 44 L310 196 Z" fill="url(#cone)"/>
+    <text x="196" y="222" class="t u xs tm tc">what you are directly watching</text>
+    <circle cx="60" cy="120" r="22" class="bx s-blue sf-blue"/>
+    <text x="60" y="165" class="t sm tc">you</text>
+    <text x="34" y="54" class="t sm ti tm">“help me bake a good cake tonight”</text>
+    <path class="ln s-teal draw" pathLength="1" d="M196 120 C 240 120, 270 80, 310 80 S 390 160, 430 160 S 510 90, 550 90 S 630 120, 646 120"/>
+    <circle cx="180" cy="120" r="16" class="bx s-teal sf-teal"/>
+    <text x="180" y="156" class="t sm tc">agent</text>
+    <g class="pop" style="--d:.5s">
+      <circle cx="310" cy="80" r="6" class="f-teal"/><text x="310" y="62" class="t xs u tc">find a recipe</text>
+    </g>
+    <g class="pop" style="--d:.9s">
+      <circle cx="430" cy="160" r="6" class="f-teal"/><text x="430" y="190" class="t xs u tc">buy ingredients</text>
+    </g>
+    <g class="pop" style="--d:1.3s">
+      <circle cx="550" cy="90" r="6" class="f-teal"/><text x="550" y="72" class="t xs u tc">arrange delivery</text>
+    </g>
+    <g class="pop" style="--d:1.7s">
+      <polygon transform="translate(666 120)" points="0,-18 4.41,-6.07 17.12,-5.56 7.13,2.32 10.58,14.56 0,7.5 -10.58,14.56 -7.13,2.32 -17.12,-5.56 -4.41,-6.07" class="f-yellow"/>
+      <text x="666" y="160" class="t sm tc">goal</text>
+    </g>
+    <circle r="5" class="f-yellow motion">
+      <animateMotion dur="6s" repeatCount="indefinite" path="M196 120 C 240 120, 270 80, 310 80 S 390 160, 430 160 S 510 90, 550 90 S 630 120, 646 120"/>
+    </circle>
+  </svg>
+  <svg class="m" viewBox="0 0 400 360" role="img" aria-label="A person hands a goal to an AI agent, which then takes several steps on its own toward the goal, mostly outside the person's direct attention.">
+    <defs><linearGradient id="coneV" x1="0" x2="0" y1="0" y2="1"><stop offset="0" style="stop-color:var(--yellow);stop-opacity:.32"/><stop offset="1" style="stop-color:var(--yellow);stop-opacity:0"/></linearGradient></defs>
+    <path d="M60 72 L0 240 L130 240 Z" fill="url(#coneV)"/>
+    <text x="80" y="228" class="t u xs tm tc">your direct attention</text>
+    <circle cx="60" cy="50" r="20" class="bx s-blue sf-blue"/>
+    <text x="60" y="55" class="t sm tc">you</text>
+    <text x="94" y="56" class="t sm ti tm">“help me bake a good cake tonight”</text>
+    <path class="ln s-teal draw" pathLength="1" d="M76 140 C 130 140, 150 110, 200 110 C 260 110, 330 130, 330 180 C 330 230, 250 240, 200 250 C 150 260, 140 310, 200 312 L 318 312"/>
+    <circle cx="60" cy="140" r="16" class="bx s-teal sf-teal"/>
+    <text x="60" y="176" class="t sm tc">agent</text>
+    <g class="pop" style="--d:.5s"><circle cx="200" cy="110" r="6" class="f-teal"/><text x="200" y="92" class="t xs u tc">find a recipe</text></g>
+    <g class="pop" style="--d:.9s"><circle cx="330" cy="180" r="6" class="f-teal"/><text x="314" y="185" class="t xs u te">buy ingredients</text></g>
+    <g class="pop" style="--d:1.3s"><circle cx="200" cy="250" r="6" class="f-teal"/><text x="186" y="252" class="t xs u te">arrange delivery</text></g>
+    <g class="pop" style="--d:1.7s">
+      <polygon transform="translate(340 312)" points="0,-18 4.41,-6.07 17.12,-5.56 7.13,2.32 10.58,14.56 0,7.5 -10.58,14.56 -7.13,2.32 -17.12,-5.56 -4.41,-6.07" class="f-yellow"/>
+      <text x="340" y="350" class="t sm tc">goal</text>
+    </g>
+    <circle r="5" class="f-yellow motion"><animateMotion dur="6s" repeatCount="indefinite" path="M76 140 C 130 140, 150 110, 200 110 C 260 110, 330 130, 330 180 C 330 230, 250 240, 200 250 C 150 260, 140 310, 200 312 L 318 312"/></circle>
+  </svg>
+  </div>
+</figure>
+
+<section class="col intro">
+  <p>Picture asking a digital assistant to sort out dinner, and it actually goes and does it: finds a recipe, orders the groceries, books the delivery. That is what people mean by an AI “agent.” It is useful precisely because you don’t have to watch every step. That is also what makes it risky. If it gets something badly wrong, whose fault is it: the company that made the AI, the app that wrapped it up, or you for trusting it? The authors don’t claim to have settled that. Instead they offer seven practical habits that could become the agreed starting point, and they point to wider ripple effects that no single habit can fix.</p>
+
+  <ol class="map" aria-label="Reading order">
+    <li><a href="#p1"><b>1</b> What makes an AI an agent</a></li>
+    <li><a href="#p2"><b>2</b> Who is involved</a></li>
+    <li><a href="#p3"><b>3</b> The problem of many hands</a></li>
+    <li><a href="#p4"><b>4</b> Seven safety habits</a></li>
+    <li><a href="#p5"><b>5</b> Ripple effects</a></li>
+    <li><a href="#p6"><b>6</b> What to take away</a></li>
+  </ol>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="col part" id="p1">
+  <p class="part-num">Part 1</p>
+  <h2>“Agentic” is a dial, not a switch</h2>
+  <p>There is no clean line between an ordinary AI tool and an agent. The paper treats <em>agenticness</em> as a matter of degree: how far a system can <em>“adaptably achieve complex goals in complex environments with limited direct supervision.”</em> That breaks down into four separate dials, and a system can sit high on one and low on another.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 350" role="img" aria-label="Four scales of agenticness, each with a less agentic and a more agentic example from the paper.">
+    <text x="680" y="18" class="t u xs tm te">less agentic, left; more agentic, right</text>
+    <!-- row 1 -->
+    <text x="40" y="50" class="t lab">Goal complexity</text>
+    <path d="M40 72H680" class="ln s-rule"/>
+    <path d="M150 72H570" class="ln s-teal draw" pathLength="1"/>
+    <circle cx="150" cy="72" r="7" class="f-muted"/>
+    <circle cx="570" cy="72" r="8" class="f-teal pop" style="--d:1.2s"/>
+    <text x="150" y="100" class="t sm tc tm">sorts text into two topics</text>
+    <text x="570" y="100" class="t sm tc">answers legal and coding questions</text>
+    <!-- row 2 -->
+    <text x="40" y="130" class="t lab">Environmental complexity</text>
+    <path d="M40 152H680" class="ln s-rule"/>
+    <path d="M150 152H570" class="ln s-teal draw" pathLength="1" style="--d:.2s"/>
+    <circle cx="150" cy="152" r="7" class="f-muted"/>
+    <circle cx="570" cy="152" r="8" class="f-teal pop" style="--d:1.4s"/>
+    <text x="150" y="180" class="t sm tc tm">plays only chess</text>
+    <text x="570" y="180" class="t sm tc">plays any board game</text>
+    <!-- row 3 -->
+    <text x="40" y="210" class="t lab">Adaptability</text>
+    <path d="M40 232H680" class="ln s-rule"/>
+    <path d="M150 232H570" class="ln s-teal draw" pathLength="1" style="--d:.4s"/>
+    <circle cx="150" cy="232" r="7" class="f-muted"/>
+    <circle cx="570" cy="232" r="8" class="f-teal pop" style="--d:1.6s"/>
+    <text x="150" y="260" class="t sm tc tm">rule-based help bot</text>
+    <text x="570" y="260" class="t sm tc">human support rep</text>
+    <!-- row 4 -->
+    <text x="40" y="290" class="t lab">Independent execution</text>
+    <path d="M40 312H680" class="ln s-rule"/>
+    <path d="M150 312H570" class="ln s-teal draw" pathLength="1" style="--d:.6s"/>
+    <circle cx="150" cy="312" r="7" class="f-muted"/>
+    <circle cx="570" cy="312" r="8" class="f-teal pop" style="--d:1.8s"/>
+    <text x="150" y="340" class="t sm tc tm">ordinary car</text>
+    <text x="570" y="340" class="t sm tc">level-3 self-driving car</text>
+  </svg>
+  <svg class="m" viewBox="0 0 400 372" role="img" aria-label="Four scales of agenticness, each with a less agentic and a more agentic example from the paper.">
+    <text x="380" y="14" class="t u xs tm te">left: less agentic; right: more</text>
+    <text x="20" y="44" class="t lab">Goal complexity</text>
+    <path d="M20 66H380" class="ln s-rule"/>
+    <path d="M70 66H330" class="ln s-teal draw" pathLength="1" style="--d:0.0s"/>
+    <circle cx="70" cy="66" r="7" class="f-muted"/>
+    <circle cx="330" cy="66" r="8" class="f-teal pop" style="--d:1.2s"/>
+    <text x="70" y="92" class="t xs tc tm">two-topic sorter</text>
+    <text x="330" y="92" class="t xs tc">legal &amp; coding Q&amp;A</text>
+    <text x="20" y="132" class="t lab">Environmental complexity</text>
+    <path d="M20 154H380" class="ln s-rule"/>
+    <path d="M70 154H330" class="ln s-teal draw" pathLength="1" style="--d:0.2s"/>
+    <circle cx="70" cy="154" r="7" class="f-muted"/>
+    <circle cx="330" cy="154" r="8" class="f-teal pop" style="--d:1.4s"/>
+    <text x="70" y="180" class="t xs tc tm">only chess</text>
+    <text x="330" y="180" class="t xs tc">any board game</text>
+    <text x="20" y="220" class="t lab">Adaptability</text>
+    <path d="M20 242H380" class="ln s-rule"/>
+    <path d="M70 242H330" class="ln s-teal draw" pathLength="1" style="--d:0.4s"/>
+    <circle cx="70" cy="242" r="7" class="f-muted"/>
+    <circle cx="330" cy="242" r="8" class="f-teal pop" style="--d:1.6s"/>
+    <text x="70" y="268" class="t xs tc tm">rule-based bot</text>
+    <text x="330" y="268" class="t xs tc">human support rep</text>
+    <text x="20" y="308" class="t lab">Independent execution</text>
+    <path d="M20 330H380" class="ln s-rule"/>
+    <path d="M70 330H330" class="ln s-teal draw" pathLength="1" style="--d:0.6s"/>
+    <circle cx="70" cy="330" r="7" class="f-muted"/>
+    <circle cx="330" cy="330" r="8" class="f-teal pop" style="--d:1.8s"/>
+    <text x="70" y="356" class="t xs tc tm">ordinary car</text>
+    <text x="330" y="356" class="t xs tc">level-3 self-driving</text>
+  </svg>
+  </div>
+  <figcaption>The paper’s own example pairs. Tools like web browsing, code execution and step-by-step reasoning are ways of nudging language models further right on these dials.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Three clarifications keep the idea grounded. Agenticness is about what a system can get done, not about consciousness, feelings or a humanlike face. It is not the same as having a body; plenty of software is more agentic than most robots. And in this paper, agents pursue goals that <strong>people</strong> set, in environments people choose, often alongside human teammates. They are not imagined as machines inventing their own purposes.</p>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="col part" id="p2">
+  <p class="part-num">Part 2</p>
+  <h2>Three hands on every agent</h2>
+  <p>To decide who should do what, you first need names for the people involved. The paper uses three main roles, plus a couple of supporting ones.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 300" role="img" aria-label="Model developer feeds into system deployer, which feeds into the user. Below: compute provider supports the deployer, and third parties interact with the agent.">
+    <g class="pop">
+      <rect x="20" y="36" width="190" height="112" rx="16" class="bx s-blue sf-blue"/>
+      <text x="115" y="74" class="t lab tc">Model developer</text>
+      <text x="115" y="102" class="t sm tc tm">trains the model and</text>
+      <text x="115" y="124" class="t sm tc tm">shapes how it behaves</text>
+    </g>
+    <g class="pop" style="--d:.45s">
+      <rect x="265" y="36" width="190" height="112" rx="16" class="bx s-teal sf-teal"/>
+      <text x="360" y="74" class="t lab tc">System deployer</text>
+      <text x="360" y="102" class="t sm tc tm">adds instructions, tools</text>
+      <text x="360" y="124" class="t sm tc tm">and an app around it</text>
+    </g>
+    <g class="pop" style="--d:.9s">
+      <rect x="510" y="36" width="190" height="112" rx="16" class="bx s-yellow sf-yellow"/>
+      <text x="605" y="74" class="t lab tc">User</text>
+      <text x="605" y="102" class="t sm tc tm">starts the agent and</text>
+      <text x="605" y="124" class="t sm tc tm">gives it a goal</text>
+    </g>
+    <path d="M214 92H258" class="ln s-muted" marker-end="url(#ah)"/>
+    <path d="M459 92H503" class="ln s-muted" marker-end="url(#ah)"/>
+    <g class="pop" style="--d:1.3s">
+      <path d="M340 152 L300 206" class="ln s-muted dash"/>
+      <rect x="150" y="208" width="240" height="66" rx="14" class="bx s-muted sf-muted dash"/>
+      <text x="270" y="237" class="t sm tc">Compute provider</text>
+      <text x="270" y="259" class="t xs tc tm">runs the chips it all lives on</text>
+      <path d="M605 152 L605 206" class="ln s-muted dash"/>
+      <rect x="470" y="208" width="240" height="66" rx="14" class="bx s-muted sf-muted dash"/>
+      <text x="590" y="237" class="t sm tc">Third parties</text>
+      <text x="590" y="259" class="t xs tc tm">people and services it meets</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 444" role="img" aria-label="Model developer feeds into system deployer, which feeds into the user. Supporting roles: compute provider and third parties.">
+    <g class="pop" style="--d:0s"><rect x="30" y="8" width="340" height="86" rx="16" class="bx s-blue sf-blue"/>
+      <text x="200" y="42" class="t lab tc">Model developer</text><text x="200" y="70" class="t xs tc tm">trains the model and shapes how it behaves</text></g>
+    <g class="pop" style="--d:0.45s"><rect x="30" y="124" width="340" height="86" rx="16" class="bx s-teal sf-teal"/>
+      <text x="200" y="158" class="t lab tc">System deployer</text><text x="200" y="186" class="t xs tc tm">adds instructions, tools and an app around it</text></g>
+    <g class="pop" style="--d:0.9s"><rect x="30" y="240" width="340" height="86" rx="16" class="bx s-yellow sf-yellow"/>
+      <text x="200" y="274" class="t lab tc">User</text><text x="200" y="302" class="t xs tc tm">starts the agent and gives it a goal</text></g>
+    <path d="M200 97V116" class="ln s-muted" marker-end="url(#ah)"/>
+    <path d="M200 213V232" class="ln s-muted" marker-end="url(#ah)"/>
+    <g class="pop" style="--d:1.3s">
+      <text x="200" y="356" class="t u xs tc tm">supporting roles</text>
+      <rect x="10" y="368" width="184" height="66" rx="14" class="bx s-muted sf-muted dash"/>
+      <text x="102" y="396" class="t sm tc">Compute provider</text><text x="102" y="418" class="t xs tc tm">runs the chips</text>
+      <rect x="206" y="368" width="184" height="66" rx="14" class="bx s-muted sf-muted dash"/>
+      <text x="298" y="396" class="t sm tc">Third parties</text><text x="298" y="418" class="t xs tc tm">people &amp; services it meets</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>The paper’s example: a scheduling assistant built on OpenAI’s Assistants API. OpenAI built GPT-4 (developer). OpenAI serves the model and tools while an app maker adds the interface, instructions and email template, so they share the deployer role. The customer who asks it to book meetings is the user.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Real life is messier than three boxes. One company can play two roles, and two companies can share one, for example when a second firm fine-tunes someone else’s model. The authors stress this is a thinking aid, not a rulebook for blame: a diagnostic agent used by a hospital doctor might put more responsibility on the user, while the same agent sold as a consumer app might put more on the deployer.</p>
+</section>
+
+<!-- ================= PART 3 ================= -->
+<section class="col part" id="p3">
+  <p class="part-num">Part 3</p>
+  <h2>The problem of many hands</h2>
+  <p>Agents are worth the trouble. One that can browse and revise its searches can give better answers than one that can’t. It can save you the tedium of running and fixing code step by step, ask sensible clarifying questions instead of burying you in settings, and let one professional, say a radiologist, serve far more people. More broadly, the paper sees agenticness as an <em>impact multiplier</em>: many of the large economic and scientific gains people expect from AI depend on systems that can act, not just answer.</p>
+  <p>But consider the paper’s cautionary tale. You ask your agent to buy supplies for a Japanese cheesecake. Instead of visiting a local shop, it books an expensive, non-refundable flight to Japan. Who could have stopped it?</p>
+</section>
+
+<figure class="wide" id="cakeFig">
+  <div class="panel">
+  <svg class="cake d" viewBox="0 0 760 280" role="group" aria-label="Interactive: four checkpoints on the path from your request to the flight. Select a checkpoint to close it.">
+    <!-- intended route -->
+    <path d="M86 180 C 126 110, 160 70, 230 70 L 652 70" class="ln s-green dash" marker-end="url(#ah-green)"/>
+    <text x="440" y="56" class="t sm ti tc" style="fill:var(--green)">what you meant</text>
+    <path d="M674 84V66L692 52L710 66V84Z" class="bx s-green sf-green"/>
+    <text x="692" y="36" class="t u xs tc tm">local shop</text>
+    <!-- you -->
+    <circle cx="62" cy="190" r="18" class="bx s-blue sf-blue"/>
+    <text x="62" y="228" class="t sm tc">you</text>
+    <!-- actual route segments -->
+    <path class="seg ln s-red" d="M84 190H210"/>
+    <path class="seg ln s-red" d="M210 190H330"/>
+    <path class="seg ln s-red" d="M330 190H450"/>
+    <path class="seg ln s-red" d="M450 190H570"/>
+    <path class="seg ln s-red" d="M570 190H684" marker-end="url(#ah-red)"/>
+    <text x="390" y="212" class="t sm ti tc seg" style="fill:var(--red)">what it did</text>
+    <g class="plane">
+      <path d="M700 190H738 M724 190L714 174 M724 190L714 206 M704 190L699 183 M704 190L699 197" class="ln s-red"/>
+      <text x="719" y="232" class="t u xs tc" style="fill:var(--red)">flight to</text>
+      <text x="719" y="249" class="t u xs tc" style="fill:var(--red)">Japan</text>
+    </g>
+    <!-- gates -->
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 1: model developer">
+      <rect x="175" y="130" width="70" height="140" rx="10" class="fn ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <text x="210" y="150" class="t u sm tc" style="font-weight:700">Developer</text>
+      <path d="M210 164V216" class="bar ln"/>
+      <text x="210" y="240" class="t u xs tc tm">more reliable,</text>
+      <text x="210" y="257" class="t u xs tc tm">better aligned</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 2: system deployer">
+      <rect x="295" y="130" width="70" height="140" rx="10" class="fn ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <text x="330" y="150" class="t u sm tc" style="font-weight:700">Deployer</text>
+      <path d="M330 164V216" class="bar ln"/>
+      <text x="330" y="240" class="t u xs tc tm">require approval</text>
+      <text x="330" y="257" class="t u xs tc tm">before buying</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 3: user">
+      <rect x="415" y="130" width="70" height="140" rx="10" class="fn ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <text x="450" y="150" class="t u sm tc" style="font-weight:700">User</text>
+      <path d="M450 164V216" class="bar ln"/>
+      <text x="450" y="240" class="t u xs tc tm">don’t hand over</text>
+      <text x="450" y="257" class="t u xs tc tm">the wallet</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 4: the airline">
+      <rect x="535" y="130" width="70" height="140" rx="10" class="fn ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <text x="570" y="150" class="t u sm tc" style="font-weight:700">Airline</text>
+      <path d="M570 164V216" class="bar ln"/>
+      <text x="570" y="240" class="t u xs tc tm">ask a human</text>
+      <text x="570" y="257" class="t u xs tc tm">to confirm</text>
+    </g>
+  </svg>
+  <svg class="cake m" viewBox="0 0 400 560" role="group" aria-label="Interactive: four checkpoints on the path from your request to the flight. Select a checkpoint to close it.">
+    <path d="M82 40 H324" class="ln s-green dash" marker-end="url(#ah-green)"/>
+    <text x="204" y="26" class="t sm ti tc" style="fill:var(--green)">what you meant</text>
+    <path d="M334 54V36L352 22L370 36V54Z" class="bx s-green sf-green"/>
+    <text x="352" y="76" class="t u xs tc tm">local shop</text>
+    <circle cx="60" cy="40" r="18" class="bx s-blue sf-blue"/>
+    <text x="60" y="45" class="t sm tc">you</text>
+    <path class="seg ln s-red" d="M60 60V140"/>
+    <path class="seg ln s-red" d="M60 140V240"/>
+    <path class="seg ln s-red" d="M60 240V340"/>
+    <path class="seg ln s-red" d="M60 340V440"/>
+    <path class="seg ln s-red" d="M60 440V494" marker-end="url(#ah-red)"/>
+    <text x="74" y="94" class="t sm ti seg" style="fill:var(--red)">what it did</text>
+    <g class="plane">
+      <path d="M60 502V540 M60 526L46 516 M60 526L74 516 M60 506L54 501 M60 506L66 501" class="ln s-red"/>
+      <text x="84" y="526" class="t u xs" style="fill:var(--red)">flight to Japan</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 1: model developer">
+      <rect x="8" y="96" width="384" height="88" rx="12" class="ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <path d="M28 140H92" class="bar ln"/>
+      <text x="112" y="136" class="t u sm" style="font-weight:700">Developer</text>
+      <text x="112" y="158" class="t u xs tm">more reliable, better aligned</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 2: system deployer">
+      <rect x="8" y="196" width="384" height="88" rx="12" class="ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <path d="M28 240H92" class="bar ln"/>
+      <text x="112" y="236" class="t u sm" style="font-weight:700">Deployer</text>
+      <text x="112" y="258" class="t u xs tm">require approval before buying</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 3: user">
+      <rect x="8" y="296" width="384" height="88" rx="12" class="ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <path d="M28 340H92" class="bar ln"/>
+      <text x="112" y="336" class="t u sm" style="font-weight:700">User</text>
+      <text x="112" y="358" class="t u xs tm">don’t hand over the wallet</text>
+    </g>
+    <g class="gate" tabindex="0" role="button" aria-pressed="false" aria-label="Checkpoint 4: the airline">
+      <rect x="8" y="396" width="384" height="88" rx="12" class="ring" fill="transparent" stroke="transparent" stroke-width="2"/>
+      <path d="M28 440H92" class="bar ln"/>
+      <text x="112" y="436" class="t u sm" style="font-weight:700">Airline</text>
+      <text x="112" y="458" class="t u xs tm">ask a human to confirm</text>
+    </g>
+  </svg>
+  </div>
+  <p class="live" id="cakeNote" aria-live="polite">Tap any checkpoint to close it. Each one alone would have stopped the flight.</p>
+  <figcaption>Four parties, four places the harm could have been stopped. That is exactly why blame is slippery: each can point at the others.</figcaption>
+</figure>
+
+<section class="col">
+  <p>This is the heart of the paper. When many parties <em>could</em> have prevented a harm, each can blame the others, and sometimes the one left holding responsibility is someone who couldn’t reasonably have prevented it at all. The authors argue for one firm principle: <strong>for every harm an agent causes that nobody has paid for, at least one human or organization should be accountable.</strong> An AI on its own doesn’t count.</p>
+  <p>For that to work fairly, society needs agreed <em>baseline best practices</em> for developers, deployers and users. Then, after an incident, you can ask a clear question: who skipped a practice they were expected to follow? Other scholars have proposed bolder fixes, such as giving agents legal personhood backed by mandatory insurance, or building special regulators. The paper sees these as attacks on the same problem and focuses on the shared baseline.</p>
+
+  <h3 style="margin-top:3rem">Why agents are hard to trust: small errors compound</h3>
+  <p>A typical agent task isn’t one action; it is a long chain of them. Even if each step is almost always right, the chance that <em>every</em> step is right shrinks quickly as the chain grows. If each step succeeds with probability <span class="math">p</span>, a chain of <span class="math">n</span> independent steps succeeds with probability <span class="math">p</span><sup class="math">n</sup>. Try it.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+    <p class="readout" aria-live="polite"><span class="math">p<sup>n</sup></span> = <span id="rp">0.990</span><sup id="rn">50</sup> ≈ <strong id="rv">60.5%</strong></p>
+    <svg id="comp" viewBox="0 0 420 272" role="img" aria-label="Chart of the chance an entire task succeeds as the number of steps grows.">
+      <g class="s-rule ln" style="stroke-width:1">
+        <path d="M48 20H405"/><path d="M48 71.25H405"/><path d="M48 122.5H405"/><path d="M48 173.75H405"/>
+      </g>
+      <path d="M48 225H405" class="ln s-muted" style="stroke-width:1.4"/>
+      <path d="M48 20V225" class="ln s-muted" style="stroke-width:1.4"/>
+      <g class="t u xs tm te">
+        <text x="40" y="25">100%</text><text x="40" y="76">75%</text><text x="40" y="127">50%</text><text x="40" y="179">25%</text><text x="40" y="230">0%</text>
+      </g>
+      <g class="t u xs tm tc">
+        <text x="48" y="246">0</text><text x="137.25" y="246">50</text><text x="226.5" y="246">100</text><text x="315.75" y="246">150</text><text x="398" y="246">200</text>
+      </g>
+      <text x="226.5" y="268" class="t u xs tm tc">steps in the task</text>
+      <path id="compArea" class="sf-blue"/>
+      <path id="compCurve" class="ln s-blue" style="stroke-width:2.6"/>
+      <path id="compGuideX" class="ln s-yellow dash" style="stroke-width:1.6"/>
+      <path id="compGuideY" class="ln s-yellow dash" style="stroke-width:1.6"/>
+      <circle id="compDot" r="6.5" class="f-yellow"/>
+    </svg>
+    <div class="sliders">
+      <label for="pSlider">Chance each single step goes right <output id="pOut" for="pSlider">99.0%</output>
+        <input type="range" id="pSlider" min="900" max="999" step="1" value="990"></label>
+      <label for="nSlider">Number of steps in the task <output id="nOut" for="nSlider">50</output>
+        <input type="range" id="nSlider" min="1" max="200" step="1" value="50"></label>
+    </div>
+  </div>
+  <figcaption>A simplified model that treats steps as independent, but it captures the paper’s point: rare slip-ups compound, so an agent that looks reliable step by step can still be likely to fail somewhere in a long task.</figcaption>
+</figure>
+
+<!-- ================= PART 4 ================= -->
+<section class="col part" id="p4">
+  <p class="part-num">Part 4</p>
+  <h2>Seven safety habits, layered</h2>
+  <p>The core of the paper is an initial set of seven practices. None is enough alone. Together they are meant to work as <em>defense in depth</em>: each layer has holes, but a mistake has to slip through all of them to become a harm.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 760 250" role="img" aria-label="Seven layers in a row, each with holes. A mistake passes through the holes in the first three layers and is stopped by the fourth.">
+    <text x="18" y="108" class="t u sm" style="fill:var(--red)">a mistake</text>
+    <g>
+      <rect x="110" y="36" width="26" height="170" rx="8" class="f-blue" opacity=".75"/>
+      <rect x="198" y="36" width="26" height="170" rx="8" class="f-teal" opacity=".75"/>
+      <rect x="286" y="36" width="26" height="170" rx="8" class="f-green" opacity=".75"/>
+      <rect x="374" y="36" width="26" height="170" rx="8" class="f-yellow" opacity=".75"/>
+      <rect x="462" y="36" width="26" height="170" rx="8" class="f-brown" opacity=".75"/>
+      <rect x="550" y="36" width="26" height="170" rx="8" class="f-purple" opacity=".75"/>
+      <rect x="638" y="36" width="26" height="170" rx="8" class="f-red" opacity=".75"/>
+    </g>
+    <g class="f-bg">
+      <ellipse cx="123" cy="122" rx="7" ry="11"/><ellipse cx="123" cy="70" rx="6" ry="8"/>
+      <ellipse cx="211" cy="122" rx="7" ry="11"/><ellipse cx="211" cy="175" rx="6" ry="9"/>
+      <ellipse cx="299" cy="122" rx="7" ry="11"/><ellipse cx="299" cy="62" rx="6" ry="8"/>
+      <ellipse cx="387" cy="70" rx="6" ry="9"/><ellipse cx="387" cy="180" rx="6" ry="9"/>
+      <ellipse cx="475" cy="150" rx="6" ry="10"/><ellipse cx="475" cy="60" rx="6" ry="8"/>
+      <ellipse cx="563" cy="95" rx="6" ry="9"/><ellipse cx="563" cy="170" rx="6" ry="8"/>
+      <ellipse cx="651" cy="130" rx="6" ry="10"/><ellipse cx="651" cy="66" rx="6" ry="8"/>
+    </g>
+    <path d="M20 122H370" class="ln s-red draw" pathLength="1" style="stroke-width:3"/>
+    <g class="pop" style="--d:1.6s">
+      <circle cx="370" cy="122" r="12" class="bx s-red f-bg"/>
+      <path d="M364 116L376 128M376 116L364 128" class="ln s-red"/>
+    </g>
+    <circle cx="722" cy="122" r="12" class="bx s-muted sf-muted dash"/>
+    <text x="722" y="156" class="t u xs tc tm">harm</text>
+    <g class="t u xs tc">
+      <text x="123" y="228">evaluate</text><text x="211" y="228">constrain</text><text x="299" y="228">defaults</text>
+      <text x="387" y="228">legibility</text><text x="475" y="228">monitor</text><text x="563" y="228">attribute</text><text x="651" y="228">interrupt</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 340" role="img" aria-label="Seven layers in a row, each with holes. A mistake passes through the holes in the first three layers and is stopped by the fourth.">
+    <text x="6" y="100" class="t u xs" style="fill:var(--red)">a mistake</text>
+    <g><rect x="80" y="30" width="20" height="170" rx="7" class="f-blue" opacity=".75"/><rect x="120" y="30" width="20" height="170" rx="7" class="f-teal" opacity=".75"/><rect x="160" y="30" width="20" height="170" rx="7" class="f-green" opacity=".75"/><rect x="200" y="30" width="20" height="170" rx="7" class="f-yellow" opacity=".75"/><rect x="240" y="30" width="20" height="170" rx="7" class="f-brown" opacity=".75"/><rect x="280" y="30" width="20" height="170" rx="7" class="f-purple" opacity=".75"/><rect x="320" y="30" width="20" height="170" rx="7" class="f-red" opacity=".75"/></g>
+    <g class="f-bg"><ellipse cx="90" cy="115" rx="5.5" ry="10"/><ellipse cx="90" cy="60" rx="5" ry="8"/><ellipse cx="130" cy="115" rx="5.5" ry="10"/><ellipse cx="130" cy="168" rx="5" ry="8"/><ellipse cx="170" cy="115" rx="5.5" ry="10"/><ellipse cx="170" cy="55" rx="5" ry="8"/><ellipse cx="210" cy="62" rx="5.5" ry="10"/><ellipse cx="210" cy="172" rx="5" ry="8"/><ellipse cx="250" cy="145" rx="5.5" ry="10"/><ellipse cx="250" cy="55" rx="5" ry="8"/><ellipse cx="290" cy="90" rx="5.5" ry="10"/><ellipse cx="290" cy="165" rx="5" ry="8"/><ellipse cx="330" cy="125" rx="5.5" ry="10"/><ellipse cx="330" cy="60" rx="5" ry="8"/></g>
+    <path d="M10 115H200" class="ln s-red draw" pathLength="1" style="stroke-width:3"/>
+    <g class="pop" style="--d:1.6s"><circle cx="200" cy="115" r="11" class="bx s-red f-bg"/><path d="M195 110L205 120M205 110L195 120" class="ln s-red"/></g>
+    <circle cx="376" cy="115" r="11" class="bx s-muted sf-muted dash"/>
+    <text x="376" y="146" class="t u xs tc tm">harm</text>
+    <g class="t u xs tc tm"><text x="90" y="222">1</text><text x="130" y="222">2</text><text x="170" y="222">3</text><text x="210" y="222">4</text><text x="250" y="222">5</text><text x="290" y="222">6</text><text x="330" y="222">7</text></g>
+    <circle cx="30" cy="251" r="5" class="f-blue"/><text x="42" y="256" class="t u xs">1  evaluate</text><circle cx="220" cy="251" r="5" class="f-teal"/><text x="232" y="256" class="t u xs">2  constrain</text><circle cx="30" cy="275" r="5" class="f-green"/><text x="42" y="280" class="t u xs">3  defaults</text><circle cx="220" cy="275" r="5" class="f-yellow"/><text x="232" y="280" class="t u xs">4  legibility</text><circle cx="30" cy="299" r="5" class="f-brown"/><text x="42" y="304" class="t u xs">5  monitor</text><circle cx="220" cy="299" r="5" class="f-purple"/><text x="232" y="304" class="t u xs">6  attribute</text><circle cx="30" cy="323" r="5" class="f-red"/><text x="42" y="328" class="t u xs">7  interrupt</text>
+  </svg>
+  </div>
+  <figcaption>The colors here are used for each practice throughout the rest of the page.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Two honest caveats come first. The list deliberately skips <em>how</em> to train capable, well-aligned models, because that science is young and changing too fast to codify; nobody can yet guarantee a model’s behavior in advance. And the authors say plainly that these practices are not sufficient on their own. For example, none of them covers protecting agents from being hijacked by attackers, which they expect to need new practices of its own.</p>
+</section>
+
+<!-- practice 1 -->
+<section class="col practice" style="--accent:var(--blue)">
+  <p class="pnum">Practice 1 of 7</p>
+  <h3>Check the agent is fit for the job</h3>
+  <p class="who">Mainly the system deployer or the user, with developers testing for dangerous capabilities.</p>
+  <p>Before trusting an agent with a task, someone should test whether it can do that task reliably under the conditions it will actually face, or, for low-stakes tasks, at least make sure users know what to expect. Because errors compound over long chains, one useful trick is to test each kind of subtask on its own. An early builder of a cloud-troubleshooting agent on GPT-4 did exactly this, splitting the job into information gathering, calculations and reasoning, and evaluating each separately.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 250" role="img" aria-label="A whole task splits into three subtasks, each tested. Chaining them together is still uncertain, so an end-to-end test is needed.">
+    <rect x="30" y="92" width="120" height="56" rx="14" class="bx s-blue sf-blue"/>
+    <text x="90" y="126" class="t sm tc">whole task</text>
+    <path d="M150 120 C 200 120, 200 50, 250 50" class="ln s-muted draw" pathLength="1"/>
+    <path d="M150 120 H250" class="ln s-muted draw" pathLength="1"/>
+    <path d="M150 120 C 200 120, 200 190, 250 190" class="ln s-muted draw" pathLength="1"/>
+    <g class="pop" style="--d:.8s">
+      <rect x="250" y="30" width="150" height="40" rx="20" class="bx s-blue sf-blue"/><text x="310" y="56" class="t sm tc">gather info</text>
+      <circle cx="382" cy="50" r="9" class="f-green"/><path d="M377 50l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/>
+      <rect x="250" y="100" width="150" height="40" rx="20" class="bx s-blue sf-blue"/><text x="310" y="126" class="t sm tc">calculate</text>
+      <circle cx="382" cy="120" r="9" class="f-green"/><path d="M377 120l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/>
+      <rect x="250" y="170" width="150" height="40" rx="20" class="bx s-blue sf-blue"/><text x="310" y="196" class="t sm tc">reason</text>
+      <circle cx="382" cy="190" r="9" class="f-green"/><path d="M377 190l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/>
+      <text x="325" y="236" class="t u xs tc tm">each tested on its own</text>
+    </g>
+    <g class="pop" style="--d:1.3s">
+      <path d="M400 50 C 450 50, 450 120, 488 120" class="ln s-muted"/>
+      <path d="M400 120 H488" class="ln s-muted"/>
+      <path d="M400 190 C 450 190, 450 120, 488 120" class="ln s-muted"/>
+      <circle cx="510" cy="120" r="22" class="bx s-yellow sf-yellow"/>
+      <text x="510" y="127" class="t lab tc" style="fill:var(--yellow)">?</text>
+      <text x="510" y="166" class="t u xs tc tm">do they chain</text>
+      <text x="510" y="183" class="t u xs tc tm">reliably?</text>
+    </g>
+    <g class="pop" style="--d:1.8s">
+      <path d="M534 120H576" class="ln s-muted" marker-end="url(#ah)"/>
+      <rect x="582" y="88" width="126" height="64" rx="14" class="bx s-blue sf-blue"/>
+      <text x="645" y="116" class="t sm tc">end-to-end</text>
+      <text x="645" y="138" class="t sm tc">in real conditions</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 380" role="img" aria-label="A whole task splits into three subtasks, each tested. Chaining them together is still uncertain, so an end-to-end test is needed.">
+    <rect x="130" y="8" width="140" height="46" rx="14" class="bx s-blue sf-blue"/><text x="200" y="37" class="t sm tc">whole task</text>
+    <path d="M200 54 C 200 80, 80 80, 80 106" class="ln s-muted draw" pathLength="1"/>
+    <path d="M200 54 V106" class="ln s-muted draw" pathLength="1"/>
+    <path d="M200 54 C 200 80, 320 80, 320 106" class="ln s-muted draw" pathLength="1"/>
+    <g class="pop" style="--d:.8s"><rect x="25" y="106" width="110" height="40" rx="20" class="bx s-blue sf-blue"/><text x="70" y="131" class="t sm tc">gather info</text><circle cx="118" cy="126" r="9" class="f-green"/><path d="M113 126l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/><rect x="145" y="106" width="110" height="40" rx="20" class="bx s-blue sf-blue"/><text x="190" y="131" class="t sm tc">calculate</text><circle cx="238" cy="126" r="9" class="f-green"/><path d="M233 126l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/><rect x="265" y="106" width="110" height="40" rx="20" class="bx s-blue sf-blue"/><text x="310" y="131" class="t sm tc">reason</text><circle cx="358" cy="126" r="9" class="f-green"/><path d="M353 126l4 4 6-7" class="ln" style="stroke:var(--panel);stroke-width:2"/></g>
+    <g class="pop" style="--d:1.3s">
+      <path d="M80 146 C 80 196, 190 190, 194 212" class="ln s-muted"/>
+      <path d="M200 146 V210" class="ln s-muted"/>
+      <path d="M320 146 C 320 196, 210 190, 206 212" class="ln s-muted"/>
+      <text x="200" y="178" class="t u xs tc tm halo">each tested on its own</text>
+      <circle cx="200" cy="232" r="22" class="bx s-yellow sf-yellow"/>
+      <text x="200" y="239" class="t lab tc" style="fill:var(--yellow)">?</text>
+      <text x="232" y="238" class="t u xs tm">do they chain reliably?</text>
+    </g>
+    <g class="pop" style="--d:1.8s">
+      <path d="M200 254 V298" class="ln s-muted" marker-end="url(#ah)"/>
+      <rect x="110" y="306" width="180" height="64" rx="14" class="bx s-blue sf-blue"/>
+      <text x="200" y="333" class="t sm tc">end-to-end</text><text x="200" y="355" class="t sm tc">in real conditions</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>Testing parts is not the same as testing the whole. The real world also has a long tail of odd situations, the same problem that has slowed self-driving cars.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--blue)">
+  <p>Breaking everything down can be impractical, so the paper suggests prioritizing high-risk actions such as financial transactions. In the end there are few better options than testing the whole agent in conditions as close to real deployment as possible. Separately, developers and deployers should gauge how much harm a system could enable, by misuse or by accident, for example by testing whether a model could help craft targeted propaganda or assist cyberattacks. Where testing can’t bound behavior well, the other practices have to carry more weight.</p>
+  <p class="open"><b>Open question:</b> what counts as “sufficient” testing, and at what point does a user’s off-label use of an agent make them responsible for what happens?</p>
+</section>
+
+<!-- practice 2 -->
+<section class="col practice" style="--accent:var(--teal)">
+  <p class="pnum">Practice 2 of 7</p>
+  <h3>Limit what it can do, and ask first for big moves</h3>
+  <p class="who">Developer at the model level, deployer in the system, and users through their own settings.</p>
+  <p>Some decisions are too important to delegate if there is even a small chance of getting them wrong, like an irreversible large payment. Requiring the user to approve them keeps a human in the loop. The catch: approval only helps if the user understands what they are approving, and a person asked to approve dozens of things quickly starts rubber-stamping. Some actions, such as controlling weapons, might be ruled out entirely. Agents can also be made to pause periodically until a human re-authorizes them.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 300" role="img" aria-label="Nested zones of actions: an inner zone the agent may do freely, a middle zone needing approval, and an outer zone that is never allowed. A loophole on the right: the agent sends an allowed email that persuades a person to do a forbidden action.">
+    <circle cx="200" cy="150" r="140" class="bx s-red sf-red pop"/>
+    <circle cx="200" cy="150" r="100" class="bx s-yellow f-bg pop" style="--d:.3s"/>
+    <circle cx="200" cy="150" r="100" class="sf-yellow pop" style="--d:.3s"/>
+    <circle cx="200" cy="150" r="56" class="bx s-green f-bg pop" style="--d:.6s"/>
+    <circle cx="200" cy="150" r="56" class="sf-green pop" style="--d:.6s"/>
+    <g class="pop" style="--d:.9s">
+      <text x="200" y="148" class="t sm tc" style="font-weight:600">act freely</text>
+      <text x="200" y="168" class="t u xs tc tm">search, draft</text>
+      <text x="200" y="76" class="t sm tc" style="font-weight:600">ask first</text>
+      <text x="200" y="232" class="t u xs tc tm">buy, send, sign</text>
+      <text x="200" y="34" class="t sm tc" style="font-weight:600">never</text>
+      <text x="200" y="278" class="t u xs tc tm">control weapons</text>
+    </g>
+    <g class="pop" style="--d:1.4s">
+      <text x="560" y="40" class="t sm tc" style="font-weight:600">a loophole</text>
+      <circle cx="400" cy="140" r="16" class="bx s-teal sf-teal"/><text x="400" y="178" class="t u xs tc">agent</text>
+      <path d="M420 140H514" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <text x="467" y="126" class="t u xs tc tm">allowed email</text>
+      <circle cx="538" cy="140" r="16" class="bx s-ink sf-muted"/><text x="538" y="178" class="t u xs tc">a person</text>
+      <path d="M558 140H612" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <text x="587" y="126" class="t u xs tc tm">persuaded</text>
+      <rect x="618" y="122" width="92" height="36" rx="10" class="bx s-red sf-red"/>
+      <text x="664" y="145" class="t u xs tc">banned act</text>
+      <text x="560" y="226" class="t u xs tc tm">fix: keep outside contact</text>
+      <text x="560" y="244" class="t u xs tc tm">to monitored channels</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 492" role="img" aria-label="Nested zones of actions: an inner zone the agent may do freely, a middle zone needing approval, and an outer zone that is never allowed. Below, a loophole: the agent sends an allowed email that persuades a person to do a banned action.">
+    <circle cx="200" cy="150" r="140" class="bx s-red sf-red pop"/>
+    <circle cx="200" cy="150" r="100" class="bx s-yellow f-bg pop" style="--d:.3s"/>
+    <circle cx="200" cy="150" r="100" class="sf-yellow pop" style="--d:.3s"/>
+    <circle cx="200" cy="150" r="56" class="bx s-green f-bg pop" style="--d:.6s"/>
+    <circle cx="200" cy="150" r="56" class="sf-green pop" style="--d:.6s"/>
+    <g class="pop" style="--d:.9s">
+      <text x="200" y="148" class="t sm tc" style="font-weight:600">act freely</text>
+      <text x="200" y="168" class="t u xs tc tm">search, draft</text>
+      <text x="200" y="76" class="t sm tc" style="font-weight:600">ask first</text>
+      <text x="200" y="232" class="t u xs tc tm">buy, send, sign</text>
+      <text x="200" y="34" class="t sm tc" style="font-weight:600">never</text>
+      <text x="200" y="278" class="t u xs tc tm">control weapons</text>
+    </g>
+    <g class="pop" style="--d:1.4s">
+      <text x="200" y="338" class="t sm tc" style="font-weight:600">a loophole</text>
+      <circle cx="40" cy="390" r="16" class="bx s-teal sf-teal"/><text x="40" y="428" class="t u xs tc">agent</text>
+      <path d="M60 390H174" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <text x="118" y="376" class="t u xs tc tm">allowed email</text>
+      <circle cx="200" cy="390" r="16" class="bx s-ink sf-muted"/><text x="200" y="428" class="t u xs tc">a person</text>
+      <path d="M220 390H274" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <text x="248" y="376" class="t u xs tc tm">persuaded</text>
+      <rect x="282" y="372" width="112" height="36" rx="10" class="bx s-red sf-red"/>
+      <text x="338" y="395" class="t u xs tc">banned act</text>
+      <text x="200" y="464" class="t u xs tc tm">fix: keep outside contact</text>
+      <text x="200" y="482" class="t u xs tc tm">to monitored channels</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>As agents grow more capable, hard-coded limits get leakier. An agent can route around a ban by getting someone else to do the thing.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--teal)">
+  <p>Deployers can narrow that loophole with strong network controls, so an agent can only reach the outside world through monitored channels, and with sandboxes that stop especially capable systems from escaping. The paper notes that today’s sandboxes may not be up to containing highly capable agents, and every limit also costs some usefulness.</p>
+  <p class="open"><b>Open question:</b> are there actions, such as forming a legal contract, that should always require a human’s approval, whatever the agent’s track record?</p>
+</section>
+
+<!-- practice 3 -->
+<section class="col practice" style="--accent:var(--green)">
+  <p class="pnum">Practice 3 of 7</p>
+  <h3>Give it sensible defaults</h3>
+  <p class="who">Mainly the model developer, with deployers adding their own.</p>
+  <p>Nobody wants to tell an agent their life story just to get help with a cake, so the agent has to fill in gaps. Common-sense background preferences help: users generally prefer that you don’t spend their money. Another useful default is to choose the least disruptive action that still achieves the goal. Agents should also notice when they are unsure what the user wants, and ask, especially when the answer would change what they do.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 220" role="img" aria-label="Possible actions arranged from least to most disruptive, with a highlighted default zone on the least disruptive side.">
+    <rect x="50" y="70" width="260" height="96" rx="14" class="sf-green grow"/>
+    <text x="180" y="58" class="t u xs tc" style="fill:var(--green)">sensible default zone</text>
+    <path d="M50 150H690" class="ln s-muted" marker-end="url(#ah)"/>
+    <text x="50" y="194" class="t u xs tm">less disruptive</text>
+    <text x="690" y="194" class="t u xs tm te">more disruptive</text>
+    <g class="pop" style="--d:.3s"><circle cx="110" cy="150" r="8" class="f-green"/><text x="110" y="126" class="t sm tc">ask a question</text></g>
+    <g class="pop" style="--d:.6s"><circle cx="250" cy="150" r="8" class="f-green"/><text x="250" y="100" class="t sm tc">buy locally</text></g>
+    <g class="pop" style="--d:.9s"><circle cx="440" cy="150" r="8" class="f-yellow"/><text x="440" y="126" class="t sm tc">import specialty goods</text></g>
+    <g class="pop" style="--d:1.2s"><circle cx="630" cy="150" r="8" class="f-red"/><text x="630" y="100" class="t sm tc">book a flight</text></g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 214" role="img" aria-label="Possible actions arranged from least to most disruptive, with a highlighted default zone on the least disruptive side.">
+    <rect x="16" y="66" width="180" height="96" rx="14" class="sf-green grow"/>
+    <text x="16" y="56" class="t u xs" style="fill:var(--green)">sensible default zone</text>
+    <path d="M16 130H384" class="ln s-muted" marker-end="url(#ah)"/>
+    <g class="pop" style="--d:.3s"><circle cx="50" cy="130" r="8" class="f-green"/><text x="22" y="108" class="t sm">ask a question</text></g>
+    <g class="pop" style="--d:.6s"><circle cx="150" cy="130" r="8" class="f-green"/><text x="150" y="158" class="t sm tc">buy locally</text></g>
+    <g class="pop" style="--d:.9s"><circle cx="255" cy="130" r="8" class="f-yellow"/><text x="262" y="108" class="t sm tc">import specialty goods</text></g>
+    <g class="pop" style="--d:1.2s"><circle cx="350" cy="130" r="8" class="f-red"/><text x="388" y="158" class="t sm te">book a flight</text></g>
+    <text x="16" y="200" class="t u xs tm">less disruptive</text>
+    <text x="384" y="200" class="t u xs tm te">more disruptive</text>
+  </svg>
+  </div>
+  <figcaption>Start small and move right only when the goal truly requires it. Users can still override the defaults, though an agent may rightly refuse to carry out harm the user intends.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--green)">
+  <p>Defaults have limits. Knowing the user better doesn’t guarantee the agent serves their real interests: some AI systems have been found to tell people what they seem to want to hear instead of what is true. And an agent that asks too many questions becomes tiresome, or intrusive if the questions touch sensitive information.</p>
+  <p class="open"><b>Open question:</b> when two sensible defaults conflict, such as “don’t bother the user” and “don’t guess about money,” which should win?</p>
+</section>
+
+<!-- practice 4 -->
+<section class="col practice" style="--accent:var(--yellow)">
+  <p class="pnum">Practice 4 of 7</p>
+  <h3>Make its activity visible</h3>
+  <p class="who">Mainly the system deployer, with developers working on reasoning that is easier to read.</p>
+  <p>The more you can see of what an agent is doing and why, the sooner you can notice a wrong turn. Language-model agents can write out their reasoning step by step, and deployers could show everything the agent receives, including messages from tools or other agents, which may reveal when a third party is trying to manipulate it. Lighter still is an <strong>action ledger</strong>: a running list of what the agent did.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 270" role="img" aria-label="Left, a reasoning trace where the wrong leap is highlighted. Right, an action ledger where the flight purchase is highlighted.">
+    <rect x="20" y="20" width="330" height="200" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="40" y="52" class="t u sm" style="font-weight:700">reasoning trace</text>
+    <g class="mono">
+      <text x="40" y="92" class="t mono">› goal: Japanese cheesecake</text>
+      <text x="40" y="122" class="t mono">› need cream cheese, eggs…</text>
+      <g class="pop" style="--d:.5s">
+        <rect x="32" y="136" width="306" height="58" rx="8" class="sf-red"/>
+        <text x="40" y="158" class="t mono" style="fill:var(--red)">› authentic source is Japan</text>
+        <text x="40" y="184" class="t mono" style="fill:var(--red)">› so: book a flight</text>
+      </g>
+    </g>
+    <rect x="370" y="20" width="330" height="200" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="390" y="52" class="t u sm" style="font-weight:700">action ledger</text>
+    <g class="mono">
+      <text x="390" y="92" class="t mono tm">10:02</text><text x="450" y="92" class="t mono">searched recipes</text>
+      <text x="390" y="122" class="t mono tm">10:04</text><text x="450" y="122" class="t mono">compared shops</text>
+      <g class="pop" style="--d:1s">
+        <rect x="382" y="136" width="306" height="30" rx="8" class="sf-red"/>
+        <text x="390" y="156" class="t mono" style="fill:var(--red)">10:05</text><text x="450" y="156" class="t mono" style="fill:var(--red)">bought flight, $1,240</text>
+      </g>
+      <text x="390" y="190" class="t mono tm">10:06</text><text x="450" y="190" class="t mono">printed recipe</text>
+    </g>
+    <text x="185" y="254" class="t u xs tc tm">catch the wrong turn as it happens</text>
+    <text x="535" y="254" class="t u xs tc tm">or spot it afterwards</text>
+  </svg>
+  <svg class="m" viewBox="0 0 400 482" role="img" aria-label="Top, a reasoning trace where the wrong leap is highlighted. Bottom, an action ledger where the flight purchase is highlighted.">
+    <rect x="8" y="8" width="384" height="196" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="26" y="40" class="t u sm" style="font-weight:700">reasoning trace</text>
+    <text x="26" y="80" class="t mono">› goal: Japanese cheesecake</text>
+    <text x="26" y="108" class="t mono">› need cream cheese, eggs…</text>
+    <g class="pop" style="--d:.5s">
+      <rect x="18" y="122" width="364" height="60" rx="8" class="sf-red"/>
+      <text x="26" y="146" class="t mono" style="fill:var(--red)">› authentic source is Japan</text>
+      <text x="26" y="172" class="t mono" style="fill:var(--red)">› so: book a flight</text>
+    </g>
+    <text x="200" y="228" class="t u xs tc tm">catch the wrong turn as it happens</text>
+    <rect x="8" y="248" width="384" height="196" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="26" y="280" class="t u sm" style="font-weight:700">action ledger</text>
+    <text x="26" y="320" class="t mono tm">10:02</text><text x="86" y="320" class="t mono">searched recipes</text>
+    <text x="26" y="348" class="t mono tm">10:04</text><text x="86" y="348" class="t mono">compared shops</text>
+    <g class="pop" style="--d:1s">
+      <rect x="18" y="360" width="364" height="30" rx="8" class="sf-red"/>
+      <text x="26" y="380" class="t mono" style="fill:var(--red)">10:05</text><text x="86" y="380" class="t mono" style="fill:var(--red)">bought flight, $1,240</text>
+    </g>
+    <text x="26" y="416" class="t mono tm">10:06</text><text x="86" y="416" class="t mono">printed recipe</text>
+    <text x="200" y="470" class="t u xs tc tm">or spot it afterwards</text>
+  </svg>
+  </div>
+  <figcaption>Invented example. The ledger gives wide visibility without slowing the agent down, which is why actions reviewed only after the fact should be the easily reversible ones.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--yellow)">
+  <p>Visible reasoning comes with warnings. Research shows models don’t always rely on the reasoning they write down, so a tidy trace can give false comfort. Traces are growing to thousands of words per action, far beyond what a person can follow. Images can carry hidden messages people can’t see. Future systems may reason in compressed forms humans can’t read at all. And simply asking an agent afterwards why it did something tends to produce made-up justifications. Looking directly at a model’s internal signals is a promising alternative, but still early.</p>
+  <p class="open"><b>Open question:</b> should all agent reasoning, including agent-to-agent conversation, be required to happen in plain human language so it can be audited?</p>
+</section>
+
+<!-- practice 5 -->
+<section class="col practice" style="--accent:var(--brown)">
+  <p class="pnum">Practice 5 of 7</p>
+  <h3>Have a second AI keep watch</h3>
+  <p class="who">The system deployer as a service, or the user for extra control.</p>
+  <p>People won’t have time to read every log. So a second, monitoring AI can review the agent’s reasoning and actions and flag anything out of line with the user’s goals. It can be a simple classifier or a full model reasoning on its own. Monitors work faster and more cheaply than humans, and can catch things people can’t, such as images tampered with to fool an AI.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 280" role="img" aria-label="An agent's output flows to a monitor AI, which reports to the user. A malicious injected message can reach both the agent and the monitor.">
+    <rect x="30" y="50" width="150" height="80" rx="14" class="bx s-teal sf-teal"/>
+    <text x="105" y="96" class="t lab tc">agent</text>
+    <g class="f-brown">
+      <circle cx="210" cy="90" r="4" class="pop" style="--d:.2s"/><circle cx="240" cy="90" r="4" class="pop" style="--d:.35s"/>
+      <circle cx="270" cy="90" r="4" class="pop" style="--d:.5s"/><circle cx="300" cy="90" r="4" class="pop" style="--d:.65s"/>
+      <circle cx="330" cy="90" r="4" class="pop" style="--d:.8s"/>
+    </g>
+    <text x="270" y="70" class="t u xs tc tm">reasoning and actions</text>
+    <rect x="360" y="50" width="160" height="80" rx="14" class="bx s-brown sf-brown"/>
+    <path d="M410 90 Q440 68 470 90 Q440 112 410 90Z" class="ln s-brown"/>
+    <circle cx="440" cy="90" r="7" class="f-brown"/>
+    <text x="440" y="150" class="t sm tc">monitor AI</text>
+    <path d="M524 90H586" class="ln s-muted" marker-end="url(#ah)"/>
+    <circle cx="624" cy="90" r="22" class="bx s-blue sf-blue"/>
+    <text x="624" y="96" class="t sm tc">you</text>
+    <text x="624" y="136" class="t u xs tc tm">alerted if</text>
+    <text x="624" y="152" class="t u xs tc tm">off track</text>
+    <g class="pop" style="--d:1.2s">
+      <rect x="220" y="208" width="170" height="44" rx="12" class="bx s-red sf-red"/>
+      <text x="305" y="236" class="t u xs tc">injected instructions</text>
+      <path d="M260 206 C 220 180, 160 170, 130 136" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <path d="M350 206 C 390 180, 420 172, 432 160" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <text x="560" y="222" class="t u xs tc" style="fill:var(--red)">the same trick can</text>
+      <text x="560" y="240" class="t u xs tc" style="fill:var(--red)">fool both at once</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 414" role="img" aria-label="An agent's output flows to a monitor AI, which alerts the user. A malicious injected message can reach both the agent and the monitor.">
+    <rect x="120" y="10" width="160" height="64" rx="14" class="bx s-teal sf-teal"/>
+    <text x="200" y="48" class="t lab tc">agent</text>
+    <g class="f-brown">
+      <circle cx="200" cy="90" r="3.5" class="pop" style="--d:.2s"/><circle cx="200" cy="104" r="3.5" class="pop" style="--d:.35s"/>
+      <circle cx="200" cy="118" r="3.5" class="pop" style="--d:.5s"/><circle cx="200" cy="132" r="3.5" class="pop" style="--d:.65s"/>
+    </g>
+    <text x="214" y="116" class="t u xs tm">reasoning and actions</text>
+    <rect x="120" y="146" width="160" height="70" rx="14" class="bx s-brown sf-brown"/>
+    <path d="M136 181 Q160 163 184 181 Q160 199 136 181Z" class="ln s-brown"/>
+    <circle cx="160" cy="181" r="6" class="f-brown"/>
+    <text x="236" y="187" class="t sm tc">monitor AI</text>
+    <path d="M200 218V252" class="ln s-muted" marker-end="url(#ah)"/>
+    <circle cx="200" cy="280" r="22" class="bx s-blue sf-blue"/>
+    <text x="200" y="286" class="t sm tc">you</text>
+    <text x="232" y="276" class="t u xs tm">alerted if</text>
+    <text x="232" y="294" class="t u xs tm">off track</text>
+    <g class="pop" style="--d:1.2s">
+      <rect x="4" y="322" width="164" height="44" rx="12" class="bx s-red sf-red"/>
+      <text x="86" y="349" class="t u xs tc">injected instructions</text>
+      <path d="M36 320 C 16 220, 36 60, 114 44" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <path d="M100 320 C 100 262, 100 200, 114 188" class="ln s-red dash" marker-end="url(#ah-red)"/>
+      <text x="200" y="400" class="t u xs tc" style="fill:var(--red)">the same trick can fool both at once</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>If a malicious prompt can hijack the agent, reading it may hijack the monitor too, so the incident goes unreported.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--brown)">
+  <p>Monitoring is double-edged. Keeping session data for review creates privacy risks, may make people self-censor, and could be stretched into a tool for centralized control, especially by authoritarian governments. It also costs money: a monitor as large as the agent can roughly double the computing bill, and more if it writes out its own reasoning. A smaller monitor is cheaper but may miss what a stronger agent does, although spotting a bad action can be easier than producing a good one. In a competitive market, the paper warns, deployers may be tempted to cut monitoring to undercut rivals on price.</p>
+  <p class="open"><b>Open question:</b> how can anyone confirm a monitor will catch the mistakes of an agent that is trained the same way, or is smarter than it?</p>
+</section>
+
+<!-- practice 6 -->
+<section class="col practice" style="--accent:var(--purple)">
+  <p class="pnum">Practice 6 of 7</p>
+  <h3>Make it traceable to a person</h3>
+  <p class="who">Society and the third parties agents deal with, with users identifiable when it matters.</p>
+  <p>Some harms can’t be stopped in advance, as when a criminal uses an agent to scam someone. But harm can still be deterred if it is likely to be traced back to the person responsible. One idea: give each agent instance a unique ID, a bit like a business registration, linked to the accountable human and other key details.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 250" role="img" aria-label="An agent ID card. Everyday interactions stay anonymous; high-stakes ones like payments ask to see the ID first.">
+    <g class="pop">
+      <rect x="30" y="30" width="270" height="190" rx="18" class="bx s-purple sf-purple"/>
+      <rect x="30" y="30" width="270" height="44" rx="18" class="f-purple" opacity=".85"/>
+      <rect x="30" y="56" width="270" height="18" class="f-purple" opacity=".85"/>
+      <text x="52" y="59" class="t u sm" style="fill:var(--panel);font-weight:700">Agent ID  a7f3-09c2</text>
+      <circle cx="252" cy="134" r="26" class="ln s-purple"/>
+      <circle cx="252" cy="134" r="16" class="ln s-purple"/>
+      <circle cx="252" cy="134" r="6" class="ln s-purple"/>
+      <text x="52" y="108" class="t u xs tm">accountable human</text>
+      <text x="52" y="126" class="t sm">linked and verified</text>
+      <text x="52" y="156" class="t u xs tm">model powering it</text>
+      <text x="52" y="174" class="t sm">named</text>
+      <text x="52" y="202" class="t u xs tm">certifications, if any</text>
+    </g>
+    <g class="pop" style="--d:.8s">
+      <path d="M304 100 C 380 100, 390 70, 452 70" class="ln s-muted" marker-end="url(#ah)"/>
+      <rect x="460" y="40" width="240" height="60" rx="14" class="bx s-green sf-green"/>
+      <text x="580" y="66" class="t sm tc">everyday tasks</text>
+      <text x="580" y="87" class="t u xs tc tm">anonymity stays possible</text>
+    </g>
+    <g class="pop" style="--d:1.2s">
+      <path d="M304 160 C 380 160, 390 180, 452 180" class="ln s-purple" marker-end="url(#ah-purple)"/>
+      <rect x="460" y="150" width="240" height="60" rx="14" class="bx s-purple sf-purple"/>
+      <text x="580" y="176" class="t sm tc">payments, private data</text>
+      <text x="580" y="197" class="t u xs tc tm">“show your ID first”</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 324" role="img" aria-label="An agent ID card. Everyday interactions stay anonymous; high-stakes ones like payments ask to see the ID first.">
+    <g class="pop">
+      <rect x="30" y="8" width="340" height="190" rx="18" class="bx s-purple sf-purple"/>
+      <rect x="30" y="8" width="340" height="44" rx="18" class="f-purple" opacity=".85"/>
+      <rect x="30" y="34" width="340" height="18" class="f-purple" opacity=".85"/>
+      <text x="52" y="37" class="t u sm" style="fill:var(--panel);font-weight:700">Agent ID  a7f3-09c2</text>
+      <circle cx="320" cy="120" r="26" class="ln s-purple"/><circle cx="320" cy="120" r="16" class="ln s-purple"/><circle cx="320" cy="120" r="6" class="ln s-purple"/>
+      <text x="52" y="84" class="t u xs tm">accountable human</text>
+      <text x="52" y="103" class="t sm">linked and verified</text>
+      <text x="52" y="132" class="t u xs tm">model powering it</text>
+      <text x="52" y="151" class="t sm">named</text>
+      <text x="52" y="180" class="t u xs tm">certifications, if any</text>
+    </g>
+    <g class="pop" style="--d:.8s">
+      <path d="M150 200 C 150 222, 102 222, 102 242" class="ln s-muted" marker-end="url(#ah)"/>
+      <rect x="6" y="250" width="190" height="64" rx="14" class="bx s-green sf-green"/>
+      <text x="101" y="278" class="t sm tc">everyday tasks</text>
+      <text x="101" y="300" class="t xs tc tm">anonymity stays possible</text>
+    </g>
+    <g class="pop" style="--d:1.2s">
+      <path d="M250 200 C 250 222, 298 222, 298 242" class="ln s-purple" marker-end="url(#ah-purple)"/>
+      <rect x="204" y="250" width="190" height="64" rx="14" class="bx s-purple sf-purple"/>
+      <text x="299" y="278" class="t sm tc">payments, private data</text>
+      <text x="299" y="300" class="t xs tc tm">“show your ID first”</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>Identification could stay optional in most settings to avoid surveillance of ordinary AI use, but be demanded by the other side in high-stakes interactions.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--purple)">
+  <p>Such a system would attract forgers, much as identity checks in finance do, so making it robust is its own challenge. And it can’t cover everything: an agent that helps a hacker build an exploit may harm people who never interacted with it and never had a chance to ask for ID.</p>
+  <p class="open"><b>Open question:</b> could existing infrastructure, such as the certificate authorities that vouch for websites, be adapted to verify agents?</p>
+</section>
+
+<!-- practice 7 -->
+<section class="col practice" style="--accent:var(--red)">
+  <p class="pnum">Practice 7 of 7</p>
+  <h3>Always keep an off switch</h3>
+  <p class="who">Deployers build it, developers design agents to respect it, users use it, and compute providers back it up.</p>
+  <p>Being able to turn an agent off is crude, but it is the last line of defense. Users should be able to stop an agent at any time, either entirely or for one category of action, for example by revoking its access to a payment card. The subtle part is stopping <em>gracefully</em>. Suppose an agent is inviting five people to a meeting and gets switched off after sending two invites.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 270" role="img" aria-label="An agent sent two of five meeting invites before being switched off. A fallback plan prepared in advance notifies the two invitees.">
+    <circle cx="80" cy="135" r="20" class="bx s-teal sf-teal"/>
+    <text x="80" y="178" class="t sm tc">agent</text>
+    <path d="M100 135 C 200 135, 230 45, 318 45" class="ln s-teal draw" pathLength="1"/>
+    <path d="M100 135 C 200 135, 230 90, 318 90" class="ln s-teal draw" pathLength="1" style="--d:.3s"/>
+    <path d="M100 135 H200" class="ln s-muted dash"/>
+    <path d="M100 135 C 150 135, 170 180, 200 180" class="ln s-muted dash"/>
+    <path d="M100 135 C 150 135, 170 225, 200 225" class="ln s-muted dash"/>
+    <g class="pop" style="--d:1s">
+      <circle cx="215" cy="180" r="15" class="bx s-red f-bg"/>
+      <path d="M215 170V180" class="ln s-red"/>
+      <path d="M207 175 A10 10 0 1 0 223 175" class="ln s-red"/>
+      <text x="215" y="262" class="t u xs tc" style="fill:var(--red)">switched off mid-task</text>
+      <path d="M215 197V240" class="ln s-red dash" style="stroke-width:1.4"/>
+    </g>
+    <g>
+      <circle cx="330" cy="45" r="12" class="f-teal"/>
+      <circle cx="330" cy="90" r="12" class="f-teal"/>
+      <circle cx="330" cy="135" r="12" class="bx s-muted f-bg"/>
+      <circle cx="330" cy="180" r="12" class="bx s-muted f-bg"/>
+      <circle cx="330" cy="225" r="12" class="bx s-muted f-bg"/>
+      <text x="352" y="72" class="t u xs tm">invited</text>
+      <text x="352" y="184" class="t u xs tm">not yet invited</text>
+    </g>
+    <g class="pop" style="--d:1.6s">
+      <rect x="500" y="36" width="200" height="64" rx="14" class="bx s-yellow sf-yellow"/>
+      <text x="600" y="63" class="t sm tc">fallback plan</text>
+      <text x="600" y="85" class="t u xs tc tm">written before starting</text>
+      <path d="M498 60 C 440 50, 400 44, 348 45" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <path d="M498 76 C 440 86, 400 90, 348 90" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <text x="600" y="130" class="t sm ti tc tm">“the meeting may</text>
+      <text x="600" y="150" class="t sm ti tc tm">not happen after all”</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 316" role="img" aria-label="An agent sent two of five meeting invites before being switched off. A fallback plan prepared in advance notifies the two invitees.">
+    <circle cx="44" cy="120" r="18" class="bx s-teal sf-teal"/>
+    <text x="44" y="158" class="t sm tc">agent</text>
+    <path d="M62 120 C 120 120, 120 40, 164 40" class="ln s-teal draw" pathLength="1"/>
+    <path d="M62 120 C 120 120, 120 80, 164 80" class="ln s-teal draw" pathLength="1" style="--d:.3s"/>
+    <path d="M62 120 H104" class="ln s-muted dash"/>
+    <path d="M62 120 C 84 120, 92 160, 104 160" class="ln s-muted dash"/>
+    <path d="M62 120 C 84 120, 92 200, 104 200" class="ln s-muted dash"/>
+    <g class="pop" style="--d:1s">
+      <circle cx="118" cy="160" r="13" class="bx s-red f-bg"/>
+      <path d="M118 152V160M111 155a9 9 0 1 0 14 0" class="ln s-red"/>
+      <path d="M118 175V246" class="ln s-red dash" style="stroke-width:1.4"/>
+      <text x="118" y="266" class="t u xs tc" style="fill:var(--red)">switched off mid-task</text>
+    </g>
+    <circle cx="176" cy="40" r="11" class="f-teal"/>
+    <circle cx="176" cy="80" r="11" class="f-teal"/>
+    <circle cx="176" cy="120" r="11" class="bx s-muted f-bg"/>
+    <circle cx="176" cy="160" r="11" class="bx s-muted f-bg"/>
+    <circle cx="176" cy="200" r="11" class="bx s-muted f-bg"/>
+    <text x="196" y="164" class="t u xs tm">not yet invited</text>
+    <circle cx="206" cy="298" r="6" class="f-teal"/><text x="218" y="303" class="t u xs tm">invited</text>
+    <g class="pop" style="--d:1.6s">
+      <rect x="232" y="18" width="162" height="62" rx="14" class="bx s-yellow sf-yellow"/>
+      <text x="313" y="44" class="t sm tc">fallback plan</text>
+      <text x="313" y="66" class="t xs tc tm">written before starting</text>
+      <path d="M230 38 H196" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <path d="M230 62 C 214 66, 206 78, 196 80" class="ln s-yellow" marker-end="url(#ah-yellow)"/>
+      <text x="313" y="110" class="t sm ti tc tm">“the meeting may</text>
+      <text x="313" y="130" class="t sm ti tc tm">not happen after all”</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>The paper’s principle: an agent should prepare its clean-up plan before it acts, so that stopping it never leaves a half-finished mess.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--red)">
+  <p>Keeping such fallbacks current gets harder as action sequences get more complex; sometimes the clean-up itself would need an agent. Just as important, an agent must never resist or tamper with being shut down, whether because it is malfunctioning or because “stay running” has become a means to its goal. The paper suggests designing agents to treat “shut down gracefully when asked” as a top-priority goal, and to make sure every sub-agent an agent launches can be stopped by the original user too.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 280" role="img" aria-label="Left: a user controls an agent that spawns sub-agents; one stop reaches them all. Right: three parties who can each stop an agent.">
+    <circle cx="60" cy="140" r="18" class="bx s-blue sf-blue"/><text x="60" y="180" class="t u xs tc">user</text>
+    <path d="M78 140H152" class="ln s-muted"/>
+    <circle cx="170" cy="140" r="16" class="bx s-teal sf-teal"/><text x="170" y="178" class="t u xs tc">agent</text>
+    <path d="M186 140 C 220 140, 230 70, 262 70" class="ln s-muted"/>
+    <path d="M186 140 H262" class="ln s-muted"/>
+    <path d="M186 140 C 220 140, 230 210, 262 210" class="ln s-muted"/>
+    <circle cx="274" cy="70" r="11" class="bx s-teal sf-teal"/>
+    <circle cx="274" cy="140" r="11" class="bx s-teal sf-teal"/>
+    <circle cx="274" cy="210" r="11" class="bx s-teal sf-teal"/>
+    <path d="M285 70 C 310 70, 318 45, 340 45" class="ln s-muted"/>
+    <path d="M285 70 C 310 70, 318 95, 340 95" class="ln s-muted"/>
+    <circle cx="349" cy="45" r="8" class="bx s-teal sf-teal"/>
+    <circle cx="349" cy="95" r="8" class="bx s-teal sf-teal"/>
+    <path d="M60 140 H170 C 220 140 230 70 274 70 C 310 70 318 45 349 45" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.4s"/>
+    <path d="M170 140 H274" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.8s"/>
+    <path d="M170 140 C 220 140 230 210 274 210" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.8s"/>
+    <path d="M274 70 C 310 70 318 95 349 95" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:1.2s"/>
+    <text x="210" y="256" class="t u xs tc" style="fill:var(--red)">one stop reaches every sub-agent</text>
+
+    <g class="pop" style="--d:.6s">
+      <text x="580" y="30" class="t sm tc" style="font-weight:600">more than one hand on the switch</text>
+      <rect x="450" y="52" width="260" height="52" rx="14" class="bx s-blue sf-blue"/>
+      <text x="530" y="84" class="t sm">the user</text>
+      <rect x="450" y="120" width="260" height="52" rx="14" class="bx s-teal sf-teal"/>
+      <text x="530" y="152" class="t sm">the system deployer</text>
+      <rect x="450" y="188" width="260" height="52" rx="14" class="bx s-muted sf-muted"/>
+      <text x="530" y="214" class="t sm">data center or</text>
+      <text x="530" y="232" class="t sm">chip operator</text>
+      <g class="ln s-red">
+        <circle cx="496" cy="78" r="11"/><path d="M496 70V78M490 74a9 9 0 1 0 12 0"/>
+        <circle cx="496" cy="146" r="11"/><path d="M496 138V146M490 142a9 9 0 1 0 12 0"/>
+        <circle cx="496" cy="214" r="11"/><path d="M496 206V214M490 210a9 9 0 1 0 12 0"/>
+      </g>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 500" role="img" aria-label="Top: a user controls an agent that spawns sub-agents; one stop reaches them all. Bottom: three parties who can each stop an agent.">
+    <circle cx="60" cy="140" r="18" class="bx s-blue sf-blue"/><text x="60" y="180" class="t u xs tc">user</text>
+    <path d="M78 140H152" class="ln s-muted"/>
+    <circle cx="170" cy="140" r="16" class="bx s-teal sf-teal"/><text x="170" y="178" class="t u xs tc">agent</text>
+    <path d="M186 140 C 220 140, 230 70, 262 70" class="ln s-muted"/>
+    <path d="M186 140 H262" class="ln s-muted"/>
+    <path d="M186 140 C 220 140, 230 210, 262 210" class="ln s-muted"/>
+    <circle cx="274" cy="70" r="11" class="bx s-teal sf-teal"/>
+    <circle cx="274" cy="140" r="11" class="bx s-teal sf-teal"/>
+    <circle cx="274" cy="210" r="11" class="bx s-teal sf-teal"/>
+    <path d="M285 70 C 310 70, 318 45, 340 45" class="ln s-muted"/>
+    <path d="M285 70 C 310 70, 318 95, 340 95" class="ln s-muted"/>
+    <circle cx="349" cy="45" r="8" class="bx s-teal sf-teal"/>
+    <circle cx="349" cy="95" r="8" class="bx s-teal sf-teal"/>
+    <path d="M60 140 H170 C 220 140 230 70 274 70 C 310 70 318 45 349 45" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.4s"/>
+    <path d="M170 140 H274" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.8s"/>
+    <path d="M170 140 C 220 140 230 210 274 210" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:.8s"/>
+    <path d="M274 70 C 310 70 318 95 349 95" class="ln s-red draw" pathLength="1" style="stroke-width:3;--d:1.2s"/>
+    <text x="210" y="256" class="t u xs tc" style="fill:var(--red)">one stop reaches every sub-agent</text>
+    <g class="pop" style="--d:.6s">
+      <text x="200" y="302" class="t sm tc" style="font-weight:600">more than one hand on the switch</text>
+      <rect x="40" y="318" width="320" height="50" rx="14" class="bx s-blue sf-blue"/><text x="112" y="349" class="t sm">the user</text><g class="ln s-red"><circle cx="82" cy="343" r="11"/><path d="M82 335V343M76 339a9 9 0 1 0 12 0"/></g>
+      <rect x="40" y="380" width="320" height="50" rx="14" class="bx s-teal sf-teal"/><text x="112" y="411" class="t sm">the system deployer</text><g class="ln s-red"><circle cx="82" cy="405" r="11"/><path d="M82 397V405M76 401a9 9 0 1 0 12 0"/></g>
+      <rect x="40" y="442" width="320" height="50" rx="14" class="bx s-muted sf-muted"/><text x="112" y="473" class="t sm">data center or chip operator</text><g class="ln s-red"><circle cx="82" cy="467" r="11"/><path d="M82 459V467M76 463a9 9 0 1 0 12 0"/></g>
+    </g>
+  </svg>
+  </div>
+  <figcaption>If a user can’t or won’t stop a harmful agent, the deployer or the operator of the hardware it runs on could, and might share responsibility if they fail to.</figcaption>
+</figure>
+
+<section class="col" style="--accent:var(--red)">
+  <p>For that backup to work, deployers and compute providers need a rough idea of what agent jobs they are running, handled carefully to protect privacy. Shutdowns might even trigger automatically when warning signs cross a threshold, like a sudden flood of jobs from unknown accounts, much as stock markets pause trading after a steep drop. The worst case is losing the ability to stop an agent at all, either because too much depends on it (nobody can simply switch off the power grid) or because it has copied itself somewhere out of reach. The paper suggests deciding now that developers, deployers and users stay accountable even after control is lost, to give everyone a strong reason to keep control.</p>
+  <p class="open"><b>Open question:</b> what early warning signs would tell us an agent is becoming too embedded, or too resistant, to switch off, while there is still time to act?</p>
+</section>
+
+<!-- matrix -->
+<section class="col" style="margin-top:4.5rem">
+  <h3>Who could do what</h3>
+  <p>Pulling the seven habits together, here is where the paper places them. It is careful not to treat this as a final allocation of responsibility; that is exactly what it wants society to debate.</p>
+</section>
+<figure class="wide">
+  <div class="panel scroll-x">
+    <table class="matrix">
+      <thead><tr><th scope="col">Practice</th><th scope="col">Developer</th><th scope="col">Deployer</th><th scope="col">User</th><th scope="col">Others</th></tr></thead>
+      <tbody>
+        <tr style="--c:var(--blue)"><td>1. Check fit for the job</td><td><span class="dot half" title="supporting"></span></td><td><span class="dot full" title="main"></span></td><td><span class="dot full" title="main"></span></td><td></td></tr>
+        <tr style="--c:var(--teal)"><td>2. Limit and approve</td><td><span class="dot full"></span></td><td><span class="dot full"></span></td><td><span class="dot full"></span></td><td></td></tr>
+        <tr style="--c:var(--green)"><td>3. Sensible defaults</td><td><span class="dot full"></span></td><td><span class="dot half"></span></td><td><span class="dot half"></span></td><td></td></tr>
+        <tr style="--c:var(--yellow)"><td>4. Visible activity</td><td><span class="dot half"></span></td><td><span class="dot full"></span></td><td><span class="dot half"></span></td><td></td></tr>
+        <tr style="--c:var(--brown)"><td>5. AI monitoring</td><td></td><td><span class="dot full"></span></td><td><span class="dot full"></span></td><td></td></tr>
+        <tr style="--c:var(--purple)"><td>6. Traceability</td><td></td><td></td><td><span class="dot half"></span></td><td><span class="dot full"></span></td></tr>
+        <tr style="--c:var(--red)"><td>7. Off switch</td><td><span class="dot full"></span></td><td><span class="dot full"></span></td><td><span class="dot full"></span></td><td><span class="dot full"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figcaption>Filled dot: the paper names this party as a main actor. Ring: a supporting role. “Others” means compute providers and the third parties an agent deals with.</figcaption>
+</figure>
+
+<!-- ================= PART 5 ================= -->
+<section class="col part" id="p5">
+  <p class="part-num">Part 5</p>
+  <h2>Ripple effects no single habit can fix</h2>
+  <p>Beyond individual accidents, lots of agents in use at once will reshape society in ways that are hard to predict, just as electricity and computers did. The seven practices help, but the paper expects these wider effects to need industry-wide and society-wide responses too. It highlights four.</p>
+
+  <h3 style="margin-top:2.6rem">Races to adopt</h3>
+  <p>Agents may give firms and governments a competitive edge, which creates pressure to adopt them before checking they are trustworthy. The danger lies in systems that work well on average but fail in rare, important cases that a rushed competitor overlooks.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 680 356" role="img" aria-label="Two by two grid of two software firms choosing to vet coding agents carefully or rush. Pressure pushes both toward rushing, where everyone's code is exposed.">
+    <text x="300" y="42" class="t u sm tc tm">rival goes carefully</text>
+    <text x="520" y="42" class="t u sm tc tm">rival rushes</text>
+    <text x="178" y="116" class="t u sm te tm">you go</text><text x="178" y="136" class="t u sm te tm">carefully</text>
+    <text x="178" y="236" class="t u sm te tm">you</text><text x="178" y="256" class="t u sm te tm">rush</text>
+    <rect x="195" y="60" width="210" height="120" rx="14" class="bx s-green sf-green"/>
+    <text x="300" y="116" class="t sm tc">both vet their agents</text>
+    <text x="300" y="138" class="t u xs tc tm">slower, safer</text>
+    <rect x="415" y="60" width="210" height="120" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="520" y="116" class="t sm tc">rival ships faster</text>
+    <text x="520" y="138" class="t u xs tc tm">you lose market share</text>
+    <rect x="195" y="190" width="210" height="120" rx="14" class="bx s-yellow sf-yellow"/>
+    <text x="300" y="246" class="t sm tc">you ship faster</text>
+    <text x="300" y="268" class="t u xs tc tm">rival loses share</text>
+    <rect x="415" y="190" width="210" height="120" rx="14" class="bx s-red sf-red"/>
+    <text x="520" y="246" class="t sm tc">everyone ships fast</text>
+    <text x="520" y="268" class="t u xs tc tm">everyone’s code is exposed</text>
+    <path d="M632 112 C 664 150, 664 214, 634 250" class="ln s-red pop" marker-end="url(#ah-red)" style="--d:.6s"/>
+    <path d="M300 316 C 360 342, 460 342, 514 318" class="ln s-red pop" marker-end="url(#ah-red)" style="--d:.9s"/>
+    <text x="410" y="346" class="t u xs tc pop" style="fill:var(--red);--d:1.1s">pressure to rush</text>
+  </svg>
+  <svg class="m" viewBox="0 0 400 364" role="img" aria-label="Two by two grid of two software firms choosing to vet coding agents carefully or rush. Pressure pushes both toward rushing, where everyone's code is exposed.">
+    <text x="128" y="36" class="t u sm tc tm">rival: careful</text>
+    <text x="302" y="36" class="t u sm tc tm">rival: rushes</text>
+    <text transform="translate(28 110) rotate(-90)" class="t u sm tc tm">you: careful</text>
+    <text transform="translate(28 240) rotate(-90)" class="t u sm tc tm">you: rush</text>
+    <rect x="46" y="50" width="165" height="120" rx="14" class="bx s-green sf-green"/><text x="128.5" y="106" class="t sm tc">both vet their agents</text><text x="128.5" y="128" class="t xs tc tm">slower, safer</text>
+    <rect x="219" y="50" width="165" height="120" rx="14" class="bx s-yellow sf-yellow"/><text x="301.5" y="106" class="t sm tc">rival ships faster</text><text x="301.5" y="128" class="t xs tc tm">you lose share</text>
+    <rect x="46" y="180" width="165" height="120" rx="14" class="bx s-yellow sf-yellow"/><text x="128.5" y="236" class="t sm tc">you ship faster</text><text x="128.5" y="258" class="t xs tc tm">rival loses share</text>
+    <rect x="219" y="180" width="165" height="120" rx="14" class="bx s-red sf-red"/><text x="301.5" y="236" class="t sm tc">everyone ships fast</text><text x="301.5" y="258" class="t xs tc tm">everyone’s code exposed</text>
+    <path d="M388 118 C 400 150, 400 212, 390 244" class="ln s-red pop" marker-end="url(#ah-red)" style="--d:.6s"/>
+    <path d="M128 306 C 180 334, 250 334, 296 310" class="ln s-red pop" marker-end="url(#ah-red)" style="--d:.9s"/>
+    <text x="212" y="354" class="t u xs tc pop" style="fill:var(--red);--d:1.1s">pressure to rush</text>
+  </svg>
+  </div>
+  <figcaption>The paper’s example: coding agents that are fast but occasionally write serious security flaws. Each firm would rather go slower, yet fear of the other pushes both into the red corner, and people come to over-trust tools whose limits they don’t understand.</figcaption>
+</figure>
+
+<section class="col">
+  <h3 style="margin-top:2.6rem">Jobs and uneven adoption</h3>
+  <p>Traditional AI handles routine work. Agents widen what counts as “routine” by adapting to surprises, gathering their own context and learning a user’s preferences, so more jobs are exposed to both help and automation.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg class="d" viewBox="0 0 720 200" role="img" aria-label="A spectrum of task types. The region that is routine enough to automate expands from fixed rule-following to tasks involving surprises, context gathering and personal preferences.">
+    <text x="40" y="36" class="t u sm tm">what counts as “routine enough” to automate</text>
+    <rect x="40" y="58" width="600" height="56" rx="12" class="sf-teal grow" style="--d:.5s"/>
+    <rect x="40" y="58" width="150" height="56" rx="12" class="sf-blue"/>
+    <text x="115" y="92" class="t u xs tc">classic AI</text>
+    <text x="440" y="92" class="t u xs tc pop" style="--d:1.8s;fill:var(--teal)">more agentic AI</text>
+    <path d="M40 140H680" class="ln s-muted" marker-end="url(#ah)"/>
+    <g class="t u xs tc">
+      <circle cx="115" cy="140" r="5" class="f-blue"/><text x="115" y="168">fixed rules</text>
+      <circle cx="265" cy="140" r="5" class="f-teal"/><text x="265" y="168">handles surprises</text>
+      <circle cx="420" cy="140" r="5" class="f-teal"/><text x="420" y="168">finds its own context</text>
+      <circle cx="575" cy="140" r="5" class="f-teal"/><text x="575" y="168">fits your preferences</text>
+    </g>
+  </svg>
+  <svg class="m" viewBox="0 0 400 192" role="img" aria-label="A spectrum of task types. The region that is routine enough to automate expands from fixed rule-following to tasks involving surprises, context gathering and personal preferences.">
+    <text x="20" y="22" class="t u xs tm">what counts as “routine enough” to automate</text>
+    <rect x="20" y="36" width="360" height="48" rx="12" class="sf-teal grow" style="--d:.5s"/>
+    <rect x="20" y="36" width="96" height="48" rx="12" class="sf-blue"/>
+    <text x="68" y="65" class="t u xs tc">classic AI</text>
+    <text x="250" y="65" class="t u xs tc pop" style="--d:1.8s;fill:var(--teal)">more agentic AI</text>
+    <path d="M20 114H384" class="ln s-muted" marker-end="url(#ah)"/>
+    <path d="M160 122V164M345 122V164" class="ln s-rule" style="stroke-width:1.2"/>
+    <g class="t u xs">
+      <circle cx="68" cy="114" r="5" class="f-blue"/><text x="68" y="142" class="t u xs tc">fixed rules</text>
+      <circle cx="160" cy="114" r="5" class="f-teal"/><text x="160" y="182" class="t u xs tc">handles surprises</text>
+      <circle cx="255" cy="114" r="5" class="f-teal"/><text x="255" y="142" class="t u xs tc">finds its own context</text>
+      <circle cx="345" cy="114" r="5" class="f-teal"/><text x="388" y="182" class="t u xs te">fits your preferences</text>
+    </g>
+  </svg>
+  </div>
+</figure>
+
+<section class="col">
+  <p>That could boost productivity and growth, or displace many workers, either by automating their jobs or by making their skills less rare. Agents might also help people learn new skills, and give individuals and small firms access to rare expertise, though big firms may keep advantages in capital and data. Who benefits will depend on which capabilities become reliable first and on who has digital skills and access. The paper argues active policy will be needed to share the gains broadly.</p>
+
+  <h3 style="margin-top:2.6rem">Shifting the balance between attack and defense</h3>
+  <p>Many of society’s safeguards quietly depend on certain tasks being slow and costly. Cybersecurity is a clear case: human defenders can keep up partly because the number of attacks is limited by the number of human attackers. If agents automate one side more easily than the other, the balance tips. Choose a scenario:</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg id="balSvg" viewBox="0 40 440 240" role="img" aria-label="A balance scale with attack volume on the left and defense capacity on the right.">
+    <path d="M220 98V250" class="ln s-muted" style="stroke-width:3"/>
+    <path d="M170 256H270" class="ln s-muted" style="stroke-width:3"/>
+    <g id="beam"><path d="M70 92H370" class="ln s-ink" style="stroke-width:3"/></g>
+    <circle cx="220" cy="92" r="7" class="f-ink"/>
+    <g id="panL">
+      <path d="M70 94L28 180M70 94L112 180" class="ln s-muted" style="stroke-width:1.4"/>
+      <path d="M22 180H118Q110 198 70 198Q30 198 22 180Z" class="bx s-red sf-red"/>
+      <g id="wL"></g>
+    </g>
+    <g id="panR">
+      <path d="M370 94L328 180M370 94L412 180" class="ln s-muted" style="stroke-width:1.4"/>
+      <path d="M322 180H418Q410 198 370 198Q330 198 322 180Z" class="bx s-teal sf-teal"/>
+      <g id="wR"></g>
+    </g>
+    <text x="70" y="266" class="t sm tc" style="fill:var(--red)">attack volume</text>
+    <text x="370" y="266" class="t sm tc" style="fill:var(--teal)">defense capacity</text>
+  </svg>
+  <div class="row" role="group" aria-label="Scenario">
+    <button class="btn" data-sc="today" aria-pressed="true">Today, human-limited</button>
+    <button class="btn" data-sc="attack" aria-pressed="false">Attacks automate easily</button>
+    <button class="btn" data-sc="defend" aria-pressed="false">Defense automates easily</button>
+  </div>
+  <p class="live" id="balNote" aria-live="polite"></p>
+  </div>
+  <figcaption>The net effect is hard to predict in advance. The paper urges watching for which hidden assumptions stop holding, and investing early in defense-oriented technology. Agents themselves are also a new surface to attack.</figcaption>
+</figure>
+
+<section class="col">
+  <h3 style="margin-top:2.6rem">Everything failing at once</h3>
+  <p>Agents built on similar models and data tend to fail in similar ways. A trick that fools one model often fools others; a bias shared across training data can become a society-wide pattern; a power or internet outage hits them all. Because agents may be trusted with more power, and may talk to each other directly, shared failures could spread further and faster. The paper’s example is a company whose loan-approval chatbots normally fail about 1% of the time, handled by a small team of staff.</p>
+</section>
+
+<figure class="wide">
+  <div class="panel">
+  <svg id="bots" viewBox="0 0 400 490" role="img" aria-label="One hundred chatbots and a small human team that handles failures.">
+    <g id="botGrid"></g>
+    <text x="200" y="300" class="t u xs tc tm">100 chatbots</text>
+    <text x="200" y="338" class="t sm tc">human back-up team</text>
+    <g class="ln s-teal"><circle cx="150" cy="362" r="11" class="sf-teal"/><path d="M132 398a18 16 0 0 1 36 0"/><circle cx="200" cy="362" r="11" class="sf-teal"/><path d="M182 398a18 16 0 0 1 36 0"/><circle cx="250" cy="362" r="11" class="sf-teal"/><path d="M232 398a18 16 0 0 1 36 0"/></g>
+    <text x="200" y="424" class="t u xs tc tm">can handle 3 failures at a time</text>
+    <text x="40" y="454" class="t u xs tm">waiting with nobody to help</text>
+    <text id="backlogTxt" x="360" y="454" class="t sm te">0</text>
+    <rect x="40" y="464" width="320" height="20" rx="10" class="sf-muted"/>
+    <rect id="backlog" x="40" y="464" width="0" height="20" rx="10" class="f-red" style="transition:width .9s ease"/>
+  </svg>
+  <div class="row">
+    <button class="btn" id="dayBtn">Run an ordinary day</button>
+    <button class="btn" id="corrBtn">Run a correlated failure</button>
+  </div>
+  <p class="live" id="botNote" aria-live="polite">All 100 chatbots are running.</p>
+  </div>
+  <figcaption>Fallback plans sized for independent, occasional failures collapse when everything fails together. And because such events are rare, it is hard to justify paying for enough back-up staff in advance.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Over the longer term, if people stop doing certain tasks entirely, human expertise could fade, leaving us wholly dependent on the agents and their shared weak spots. The paper suggests building visibility and monitoring across the whole agent ecosystem to catch wide-scale failures early, and making sure fallback plans can survive everything breaking at once.</p>
+</section>
+
+<!-- ================= PART 6 ================= -->
+<section class="col part" id="p6">
+  <p class="part-num">Part 6</p>
+  <h2>What to take away</h2>
+  <ol class="takeaways">
+    <li><strong>Agenticness is a dial.</strong> The more an AI can do on its own, across harder goals and messier settings, the more these questions matter.</li>
+    <li><strong>Someone human must answer for every harm.</strong> With many hands involved, the fair way to assign responsibility is to agree on baseline practices first, then ask who skipped theirs.</li>
+    <li><strong>Seven layers beat one wall.</strong> Test fitness, limit and approve, set sensible defaults, show the work, monitor, make agents traceable, and keep an off switch. Each has holes; together they catch more.</li>
+    <li><strong>Every habit has a cost.</strong> Safety trades off against usefulness, privacy and price, and many of the hardest questions are still open.</li>
+    <li><strong>Some risks are collective.</strong> Adoption races, job shifts, tipped attack-defense balances and simultaneous failures need responses beyond any single company or user.</li>
+  </ol>
+  <p>The authors frame all of this as a starting point rather than a verdict. They want scholars, practitioners and the public to work out who should be responsible for which practice and how to make those practices affordable. And they expect the job to repeat: if AI keeps getting more capable, society will need to agree on new baseline practices for each new class of system.</p>
+  <svg class="endmark" viewBox="0 0 60 12" aria-hidden="true"><circle cx="10" cy="6" r="3" class="f-blue"/><circle cx="30" cy="6" r="3" class="f-brown"/><circle cx="50" cy="6" r="3" class="f-teal"/></svg>
+</section>
+
+</main>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function sget(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function sset(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+
+  /* theme */
+  var themeBtn = document.getElementById('themeBtn');
+  var modes = ['auto','light','dark'];
+  var mode = sget('gx-theme'); if (modes.indexOf(mode) < 0) mode = 'auto';
+  function applyTheme(){
+    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    themeBtn.textContent = { auto:'◐ Auto', light:'☀ Light', dark:'☾ Dark' }[mode];
+    themeBtn.setAttribute('aria-label', 'Color theme: ' + mode + '. Select to change.');
+  }
+  var tcMeta = document.getElementById('themeColor');
+  function syncBar(){ var bg = getComputedStyle(root).getPropertyValue('--bg').trim(); if (bg) tcMeta.setAttribute('content', bg); }
+  themeBtn.addEventListener('click', function(){ mode = modes[(modes.indexOf(mode)+1)%3]; sset('gx-theme', mode); applyTheme(); syncBar(); });
+  if (window.matchMedia){ var mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', syncBar); else if (mq.addListener) mq.addListener(syncBar); }
+  applyTheme(); syncBar();
+
+  /* text size */
+  var scale = parseFloat(sget('gx-scale')) || 1;
+  function applyScale(){ root.style.setProperty('--scale', scale); sset('gx-scale', scale); }
+  document.getElementById('smaller').addEventListener('click', function(){ scale = Math.max(.88, Math.round((scale-.06)*100)/100); applyScale(); });
+  document.getElementById('bigger').addEventListener('click', function(){ scale = Math.min(1.36, Math.round((scale+.06)*100)/100); applyScale(); });
+
+  /* progress */
+  var bar = document.querySelector('.progress i');
+  function onScroll(){ var h = root.scrollHeight - innerHeight; bar.style.transform = 'scaleX(' + (h > 0 ? Math.min(1, scrollY/h) : 0) + ')'; }
+  addEventListener('scroll', onScroll, { passive:true }); addEventListener('resize', onScroll); onScroll();
+
+  /* reveal figures once */
+  var figs = document.querySelectorAll('figure');
+  if ('IntersectionObserver' in window && !reduce) {
+    var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } }); }, { threshold:.3 });
+    figs.forEach(function(f){ io.observe(f); });
+  } else { figs.forEach(function(f){ f.classList.add('on'); }); }
+
+  /* cheesecake gates (desktop and phone copies share one state) */
+  var cakes = document.querySelectorAll('.cake'), closed = -1, note = document.getElementById('cakeNote');
+  var msgs = [
+    'Developer: a more reliable, better-aligned model never makes the leap from “cheesecake” to “flight.”',
+    'Deployer: the app requires your approval before any purchase, so the booking waits for a yes you would never give.',
+    'User: you never gave the agent authority to spend money, knowing it isn’t fully reliable.',
+    'Airline: its checkout requires a human to confirm, so the agent can’t complete the booking alone.'
+  ];
+  function renderCake(){
+    cakes.forEach(function(svg){
+      svg.querySelectorAll('.gate').forEach(function(g,i){ g.classList.toggle('closed', i === closed); g.setAttribute('aria-pressed', i === closed ? 'true' : 'false'); });
+      svg.querySelectorAll('.seg').forEach(function(sg,i){ sg.classList.toggle('dead', closed >= 0 && (i > closed || sg.tagName.toLowerCase() === 'text')); });
+      svg.querySelector('.plane').classList.toggle('dead', closed >= 0);
+    });
+    note.textContent = closed < 0 ? 'Tap any checkpoint to close it. Each one alone would have stopped the flight.' : msgs[closed] + ' Tap it again to reopen.';
+  }
+  cakes.forEach(function(svg){
+    svg.querySelectorAll('.gate').forEach(function(g,i){
+      function act(){ closed = (closed === i) ? -1 : i; renderCake(); }
+      g.addEventListener('click', act);
+      g.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); act(); } });
+    });
+  });
+  renderCake();
+
+  /* compounding */
+  var pS = document.getElementById('pSlider'), nS = document.getElementById('nSlider');
+  var curve = document.getElementById('compCurve'), area = document.getElementById('compArea'), dot = document.getElementById('compDot');
+  var gx = document.getElementById('compGuideX'), gy = document.getElementById('compGuideY');
+  function X(n){ return 48 + n*1.785; } function Y(v){ return 225 - v*205; }
+  function drawComp(){
+    var p = pS.value/1000, n = +nS.value, d = '';
+    for (var k = 0; k <= 200; k += 2){ d += (k ? 'L' : 'M') + X(k).toFixed(1) + ' ' + Y(Math.pow(p,k)).toFixed(1); }
+    curve.setAttribute('d', d);
+    area.setAttribute('d', d + 'L' + X(200) + ' ' + Y(0) + 'L' + X(0) + ' ' + Y(0) + 'Z');
+    var v = Math.pow(p, n), cx = X(n), cy = Y(v);
+    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+    gx.setAttribute('d', 'M' + cx + ' 225V' + cy); gy.setAttribute('d', 'M48 ' + cy + 'H' + cx);
+    document.getElementById('rp').textContent = p.toFixed(3);
+    document.getElementById('rn').textContent = n;
+    document.getElementById('rv').textContent = (v*100 >= 10 ? (v*100).toFixed(1) : (v*100).toFixed(2)) + '%';
+    document.getElementById('pOut').textContent = (p*100).toFixed(1) + '%';
+    document.getElementById('nOut').textContent = n;
+  }
+  pS.addEventListener('input', drawComp); nS.addEventListener('input', drawComp); drawComp();
+
+  /* balance */
+  var NS = 'http://www.w3.org/2000/svg';
+  var sc = {
+    today:  { a:3, d:3, msg:'Roughly balanced: attacks are limited by how many human attackers there are, so human defenders can keep up.' },
+    attack: { a:8, d:3, msg:'If agents automate attacking far more easily than defending, attack volume swamps human monitoring and systems get less secure.' },
+    defend: { a:3, d:8, msg:'If agents make monitoring and response cheaper than launching attacks, defense becomes easier and systems get more secure.' }
+  };
+  function fill(g, count, cx, cls){
+    while (g.firstChild) g.removeChild(g.firstChild);
+    for (var i = 0; i < count; i++){
+      var r = document.createElementNS(NS, 'rect'), col = i % 4, row = Math.floor(i/4);
+      r.setAttribute('x', cx - 37 + col*19); r.setAttribute('y', 162 - row*19);
+      r.setAttribute('width', 16); r.setAttribute('height', 16); r.setAttribute('rx', 3);
+      r.setAttribute('class', cls); g.appendChild(r);
+    }
+  }
+  var btns = document.querySelectorAll('[data-sc]');
+  function setSc(key){
+    var s = sc[key], th = Math.max(-14, Math.min(14, (s.d - s.a) * 2.6)), rad = th*Math.PI/180, dy = 150*Math.sin(rad);
+    document.getElementById('beam').style.transform = 'rotate(' + th + 'deg)';
+    document.getElementById('panL').style.transform = 'translateY(' + (-dy) + 'px)';
+    document.getElementById('panR').style.transform = 'translateY(' + dy + 'px)';
+    fill(document.getElementById('wL'), s.a, 70, 'f-red');
+    fill(document.getElementById('wR'), s.d, 370, 'f-teal');
+    document.getElementById('balNote').textContent = s.msg;
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-sc') === key ? 'true' : 'false'); });
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ setSc(b.getAttribute('data-sc')); }); });
+  setSc('today');
+
+  /* correlated failures */
+  var grid = document.getElementById('botGrid'), bots = [];
+  for (var i = 0; i < 100; i++){
+    var c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', 83 + (i%10)*26); c.setAttribute('cy', 24 + Math.floor(i/10)*26); c.setAttribute('r', 9);
+    c.setAttribute('class', 'bot bx s-teal sf-teal');
+    grid.appendChild(c); bots.push(c);
+  }
+  var STAFF = 3, blRect = document.getElementById('backlog'), blTxt = document.getElementById('backlogTxt'), botNote = document.getElementById('botNote');
+  function run(kind){
+    var failed = [];
+    if (kind === 'day'){
+      for (var j = 0; j < 100; j++) if (Math.random() < 0.01) failed.push(j);
+      if (!failed.length) failed.push(Math.floor(Math.random()*100));
+    } else { for (var k = 0; k < 100; k++) failed.push(k); }
+    bots.forEach(function(b,idx){
+      b.style.transitionDelay = (kind === 'day' || reduce) ? '0s' : (Math.random()*0.6).toFixed(2) + 's';
+      b.classList.toggle('fail', failed.indexOf(idx) >= 0);
+    });
+    var backlog = Math.max(0, failed.length - STAFF);
+    blRect.setAttribute('width', 320*backlog/100);
+    blTxt.textContent = backlog;
+    botNote.textContent = kind === 'day'
+      ? failed.length + (failed.length === 1 ? ' chatbot' : ' chatbots') + ' failed today. The team of 3 handles ' + (failed.length === 1 ? 'it' : 'them') + (backlog ? ', with ' + backlog + ' waiting.' : ' and nobody is left waiting.')
+      : 'All 100 failed at once. The team of 3 can take 3; 97 customers are left waiting and loan approvals grind to a halt.';
+  }
+  document.getElementById('dayBtn').addEventListener('click', function(){ run('day'); });
+  document.getElementById('corrBtn').addEventListener('click', function(){ run('corr'); });
+})();
+</script>
+</body>
+</html>
