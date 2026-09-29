@@ -36,3 +36,6 @@
 - Stealing Reasoning Traces from Proprietary LLM APIs
   - https://arxiv.org/html/2608.09867v1
   - https://edangx100.github.io/interesting_papers/stealing_reasoning_traces
+- AI Safety vs. AI Security
+  - https://arxiv.org/abs/2506.18932
+  - https://edangx100.github.io/interesting_papers/ai-safety-vs-security
