@@ -30,3 +30,9 @@
 - Measuring AI agent autonomy in practice
   - https://www.anthropic.com/research/measuring-agent-autonomy
   - https://edangx100.github.io/interesting_papers/measure_agent_autonomy
+- Practices for Governing Agentic AI Systems
+  - https://openai.com/index/practices-for-governing-agentic-ai-systems/
+  - https://edangx100.github.io/interesting_papers/practices-for-governing-agentic-ai-systems
+- Stealing Reasoning Traces from Proprietary LLM APIs
+  - https://arxiv.org/html/2608.09867v1
+  - https://edangx100.github.io/interesting_papers/stealing_reasoning_traces
