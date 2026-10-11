@@ -39,3 +39,6 @@
 - AI Safety vs. AI Security
   - https://arxiv.org/abs/2506.18932
   - https://edangx100.github.io/interesting_papers/ai-safety-vs-security
+- The persona selection model
+  - https://www.lesswrong.com/posts/dfoty34sT7CSKeJNn/the-persona-selection-model
+  - https://edangx100.github.io/interesting_papers/persona-selection-model
