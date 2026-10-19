@@ -42,3 +42,6 @@
 - The persona selection model
   - https://www.lesswrong.com/posts/dfoty34sT7CSKeJNn/the-persona-selection-model
   - https://edangx100.github.io/interesting_papers/persona-selection-model
+- Harness2: Recursive Agent Harnessing for an Open World
+  - https://arxiv.org/html/2610.14224v1
+  - https://edangx100.github.io/interesting_papers/harness2
