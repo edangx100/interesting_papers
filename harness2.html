@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Harness², explained</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&family=STIX+Two+Text:ital@0;1&display=swap" rel="stylesheet">
+<script>
+  (function(){
+    try{
+      var t = localStorage.getItem('h2-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      var s = [0.9,1,1.1,1.2,1.32][+localStorage.getItem('h2-scale')];
+      if (s) document.documentElement.style.setProperty('--scale', s);
+    }catch(e){}
+  })();
+</script>
+<style>
+  /* ---------- Tokens: calm, low-glare palette, 3Blue1Brown-style colour coding ---------- */
+  :root{
+    --bg:#F2F4F4; --bg-2:#E6EAEA; --canvas:#EAEEEE; --head:rgba(242,244,244,.9);
+    --ink:#2A2F35; --ink-soft:#5D656C; --line:#C7CFD2;
+    --blue:#2E76A0; --yellow:#9C7A16; --green:#4A8436; --red:#B0503F; --violet:#6C55A2; --teal:#2A8474;
+    --blue-tint:#DCE8EF; --teal-tint:#DAEBE7; --violet-tint:#E5E0F0;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1D2126; --bg-2:#272C33; --canvas:#181B1F; --head:rgba(29,33,38,.9);
+      --ink:#D9D5CB; --ink-soft:#9BA1A5; --line:#3A4149;
+      --blue:#7DB8D5; --yellow:#E2C77A; --green:#93C17E; --red:#E0897D; --violet:#B6A2D8; --teal:#79C1B3;
+      --blue-tint:#243845; --teal-tint:#21393A; --violet-tint:#302B42;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1D2126; --bg-2:#272C33; --canvas:#181B1F; --head:rgba(29,33,38,.9);
+    --ink:#D9D5CB; --ink-soft:#9BA1A5; --line:#3A4149;
+    --blue:#7DB8D5; --yellow:#E2C77A; --green:#93C17E; --red:#E0897D; --violet:#B6A2D8; --teal:#79C1B3;
+    --blue-tint:#243845; --teal-tint:#21393A; --violet-tint:#302B42;
+    color-scheme: dark;
+  }
+
+  :root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  *,*::before,*::after{ box-sizing:inherit; }
+  html{
+    scroll-padding-top: calc(env(safe-area-inset-top,0px) + 64px);
+    font-size: calc(var(--scale,1) * clamp(16.5px, 14.6px + 0.55vw, 19px));
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;
+    background:var(--bg);
+  }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Literata", Georgia, "Times New Roman", serif;
+    font-optical-sizing:auto; font-weight:380;
+    line-height:1.72; letter-spacing:.003em;
+    text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10;
+    background:var(--head); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  }
+
+  /* ---------- Header ---------- */
+  .top{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:9;
+    background:var(--head); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .top-in{ max-width:46rem; margin:0 auto; padding:.35rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+  .mark{ font-size:1rem; font-weight:500; color:var(--ink-soft); text-decoration:none; padding:.4rem 0; }
+  .tools{ display:flex; gap:.35rem; align-items:center; }
+  .icon-btn{
+    font:inherit; font-size:.88rem; color:var(--ink); background:transparent;
+    border:1px solid transparent; border-radius:12px; min-width:44px; min-height:44px; padding:0 .55rem;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;
+  }
+  .icon-btn:hover{ border-color:var(--line); }
+  .icon-btn:active{ background:var(--bg-2); }
+  .icon-btn:disabled{ opacity:.35; cursor:default; }
+  .icon-btn svg{ width:20px; height:20px; }
+  .progress{ position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--blue); transform-origin:0 50%; transform:scaleX(0); opacity:.7; }
+
+  /* ---------- Layout & type ---------- */
+  main{ max-width:46rem; margin:0 auto; padding:0 1.25rem 6rem; }
+  .prose{ max-width:35em; margin-left:auto; margin-right:auto; }
+  p{ margin:0 0 1.15em; }
+  h1{
+    font-weight:330; font-size:clamp(3rem, 13vw, 4.6rem); line-height:1; letter-spacing:-.02em;
+    margin:3.2rem 0 1.1rem;
+  }
+  h1 sup{ font-size:.5em; vertical-align:.95em; margin-left:.04em; color:var(--yellow); font-weight:400; }
+  .summary{ font-size:1.32rem; line-height:1.5; font-weight:360; margin:0 0 1.2rem; color:var(--ink); }
+  .byline{ font-size:.86rem; color:var(--ink-soft); margin:0 0 2.6rem; }
+  .intro{ font-size:1.06rem; }
+  h2{ font-weight:450; font-size:1.6rem; line-height:1.25; letter-spacing:-.01em; margin:0 0 1.1rem; }
+  section{ margin:6.5rem 0 0; }
+  a{ color:var(--blue); text-underline-offset:.18em; text-decoration-thickness:1px; }
+  strong{ font-weight:560; }
+  .m{ font-family:"STIX Two Text","Cambria Math","Times New Roman",serif; font-style:italic; }
+  .c-blue{ color:var(--blue); } .c-yellow{ color:var(--yellow); } .c-teal{ color:var(--teal); }
+  .c-violet{ color:var(--violet); } .c-green{ color:var(--green); } .c-red{ color:var(--red); } .c-soft{ color:var(--ink-soft); }
+
+  .question{
+    margin:2.4rem auto; max-width:30em; text-align:center; font-size:1.22rem; line-height:1.55; font-style:italic; font-weight:360;
+  }
+  .aside{ border-left:2px solid var(--yellow); padding:.2rem 0 .2rem 1.1rem; color:var(--ink-soft); margin:2rem 0; }
+  .aside p:last-child{ margin-bottom:0; }
+  .eq{ text-align:center; font-size:1.35rem; margin:1.8rem 0; line-height:1.4; overflow-x:auto; }
+  .eq .m{ font-size:1.1em; }
+  .eq sub, .eq sup{ font-size:.62em; }
+
+  /* ---------- Figures ---------- */
+  .fig{ margin:2.6rem auto 2.4rem; max-width:34rem; }
+  .fig.wide{ max-width:38rem; }
+  .canvas{ background:var(--canvas); border-radius:18px; padding:clamp(.7rem, 3.5vw, 1.6rem); }
+  .canvas svg{ display:block; width:100%; height:auto; overflow:visible; }
+  figcaption{ font-size:.9rem; line-height:1.6; color:var(--ink-soft); margin:.9rem .3rem 0; }
+  .pair{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:38rem; margin:2.4rem auto; }
+  .pair .fig{ margin:0; }
+  @media (max-width:540px){ .pair{ grid-template-columns:1fr; gap:1.6rem; } }
+
+  /* ---------- Controls (large tap targets for phones) ---------- */
+  .controls{ display:flex; flex-wrap:wrap; gap:.55rem; justify-content:center; align-items:center; margin-top:1rem; }
+  .btn{
+    font:inherit; font-size:.92rem; line-height:1.2; color:var(--ink);
+    background:var(--bg-2); border:1px solid var(--line); border-radius:999px;
+    min-height:44px; padding:.55rem 1.15rem; cursor:pointer;
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;
+    transition:background-color .2s, border-color .2s, color .2s;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn:disabled{ opacity:.4; cursor:default; transform:none; }
+  .btn.primary{ border-color:var(--blue); color:var(--blue); background:var(--blue-tint); }
+  .btn[aria-pressed="true"]{ border-color:var(--blue); color:var(--blue); background:var(--blue-tint); }
+  .group-label{ width:100%; text-align:center; font-size:.82rem; color:var(--ink-soft); margin:.4rem 0 -.2rem; }
+  :focus-visible{ outline:2px solid var(--blue); outline-offset:3px; border-radius:8px; }
+
+  .dots{ display:flex; justify-content:center; gap:0; margin-top:.3rem; }
+  .dot{
+    width:44px; height:44px; border:0; background:transparent; padding:0; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  }
+  .dot::before{ content:""; width:9px; height:9px; border-radius:50%; background:var(--line); transition:background-color .3s, transform .3s; }
+  .dot[aria-current="step"]::before{ background:var(--blue); transform:scale(1.35); }
+
+  .step-cap{ min-height:9.5em; margin:1rem .3rem 0; }
+  .step-cap h3{ font-size:1.05rem; font-weight:520; margin:0 0 .35rem; color:var(--blue); }
+  .step-cap p{ font-size:.97rem; margin:0; }
+
+  .k-row{ display:flex; align-items:center; gap:.6rem; justify-content:center; width:100%; margin-top:.4rem; }
+  .k-row output{ font-family:"STIX Two Text",serif; font-size:1.15rem; min-width:1.2em; text-align:center; }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:min(14rem, 52vw); height:44px; background:transparent; cursor:pointer; touch-action:manipulation;
+  }
+  input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:2px; background:var(--line); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; margin-top:-12px; border-radius:50%; background:var(--blue); border:3px solid var(--canvas); }
+  input[type=range]::-moz-range-track{ height:4px; border-radius:2px; background:var(--line); }
+  input[type=range]::-moz-range-thumb{ width:24px; height:24px; border-radius:50%; background:var(--blue); border:3px solid var(--canvas); }
+
+  .info{ margin:.9rem .3rem 0; font-size:.97rem; min-height:4.8em; }
+  .info strong{ color:var(--blue); }
+  .note{ font-size:.95rem; margin:1rem .3rem 0; min-height:4.6em; }
+  .foot{ font-size:.82rem; color:var(--ink-soft); margin:.8rem .3rem 0; line-height:1.55; }
+
+  /* ---------- SVG styling ---------- */
+  svg text{ fill:var(--ink); font-family:"Literata", Georgia, serif; }
+  svg .m{ font-family:"STIX Two Text","Times New Roman",serif; font-style:italic; }
+  .nofill{ fill:none; }
+  .f-ink{ fill:var(--ink); } .f-soft{ fill:var(--ink-soft); } .f-line{ fill:var(--line); }
+  .f-bg{ fill:var(--bg); } .f-bg2{ fill:var(--bg-2); } .f-canvas{ fill:var(--canvas); }
+  .f-blue{ fill:var(--blue); } .f-yellow{ fill:var(--yellow); } .f-green{ fill:var(--green); }
+  .f-red{ fill:var(--red); } .f-violet{ fill:var(--violet); } .f-teal{ fill:var(--teal); }
+  .s-ink{ stroke:var(--ink); } .s-soft{ stroke:var(--ink-soft); } .s-line{ stroke:var(--line); }
+  .s-blue{ stroke:var(--blue); } .s-yellow{ stroke:var(--yellow); } .s-green{ stroke:var(--green); }
+  .s-red{ stroke:var(--red); } .s-violet{ stroke:var(--violet); } .s-teal{ stroke:var(--teal); }
+  .s-canvas{ stroke:var(--canvas); } .s-bg2{ stroke:var(--bg2, var(--bg-2)); }
+  svg line, svg path, svg rect, svg circle, svg polygon{ stroke-linecap:round; stroke-linejoin:round; }
+  .dash{ stroke-dasharray:4 5; }
+  .halo{ paint-order:stroke; stroke:var(--canvas); stroke-width:5px; stroke-linejoin:round; }
+
+  .draw{ transition:stroke-dashoffset 1.05s cubic-bezier(.45,0,.2,1); }
+  .notrans, .notrans *{ transition:none !important; }
+  .late{ opacity:0; transition:opacity .45s ease .95s; }
+  .ready .late{ opacity:1; }
+
+  .stp{ opacity:0; transition:opacity .55s ease; }
+  .stp.on{ opacity:.55; }
+  .stp.on.cur{ opacity:1; }
+
+  .node{ cursor:pointer; outline:none; }
+  .node rect{ fill:var(--bg-2); stroke:var(--line); stroke-width:1.2; transition:fill .25s, stroke .25s; }
+  .node.sel rect{ fill:var(--blue-tint); stroke:var(--blue); stroke-width:1.8; }
+  .node.sel text{ fill:var(--blue); }
+  .node:focus-visible rect{ stroke:var(--blue); stroke-dasharray:3 3; }
+
+  .dotg{ transition:transform .75s cubic-bezier(.45,0,.2,1); }
+  .gain{ transition:opacity .4s; }
+
+  .chip rect{ fill:var(--bg-2); stroke:var(--line); stroke-width:1.2; transition:fill .3s, stroke .3s; }
+  .chip text{ transition:fill .3s; }
+  .chip.ghost rect{ fill:none; stroke:var(--red); stroke-dasharray:4 5; }
+  .chip.ghost text{ fill:var(--red); font-style:italic; }
+  .chip.teal rect{ fill:var(--teal-tint); stroke:var(--teal); }
+  .chip.violet rect{ fill:var(--violet-tint); stroke:var(--violet); }
+
+  @keyframes popin{ from{ opacity:0; } to{ opacity:1; } }
+  .pop{ animation:popin .8s ease both; }
+
+  .links{ display:flex; flex-wrap:wrap; gap:.7rem; margin-top:1.6rem; }
+  .links a{ text-decoration:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{ transition:none !important; animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Shared arrowheads -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="a-soft" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-soft"/></marker>
+    <marker id="a-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-blue"/></marker>
+    <marker id="a-yellow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-yellow"/></marker>
+    <marker id="a-teal" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-teal"/></marker>
+    <marker id="a-violet" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-violet"/></marker>
+    <marker id="a-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-red"/></marker>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <a class="mark" href="#top">Harness² explained</a>
+    <div class="tools">
+      <button type="button" class="icon-btn" id="a-minus" aria-label="Smaller text">A−</button>
+      <button type="button" class="icon-btn" id="a-plus" aria-label="Larger text">A+</button>
+      <button type="button" class="icon-btn" id="theme-btn" aria-label="Switch theme">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main id="top">
+
+  <!-- ================= Title, summary, intro ================= -->
+  <div class="prose">
+    <h1>Harness<sup>2</sup></h1>
+    <p class="summary">An AI agent that rewrites its own toolkit in the middle of a task, judges each change by watching how its behavior shifts, and keeps notes so it gets better at improving itself with every new job.</p>
+    <p class="byline">A visual guide to “Harness2: Recursive Agent Harnessing for an Open World” by Ruiyao Xu, Yanfei Chen and colleagues at Google Cloud AI Research and Northwestern University, October 2026.</p>
+    <p class="intro">Hand the same AI model a different set of instructions, tools and checklists, and it can go from mediocre to excellent. That surrounding kit is called a <em>harness</em>. People usually tune harnesses by hand, and automatic tuning usually needs an answer key to score each attempt. Real work rarely comes with one. This paper shows how an agent can improve its harness while it works on an unfamiliar task, with no answer key, and how it can save the lessons from each round of improvement so the next round goes better.</p>
+  </div>
+
+  <figure class="fig" aria-label="Two nested loops">
+    <div class="canvas">
+      <svg id="hero" viewBox="0 0 400 268" role="img" aria-labelledby="hero-title">
+        <title id="hero-title">Two nested loops. The inner loop improves this task’s harness. The outer loop improves how harnesses get improved.</title>
+        <defs>
+          <path id="arc-out" d="M89.1 99.6 A118 118 0 0 1 310.9 99.6"/>
+          <path id="arc-in" d="M124.8 167.4 A80 80 0 0 0 275.2 167.4"/>
+        </defs>
+        <path class="draw nofill s-yellow" stroke-width="2.4" d="M164.4 42.3 A104 104 0 1 1 135.9 58.0"/>
+        <polygon class="late f-yellow" points="0,0 -11,-5.5 -11,5.5" transform="translate(135.9 58) rotate(-38)"/>
+        <path class="draw nofill s-blue" stroke-width="2.4" d="M178.8 81.7 A62 62 0 1 1 160.1 92.5"/>
+        <polygon class="late f-blue" points="0,0 -11,-5.5 -11,5.5" transform="translate(160.1 92.5) rotate(-40)"/>
+        <text class="late f-yellow" font-size="13"><textPath href="#arc-out" startOffset="50%" text-anchor="middle">improve how harnesses get improved</textPath></text>
+        <text class="late f-blue" font-size="12.5"><textPath href="#arc-in" startOffset="50%" text-anchor="middle">improve this task’s harness</textPath></text>
+        <rect x="178" y="122" width="44" height="36" rx="9" class="f-bg2 s-blue" stroke-width="1.8"/>
+        <text x="200" y="147.5" text-anchor="middle" class="m f-blue" font-size="22">ℋ</text>
+        <rect x="183" y="230" width="34" height="30" rx="8" class="f-canvas s-yellow" stroke-width="1.8"/>
+        <text x="200" y="251" text-anchor="middle" class="m f-yellow" font-size="19">ℛ</text>
+      </svg>
+    </div>
+    <figcaption>The whole idea in one picture. The <span class="c-blue">inner loop</span> refines the harness <span class="m c-blue">ℋ</span> for the task in front of the agent. The <span class="c-yellow">outer loop</span> refines the improver <span class="m c-yellow">ℛ</span>, so the next task’s inner loop starts smarter. Blue and yellow keep these meanings throughout the page.</figcaption>
+  </figure>
+
+  <!-- ================= 1. Model + harness ================= -->
+  <section aria-labelledby="s1">
+    <div class="prose">
+      <h2 id="s1">An agent is a model wearing a harness</h2>
+      <p>Think of the model as a capable new hire, and the harness as everything the company hands them on day one: a role description, house rules, a notebook, playbooks, tools with instructions, and colleagues to delegate to. In this paper the model’s internal weights never change. Only the harness does.</p>
+      <p>Harness² splits the harness into eight parts, and each part is a plain file the system is allowed to rewrite. Tap any part to see what it does.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg id="model-svg" viewBox="0 0 400 352" role="group" aria-label="The model in the center surrounded by eight harness parts">
+          <text x="200" y="22" text-anchor="middle" font-size="15"><tspan class="f-ink">Agent</tspan><tspan class="f-soft"> = </tspan><tspan class="f-ink">Model</tspan><tspan class="f-soft"> + </tspan><tspan class="f-blue">Harness</tspan></text>
+          <g id="model-g"></g>
+        </svg>
+      </div>
+      <div class="info" id="comp-info" aria-live="polite"></div>
+      <div class="controls">
+        <button type="button" class="btn" id="comp-prev">Previous part</button>
+        <button type="button" class="btn" id="comp-next">Next part</button>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ================= 2. The problem ================= -->
+  <section aria-labelledby="s2">
+    <div class="prose">
+      <h2 id="s2">Why this is hard in the open world</h2>
+      <p>Earlier systems tuned a harness ahead of time against practice tasks with known answers, then froze it and shipped it. The trouble is that real work keeps changing. The authors call this setting the <em>open world</em>: new tasks keep arriving, each with its own requirements. They name two obstacles.</p>
+    </div>
+    <div class="pair">
+      <figure class="fig">
+        <div class="canvas">
+          <svg viewBox="0 0 200 160" role="img" aria-label="A task document with a question mark where the grade would be">
+            <rect x="46" y="18" width="78" height="104" rx="7" class="f-bg2 s-soft" stroke-width="1.4"/>
+            <line x1="58" y1="40" x2="110" y2="40" class="s-line" stroke-width="4"/>
+            <line x1="58" y1="54" x2="104" y2="54" class="s-line" stroke-width="4"/>
+            <line x1="58" y1="68" x2="112" y2="68" class="s-line" stroke-width="4"/>
+            <line x1="58" y1="82" x2="94" y2="82" class="s-line" stroke-width="4"/>
+            <circle cx="128" cy="112" r="23" class="f-canvas s-soft dash" stroke-width="1.6"/>
+            <text x="128" y="122" text-anchor="middle" class="m f-soft" font-size="28">?</text>
+            <text x="100" y="152" text-anchor="middle" font-size="11.5" class="f-soft">no checker, no labels</text>
+          </svg>
+        </div>
+        <figcaption><strong class="c-ink">No answer key.</strong> A brand-new task arrives with no correct answer attached and no test to run, so the agent can’t simply score its own edits.</figcaption>
+      </figure>
+      <figure class="fig">
+        <div class="canvas">
+          <svg viewBox="0 0 200 160" role="img" aria-label="A key that fits one lock but not another">
+            <defs>
+              <g id="key">
+                <circle cx="-42" cy="0" r="11" class="nofill s-blue" stroke-width="3"/>
+                <line x1="-31" y1="0" x2="18" y2="0" class="s-blue" stroke-width="3"/>
+                <path d="M6 0 v9 M14 0 v6" class="nofill s-blue" stroke-width="3"/>
+              </g>
+            </defs>
+            <use href="#key" transform="translate(70 42)"/>
+            <g transform="translate(140 42)">
+              <path d="M-9 -12 v-8 a9 9 0 0 1 18 0 v8" class="nofill s-green" stroke-width="2.4"/>
+              <rect x="-15" y="-12" width="30" height="30" rx="5" class="f-bg2 s-green" stroke-width="2"/>
+              <circle cx="0" cy="0" r="3.2" class="f-green"/><rect x="-1.4" y="1" width="2.8" height="8" class="f-green"/>
+            </g>
+            <circle cx="178" cy="30" r="8" class="f-green"/>
+            <path d="M-3.4 0 l2.3 2.5 l4.6 -5" transform="translate(178 30)" class="nofill s-canvas" stroke-width="2"/>
+            <use href="#key" transform="translate(70 112)"/>
+            <g transform="translate(140 112)">
+              <path d="M-9 -12 v-8 a9 9 0 0 1 18 0 v8" class="nofill s-red" stroke-width="2.4"/>
+              <rect x="-15" y="-12" width="30" height="30" rx="5" class="f-bg2 s-red" stroke-width="2"/>
+              <path d="M0 -5 l4.5 9 h-9 z" class="f-red"/>
+            </g>
+            <circle cx="178" cy="100" r="8" class="f-red"/>
+            <path d="M-3 -3 l6 6 M3 -3 l-6 6" transform="translate(178 100)" class="nofill s-canvas" stroke-width="2"/>
+            <text x="140" y="78" text-anchor="middle" font-size="11" class="f-soft">task 1</text>
+            <text x="140" y="148" text-anchor="middle" font-size="11" class="f-soft">task 2</text>
+          </svg>
+        </div>
+        <figcaption><strong class="c-ink">Fixes don’t travel.</strong> A harness tailored to one task is like a key cut for one lock. Carry it to the next task and it can fit badly, adding noise instead of help.</figcaption>
+      </figure>
+    </div>
+    <div class="prose">
+      <p>Their way out is to notice that the <em>process</em> of improving carries over even when the fixes don’t. How a weakness gets diagnosed, which changes get tried, and what those changes reveal are useful on the next task too. So the paper asks:</p>
+      <p class="question">Can self-improvement upgrade both the harness in hand and the way future harnesses get upgraded?</p>
+    </div>
+  </section>
+
+  <!-- ================= 3. Propose, probe, compose ================= -->
+  <section aria-labelledby="s3">
+    <div class="prose">
+      <h2 id="s3">One step: propose, probe, compose</h2>
+      <p>Without an answer key, how can the agent tell whether an edit helped? Harness² borrows the logic of a careful experiment: change something, rerun under identical conditions, and look at what behaves differently. Step through it below.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg id="ppc" viewBox="0 0 400 552" role="img" aria-labelledby="ppc-desc">
+          <title id="ppc-desc">The propose, probe, compose step, revealed one stage at a time.</title>
+          <!-- always visible -->
+          <g>
+            <rect x="18" y="22" width="80" height="28" rx="14" class="f-bg2 s-soft" stroke-width="1.2"/>
+            <text x="58" y="41" text-anchor="middle" font-size="12.5">task <tspan class="m">q</tspan></text>
+            <line x1="100" y1="36" x2="146" y2="36" class="s-soft" stroke-width="1.4" marker-end="url(#a-soft)"/>
+            <rect x="150" y="16" width="100" height="40" rx="9" class="f-bg2 s-blue" stroke-width="1.8"/>
+            <text x="200" y="43" text-anchor="middle" class="m f-blue" font-size="21">ℋ</text>
+            <text x="258" y="40" font-size="12" class="f-soft">current harness</text>
+          </g>
+          <!-- 1: reference run -->
+          <g class="stp">
+            <line class="draw s-soft" x1="200" y1="58" x2="200" y2="84" stroke-width="1.4" marker-end="url(#a-soft)"/>
+            <path class="draw nofill s-soft" stroke-width="2" d="M110 102 q15 -12 30 0 t30 0 t30 0 t30 0 t30 0 t30 0"/>
+            <circle cx="110" cy="102" r="3" class="f-soft"/><circle cx="290" cy="102" r="3" class="f-soft"/>
+            <text x="200" y="130" text-anchor="middle" font-size="12" class="f-soft">reference run <tspan class="m">e</tspan><tspan font-size="8.5" dy="-5">0</tspan></text>
+          </g>
+          <!-- 2: propose -->
+          <g class="stp">
+            <path class="draw nofill s-teal" stroke-width="1.4" d="M176 138 L118 158" marker-end="url(#a-teal)"/>
+            <path class="draw nofill s-violet" stroke-width="1.4" d="M224 138 L282 158" marker-end="url(#a-violet)"/>
+            <rect x="26" y="162" width="156" height="74" rx="9" class="f-bg2 s-teal" stroke-width="1.6"/>
+            <text x="104" y="183" text-anchor="middle" font-size="13" class="f-teal">invariant edit</text>
+            <text x="40" y="207" font-size="11.5">+ plan first</text>
+            <text x="40" y="225" font-size="11.5">+ re-check outputs</text>
+            <rect x="218" y="162" width="156" height="74" rx="9" class="f-bg2 s-violet" stroke-width="1.6"/>
+            <text x="296" y="183" text-anchor="middle" font-size="13" class="f-violet">domain edit</text>
+            <text x="232" y="207" font-size="11.5">+ budget-file skill</text>
+            <text x="232" y="225" font-size="11.5">+ shorter summaries</text>
+          </g>
+          <!-- 3: probe -->
+          <g class="stp">
+            <circle cx="168" cy="203" r="7.5" class="f-green"/><path d="M-3.2 0 l2.2 2.4 l4.4 -4.8" transform="translate(168 203)" class="nofill s-canvas" stroke-width="1.9"/>
+            <circle cx="168" cy="221" r="7.5" class="f-green"/><path d="M-3.2 0 l2.2 2.4 l4.4 -4.8" transform="translate(168 221)" class="nofill s-canvas" stroke-width="1.9"/>
+            <circle cx="360" cy="203" r="7.5" class="f-green"/><path d="M-3.2 0 l2.2 2.4 l4.4 -4.8" transform="translate(360 203)" class="nofill s-canvas" stroke-width="1.9"/>
+            <circle cx="360" cy="221" r="7.5" class="f-red"/><path d="M-2.7 -2.7 l5.4 5.4 M2.7 -2.7 l-5.4 5.4" transform="translate(360 221)" class="nofill s-canvas" stroke-width="1.9"/>
+            <path class="draw nofill s-teal" stroke-width="2" d="M40 266 q13 -10 26 0 t26 0 t26 0 t26 0 t26 0"/>
+            <path class="draw nofill s-violet" stroke-width="2" d="M232 266 q13 -10 26 0 t26 0 t26 0 t26 0 t26 0"/>
+            <path class="nofill s-soft dash" stroke-width="1" d="M40 270 q13 -8 26 0 t26 0 t26 0 t26 0 t26 0" opacity=".7"/>
+            <path class="nofill s-soft dash" stroke-width="1" d="M232 270 q13 -8 26 0 t26 0 t26 0 t26 0 t26 0" opacity=".7"/>
+            <text x="104" y="294" text-anchor="middle" font-size="11.5" class="f-green">both edits help</text>
+            <text x="296" y="294" text-anchor="middle" font-size="11.5" class="f-soft">one helps, one hurts</text>
+            <text x="200" y="314" text-anchor="middle" font-size="10.5" class="f-soft">dashed line: the reference run, for comparison</text>
+          </g>
+          <!-- 4: compose -->
+          <g class="stp">
+            <path class="draw nofill s-blue" stroke-width="1.4" d="M104 324 C104 340, 150 340, 168 354" marker-end="url(#a-blue)"/>
+            <path class="draw nofill s-blue" stroke-width="1.4" d="M290 324 C290 340, 250 340, 232 354" marker-end="url(#a-blue)"/>
+            <rect x="120" y="358" width="160" height="80" rx="10" class="f-bg2 s-blue" stroke-width="2"/>
+            <text x="110" y="404" text-anchor="end" class="m f-blue" font-size="21">ℋ′</text>
+            <circle cx="136" cy="378" r="3.2" class="f-teal"/><text x="145" y="382" font-size="11.5">plan first</text>
+            <circle cx="136" cy="398" r="3.2" class="f-teal"/><text x="145" y="402" font-size="11.5">re-check outputs</text>
+            <circle cx="136" cy="418" r="3.2" class="f-violet"/><text x="145" y="422" font-size="11.5">budget-file skill</text>
+            <text x="292" y="398" font-size="11" class="f-red">shorter</text>
+            <text x="292" y="412" font-size="11" class="f-red">summaries</text>
+            <line x1="290" y1="408" x2="346" y2="402" class="s-red" stroke-width="1.2"/>
+            <text x="292" y="430" font-size="10.5" class="f-soft">left out</text>
+          </g>
+          <!-- 5: run and record -->
+          <g class="stp">
+            <line class="draw s-blue" x1="200" y1="440" x2="200" y2="460" stroke-width="1.4" marker-end="url(#a-blue)"/>
+            <path class="draw nofill s-blue" stroke-width="2" d="M140 476 q15 -12 30 0 t30 0 t30 0 t30 0"/>
+            <line class="draw s-soft" x1="150" y1="486" x2="140" y2="496" stroke-width="1.3" marker-end="url(#a-soft)"/>
+            <line class="draw s-yellow" x1="250" y1="486" x2="262" y2="496" stroke-width="1.3" marker-end="url(#a-yellow)"/>
+            <path d="M120 500 h18 l8 8 v26 h-26 z" class="f-bg2 s-ink" stroke-width="1.3"/>
+            <path d="M138 500 v8 h8" class="nofill s-ink" stroke-width="1.1"/>
+            <line x1="125" y1="516" x2="140" y2="516" class="s-soft" stroke-width="1.6"/>
+            <line x1="125" y1="523" x2="137" y2="523" class="s-soft" stroke-width="1.6"/>
+            <text x="133" y="548" text-anchor="middle" font-size="11.5">deliverable</text>
+            <rect x="255" y="500" width="28" height="34" rx="3" class="f-bg2 s-yellow" stroke-width="1.4"/>
+            <line x1="262" y1="511" x2="277" y2="511" class="s-yellow" stroke-width="1.4"/>
+            <line x1="262" y1="518" x2="277" y2="518" class="s-yellow" stroke-width="1.4"/>
+            <line x1="262" y1="525" x2="272" y2="525" class="s-yellow" stroke-width="1.4"/>
+            <text x="269" y="548" text-anchor="middle" font-size="11.5" class="f-yellow">step record <tspan class="m">ξ</tspan></text>
+          </g>
+        </svg>
+      </div>
+      <div class="step-cap" aria-live="polite">
+        <h3 id="ppc-title"></h3>
+        <p id="ppc-text"></p>
+      </div>
+      <div class="controls">
+        <button type="button" class="btn" id="ppc-back">Back</button>
+        <button type="button" class="btn primary" id="ppc-next">Next step</button>
+      </div>
+      <div class="dots" id="ppc-dots"></div>
+      <p class="foot">The specific edits drawn here are invented for clarity; the paper’s real case study comes later on this page.</p>
+    </figure>
+    <div class="prose">
+      <div class="aside"><p>It’s a bit like tasting two versions of a soup side by side. You don’t need a judge’s scorecard to notice that one version finally has enough salt, or that the other scorched on the bottom.</p></div>
+      <p>The authors are careful about what this evidence is worth. A contrast tells you how behavior changed, not whether the final answer is correct. Runs are noisy, and the editor and the agent may share the same blind spots. So contrasts guide the composer’s choices rather than serving as a grade.</p>
+    </div>
+  </section>
+
+  <!-- ================= 4. Parallel vs sequential ================= -->
+  <section aria-labelledby="s4">
+    <div class="prose">
+      <h2 id="s4">Spending more effort: wider or deeper</h2>
+      <p>One step can be scaled up with a budget, written <span class="m">k</span>. There are two shapes. <em>Parallel</em> recursion explores <span class="m">k</span> ideas at once and lets several composers each draw on the whole pile of evidence. <em>Sequential</em> recursion chains <span class="m">k</span> steps, each building on the last. Either way, when there’s more than one finished result, a selector compares the outputs without knowing which harness produced which, and picks one.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg id="ps" viewBox="0 0 400 400" role="img" aria-label="Diagram of parallel or sequential recursion at the chosen budget">
+          <g id="ps-g"></g>
+        </svg>
+      </div>
+      <p class="note" id="ps-note" aria-live="polite"></p>
+      <div class="controls">
+        <button type="button" class="btn" id="ps-par" aria-pressed="true">Parallel</button>
+        <button type="button" class="btn" id="ps-seq" aria-pressed="false">Sequential</button>
+        <div class="k-row">
+          <button type="button" class="btn" id="k-minus" aria-label="Decrease budget">−</button>
+          <label for="k-range"><span class="m">k</span> =</label>
+          <output id="k-out" for="k-range">1</output>
+          <input type="range" id="k-range" min="1" max="5" step="1" value="1" aria-label="Budget k">
+          <button type="button" class="btn" id="k-plus" aria-label="Increase budget">+</button>
+        </div>
+      </div>
+    </figure>
+    <div class="prose">
+      <p>Both shapes kept improving as the budget grew. With Gemini 3.5 Flash on WorkBuddy-Bench, going from <span class="m">k</span> = 1 to <span class="m">k</span> = 5 in parallel lifted the coding score from 76.5 to 80.8, and the office score from 79.5 to 83.4. At just <span class="m">k</span> = 2, either shape already beat every comparison method run at <span class="m">k</span> = 5, and parallel finished a little ahead at the top of the range.</p>
+      <p>The comparison matters because extra effort alone isn’t enough. A rival method that also spends more compute per task, Harness Scaling, actually slipped between <span class="m">k</span> = 2 and 3, and a memory-based method, ReasoningBank, bounced around. What helped was spending the effort on structured, evidence-backed revision.</p>
+    </div>
+  </section>
+
+  <!-- ================= 5. The outer loop ================= -->
+  <section aria-labelledby="s5">
+    <div class="prose">
+      <h2 id="s5">The second loop: getting better at getting better</h2>
+      <p>Everything so far happens inside a single task. The outer loop is the recursion in the title: a harness whose job is improving harnesses. The paper calls it the <span class="c-yellow">continual improvement harness</span>, <span class="m c-yellow">ℛ</span>. At its heart is a library. After each task, Harness² looks back over the whole improvement record, pulls out lessons that the runs actually support, and files them away.</p>
+    </div>
+    <div class="eq" aria-label="R t plus 1 equals Update of R t, H star t, D t">
+      <span class="m c-yellow">ℛ</span><sub class="m c-yellow">t+1</sub> = Update( <span class="m c-yellow">ℛ</span><sub class="m c-yellow">t</sub> , <span class="m c-blue">ℋ</span><sup class="c-blue">★</sup><sub class="m c-blue">t</sub> , <span class="m c-soft">𝒟</span><sub class="m c-soft">t</sub> )
+    </div>
+    <div class="prose">
+      <p>Read it as: the improver for the next task equals the current improver, updated with the harness this task adopted (<span class="m c-blue">ℋ</span><span class="c-blue">★</span>) and the full record of how it got there (<span class="m c-soft">𝒟</span>). Each library entry holds a working harness plus a notes file describing when it applies, what was learned, and the evidence. Watch the library fill up as tasks go by.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg id="lib" viewBox="0 0 400 352" role="img" aria-label="Tasks arriving one after another while the improvement library grows">
+          <g id="lib-g"></g>
+        </svg>
+      </div>
+      <p class="note" id="lib-note" aria-live="polite"></p>
+      <div class="controls">
+        <button type="button" class="btn primary" id="lib-next">Run task 1</button>
+        <button type="button" class="btn" id="lib-reset">Start over</button>
+      </div>
+    </figure>
+    <div class="prose">
+      <p>Notice a design choice that’s easy to miss. Every task starts again from the same plain base harness, <span class="m c-blue">ℋ</span><sub class="m c-blue">0</sub>. Harness² does not hand the last task’s finely tuned harness to the next one. Old parts can be borrowed, but only when the editor chooses to reuse or adapt them. What carries forward automatically is know-how.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg viewBox="0 0 400 252" role="img" aria-label="Carrying a harness forward makes it misshapen; resetting the harness and keeping notes stays clean">
+          <text x="20" y="22" font-size="12.5" class="f-soft">Carry the last harness forward</text>
+          <rect x="40" y="46" width="60" height="34" rx="7" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <path d="M170 54 h20 l5 -10 h10 l5 10 h20 v26 h-60 z" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <path d="M300 56 h8 l4 -12 h6 l3 12 h10 l6 -16 h4 l3 16 h16 v10 l9 5 l-9 5 v10 h-12 l-4 9 l-5 -9 h-39 z" class="f-bg2 s-red" stroke-width="1.6"/>
+          <line x1="106" y1="63" x2="162" y2="63" class="s-soft" stroke-width="1.3" marker-end="url(#a-soft)"/>
+          <line x1="236" y1="63" x2="292" y2="63" class="s-soft" stroke-width="1.3" marker-end="url(#a-soft)"/>
+          <text x="70" y="104" text-anchor="middle" font-size="11" class="f-soft">task 1</text>
+          <text x="200" y="104" text-anchor="middle" font-size="11" class="f-soft">task 2</text>
+          <text x="330" y="104" text-anchor="middle" font-size="11" class="f-red">task 3: misfit</text>
+          <text x="20" y="142" font-size="12.5" class="f-soft">Reset the harness, keep the notes</text>
+          <rect x="40" y="158" width="60" height="32" rx="7" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <rect x="170" y="158" width="60" height="32" rx="7" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <rect x="300" y="158" width="60" height="32" rx="7" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <text x="70" y="179" text-anchor="middle" class="m f-blue" font-size="15">ℋ<tspan font-size="10" dy="3">0</tspan></text>
+          <text x="200" y="179" text-anchor="middle" class="m f-blue" font-size="15">ℋ<tspan font-size="10" dy="3">0</tspan></text>
+          <text x="330" y="179" text-anchor="middle" class="m f-blue" font-size="15">ℋ<tspan font-size="10" dy="3">0</tspan></text>
+          <rect x="58" y="202" width="24" height="30" rx="3" class="f-bg2 s-yellow" stroke-width="1.4"/>
+          <line x1="63" y1="212" x2="77" y2="212" class="s-yellow" stroke-width="1.4"/>
+          <rect x="188" y="202" width="24" height="30" rx="3" class="f-bg2 s-yellow" stroke-width="1.4"/>
+          <line x1="193" y1="212" x2="207" y2="212" class="s-yellow" stroke-width="1.4"/><line x1="193" y1="219" x2="207" y2="219" class="s-yellow" stroke-width="1.4"/>
+          <rect x="318" y="202" width="24" height="30" rx="3" class="f-bg2 s-yellow" stroke-width="1.4"/>
+          <line x1="323" y1="212" x2="337" y2="212" class="s-yellow" stroke-width="1.4"/><line x1="323" y1="219" x2="337" y2="219" class="s-yellow" stroke-width="1.4"/><line x1="323" y1="226" x2="334" y2="226" class="s-yellow" stroke-width="1.4"/>
+          <line x1="88" y1="217" x2="180" y2="217" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>
+          <line x1="218" y1="217" x2="310" y2="217" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>
+        </svg>
+      </div>
+      <figcaption>Top: inheriting a harness built for earlier tasks can bend it out of shape for the next one. Bottom: Harness²’s approach, a fresh base harness every time with a growing notebook of lessons beside it.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Does the notebook really help? The authors tested it directly. If the editor rewrites the base harness with no runs to compare and no library, scores fall: coding dropped from 73.4 to 63.2 and web tasks from 69.9 to 65.0. Give that same editor a library collected at <span class="m">k</span> = 1 and scores recover to where they started. Give it a library collected with more exploration, at <span class="m">k</span> = 5, and it improves on the base by 0.9, 4.4 and 5.1 points on coding, web and office tasks, without running a single probe. Exploring more on earlier tasks makes later improvement better.</p>
+      <p>Lessons even cross benchmarks. A library built on JobBench raised one-step results on WorkBuddy-Bench by 0.6, 0.5 and 2.9 points across its three domains.</p>
+    </div>
+  </section>
+
+  <!-- ================= 6. Results ================= -->
+  <section aria-labelledby="s6">
+    <div class="prose">
+      <h2 id="s6">Does it work?</h2>
+      <p>The authors tested three benchmarks from different kinds of professional work: WorkBuddy-Bench for office-style deliverables across code, web and office documents; JobBench for long, end-to-end job tasks; and LAB, Harvey’s legal-work benchmark. The agents were two models, Gemini 3.5 Flash and GLM-5, each running inside two popular open-source harnesses, OpenCode and Codex. Claude Opus 4.8 served as the default editor. Every number is an average of three runs with tasks in shuffled order, and the library started empty each time.</p>
+      <p>Choose a benchmark and a setup. Each dot is one method; the faint line shows its distance from the base harness.</p>
+    </div>
+    <figure class="fig wide">
+      <div class="canvas">
+        <svg id="res" viewBox="0 0 400 330" role="img" aria-label="Scores for each method on the chosen benchmark and setup">
+          <g id="res-axis"></g>
+          <line id="res-base" class="s-soft dash" stroke-width="1"/>
+          <g id="res-rows"></g>
+        </svg>
+      </div>
+      <div class="controls">
+        <div class="group-label">Benchmark</div>
+        <button type="button" class="btn" data-b="wb" aria-pressed="true">WorkBuddy-Bench</button>
+        <button type="button" class="btn" data-b="jb" aria-pressed="false">JobBench</button>
+        <button type="button" class="btn" data-b="lab" aria-pressed="false">LAB (legal)</button>
+        <div class="group-label">Model</div>
+        <button type="button" class="btn" data-m="gemini" aria-pressed="true">Gemini 3.5 Flash</button>
+        <button type="button" class="btn" data-m="glm" aria-pressed="false">GLM-5</button>
+        <div class="group-label">Starting harness</div>
+        <button type="button" class="btn" data-h="opencode" aria-pressed="true">OpenCode</button>
+        <button type="button" class="btn" data-h="codex" aria-pressed="false">Codex</button>
+      </div>
+      <p class="note" id="res-note" aria-live="polite"></p>
+      <p class="foot">WorkBuddy-Bench shows the average of its three domains; LAB shows the share of grading criteria passed. Meta-Harness* tunes its harness in advance on separate training tasks. “Harness², <span class="m">k</span> = 5” adds the paper’s reported gain from parallel recursion to the one-step score.</p>
+    </figure>
+    <div class="prose">
+      <p>A single improvement step raised scores on every benchmark in all four setups, by up to 11.5 points on WorkBuddy-Bench, 4.5 on JobBench and 11.8 percentage points on LAB. Parallel recursion at <span class="m">k</span> = 5 then added roughly 3 to 4 more points on the first two, and 2.6 to 6.7 on LAB.</p>
+      <p>Two patterns stand out. First, the weaker model often gained more: on WorkBuddy-Bench, GLM-5 with an improved harness overtook Gemini 3.5 Flash running on its untouched one. A better harness can be worth more than a better model. Second, not every rival held up. ReasoningBank, which retrieves past strategies instead of editing the harness, fell as much as 6.6 points below the base on coding tasks, and Harness Scaling finished under the base in seven of twelve comparisons.</p>
+      <p>Cost matters too. Counting every token spent before handing in the answer, including the improvement work itself, both Harness² settings tested sat on the best-value frontier. Meta-Harness used more compute than Harness² at <span class="m">k</span> = 5 and scored lower.</p>
+    </div>
+  </section>
+
+  <!-- ================= 7. Ablation ================= -->
+  <section aria-labelledby="s7">
+    <div class="prose">
+      <h2 id="s7">Which pieces matter</h2>
+      <p>To check that every part earns its keep, the authors removed one at a time, using Gemini 3.5 Flash in OpenCode with a single step. Without the library, nothing learned on earlier tasks is available. With generic editors, two all-purpose editors replace the “general habits” and “domain knowledge” specialists. Without composition, the system simply keeps whichever candidate looked better instead of merging the good parts.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg viewBox="0 0 400 200" role="img" aria-label="Score drops when removing the library, scoped editors, or composition">
+          <text x="236" y="20" text-anchor="middle" font-size="11.5" class="f-soft">WorkBuddy-Bench</text>
+          <text x="352" y="20" text-anchor="middle" font-size="11.5" class="f-soft">JobBench</text>
+          <line x1="270" y1="32" x2="270" y2="192" class="s-line" stroke-width="1.2"/>
+          <line x1="390" y1="32" x2="390" y2="192" class="s-line" stroke-width="1.2"/>
+          <text x="10" y="54" font-size="12.5" class="f-blue">full Harness²</text>
+          <text x="262" y="54" text-anchor="end" font-size="12.5" class="f-blue">77.5</text>
+          <text x="382" y="54" text-anchor="end" font-size="12.5" class="f-blue">36.0</text>
+
+          <text x="10" y="96" font-size="12.5">no library</text>
+          <rect x="201.8" y="83" width="68.2" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="196" y="96" text-anchor="end" font-size="11.5" class="f-red">−3.1</text>
+          <rect x="350.4" y="83" width="39.6" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="344" y="96" text-anchor="end" font-size="11.5" class="f-red">−1.8</text>
+
+          <text x="10" y="138" font-size="12.5">generic editors</text>
+          <rect x="206.2" y="125" width="63.8" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="200" y="138" text-anchor="end" font-size="11.5" class="f-red">−2.9</text>
+          <rect x="308.6" y="125" width="81.4" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="302" y="138" text-anchor="end" font-size="11.5" class="f-red">−3.7</text>
+
+          <text x="10" y="180" font-size="12.5">no composition</text>
+          <rect x="234.8" y="167" width="35.2" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="229" y="180" text-anchor="end" font-size="11.5" class="f-red">−1.6</text>
+          <rect x="348.2" y="167" width="41.8" height="18" rx="3" class="f-red" opacity=".7"/>
+          <text x="342" y="180" text-anchor="end" font-size="11.5" class="f-red">−1.9</text>
+        </svg>
+      </div>
+      <figcaption>Each bar is the loss from removing one piece. All three cost points on both benchmarks; the split into general and domain-specific editors mattered most on JobBench.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= 8. Case study ================= -->
+  <section aria-labelledby="s8">
+    <div class="prose">
+      <h2 id="s8">One task, up close</h2>
+      <p>On one JobBench task, Gemini 3.5 Flash had to produce a memo from a stack of planning files. Its first attempt scored 43.1. Reading the trajectory showed the agent didn’t lack knowledge; it lacked process. It never reconciled numbers across the source files, and it never reopened what it had written to check it.</p>
+      <p>The <span class="c-teal">general-habits edit</span> added a guardrail to list every input, trace each figure to its source, and run a verification script that reopens the finished files. The <span class="c-violet">domain edit</span> added a skill for reconciling schedule, venue, labor and budget files, plus tool tips for awkward number formats. The composer kept all four changes. Toggle to compare.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg id="case" viewBox="0 0 400 300" role="img" aria-label="Trajectory steps before and after the harness edits, with a score bar">
+          <g id="case-g"></g>
+          <rect x="324" y="26" width="44" height="236" rx="6" class="nofill s-line" stroke-width="1.2"/>
+          <rect id="case-fill" x="326" y="160" width="40" height="100" rx="4" class="f-blue" opacity=".85"/>
+          <text id="case-score" x="346" y="286" text-anchor="middle" font-size="17" class="f-blue">43.1</text>
+          <text x="346" y="16" text-anchor="middle" font-size="11" class="f-soft">score</text>
+        </svg>
+      </div>
+      <div class="controls">
+        <button type="button" class="btn" id="case-base" aria-pressed="true">Base harness</button>
+        <button type="button" class="btn" id="case-new" aria-pressed="false">Composed harness</button>
+      </div>
+      <figcaption id="case-cap" aria-live="polite"></figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= 9. Same model ================= -->
+  <section aria-labelledby="s9">
+    <div class="prose">
+      <h2 id="s9">No stronger teacher required</h2>
+      <p>A fair worry: maybe the gains come from a powerful editor coaching a weaker worker. To test that, the authors let each model edit its own harness, with a budget of <span class="m">k</span> = 2 in OpenCode.</p>
+    </div>
+    <figure class="fig">
+      <div class="canvas">
+        <svg viewBox="0 0 400 168" role="img" aria-label="One model both does the task and edits its own harness">
+          <circle cx="200" cy="84" r="36" class="f-bg2 s-soft" stroke-width="1.4"/>
+          <text x="200" y="81" text-anchor="middle" font-size="12">the same</text>
+          <text x="200" y="97" text-anchor="middle" font-size="12">model</text>
+          <rect x="18" y="66" width="112" height="36" rx="18" class="f-bg2 s-blue" stroke-width="1.6"/>
+          <text x="74" y="89" text-anchor="middle" font-size="12.5" class="f-blue">does the task</text>
+          <rect x="262" y="66" width="124" height="36" rx="18" class="f-bg2 s-teal" stroke-width="1.6"/>
+          <text x="324" y="89" text-anchor="middle" font-size="12.5" class="f-teal">edits the harness</text>
+          <line x1="162" y1="84" x2="134" y2="84" class="s-soft" stroke-width="1.3" marker-end="url(#a-soft)"/>
+          <line x1="238" y1="84" x2="258" y2="84" class="s-soft" stroke-width="1.3" marker-end="url(#a-soft)"/>
+          <path d="M74 106 C 90 156, 300 156, 316 108" class="nofill s-soft dash" stroke-width="1.2" marker-end="url(#a-soft)"/>
+          <path d="M324 62 C 300 12, 100 12, 82 62" class="nofill s-soft dash" stroke-width="1.2" marker-end="url(#a-soft)"/>
+          <text x="200" y="28" text-anchor="middle" font-size="11" class="f-soft">new harness used on the next run</text>
+          <text x="200" y="154" text-anchor="middle" font-size="11" class="f-soft">runs reveal what to fix</text>
+        </svg>
+      </div>
+    </figure>
+    <div class="prose">
+      <p>All five models tried, from GLM-5 up to Claude Opus 5, improved on every benchmark. Opus 5 gained 3.3, 5.5 and 3.0 points on WorkBuddy-Bench, JobBench and LAB. GLM-5 gained 13.7 points on LAB. The method works by structure and evidence, not by borrowing a smarter model’s judgment.</p>
+    </div>
+  </section>
+
+  <!-- ================= 10. Caveats ================= -->
+  <section aria-labelledby="s10">
+    <div class="prose">
+      <h2 id="s10">What to keep in mind</h2>
+      <p><strong>Evidence is not proof.</strong> Behavioral contrasts are noisy, and the star on an adopted harness means “chosen,” not “verified best.” The authors say this plainly.</p>
+      <p><strong>It costs extra runs.</strong> Every step reruns the task several times. Parallel sessions can run side by side, but how long you wait depends on how much you can run at once and how long each run takes.</p>
+      <p><strong>Not a clean sweep.</strong> On LAB with Gemini under Codex, Meta-Harness beat a single Harness² step. And recursion doesn’t always close the gap between starting harnesses: for GLM-5 on WorkBuddy-Bench, the gap between OpenCode and Codex grew slightly.</p>
+      <p><strong>Transfer is real but modest.</strong> Lessons moved from one benchmark to another, adding between half a point and about three points.</p>
+    </div>
+  </section>
+
+  <!-- ================= 11. Takeaway ================= -->
+  <section aria-labelledby="s11">
+    <div class="prose">
+      <h2 id="s11">The takeaway</h2>
+      <p>Harness² treats improvement as a skill in its own right. Inside each task, it makes careful, side-by-side experiments on its own setup and keeps only what the evidence supports. Across tasks, it keeps a notebook of what worked and why, so the experiments themselves get sharper. The result is an agent that adapts to work it has never seen, without an answer key and without retraining the model.</p>
+      <div class="links">
+        <a class="btn primary" href="https://arxiv.org/abs/2610.14224v1" target="_blank" rel="noopener">Read the paper</a>
+        <a class="btn" href="https://github.com/google-research/harness2" target="_blank" rel="noopener">See the code</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  'use strict';
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function(s){ return document.querySelector(s); };
+  var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var store = {
+    get: function(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+    set: function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  };
+  var root = document.documentElement;
+
+  /* ---------- Theme ---------- */
+  var themeBtn = $('#theme-btn');
+  var mq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+  function isDark(){ var t = root.getAttribute('data-theme'); if (t) return t === 'dark'; return mq ? mq.matches : false; }
+  function syncTheme(){
+    var d = isDark();
+    themeBtn.setAttribute('aria-label', d ? 'Switch to light theme' : 'Switch to dark theme');
+    themeBtn.querySelector('.sun').style.display = d ? 'block' : 'none';
+    themeBtn.querySelector('.moon').style.display = d ? 'none' : 'block';
+  }
+  themeBtn.addEventListener('click', function(){
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next); store.set('h2-theme', next); syncTheme();
+  });
+  if (mq){ if (mq.addEventListener) mq.addEventListener('change', syncTheme); else if (mq.addListener) mq.addListener(syncTheme); }
+  syncTheme();
+
+  /* ---------- Text size ---------- */
+  var scales = [0.9, 1, 1.1, 1.2, 1.32];
+  var si = parseInt(store.get('h2-scale'), 10); if (!(si >= 0 && si < scales.length)) si = 1;
+  function applyScale(){
+    root.style.setProperty('--scale', scales[si]);
+    $('#a-minus').disabled = si === 0; $('#a-plus').disabled = si === scales.length - 1;
+    store.set('h2-scale', si);
+  }
+  $('#a-minus').addEventListener('click', function(){ if (si > 0){ si--; applyScale(); } });
+  $('#a-plus').addEventListener('click', function(){ if (si < scales.length - 1){ si++; applyScale(); } });
+  applyScale();
+
+  /* ---------- Reading progress ---------- */
+  var bar = $('#progress'), ticking = false;
+  function upd(){
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+    bar.style.transform = 'scaleX(' + p + ')'; ticking = false;
+  }
+  window.addEventListener('scroll', function(){ if (!ticking){ ticking = true; requestAnimationFrame(upd); } }, { passive:true });
+  window.addEventListener('resize', upd); upd();
+
+  /* ---------- Draw-on helpers (3B1B-style "create" animation) ---------- */
+  function prep(scope){
+    scope.classList.add('notrans');
+    scope.querySelectorAll('.draw').forEach(function(p){
+      var L = 0; try{ L = p.getTotalLength(); }catch(e){}
+      if (!L) return;
+      p.style.strokeDasharray = L + ' ' + L;
+      p.style.strokeDashoffset = L;
+      p.setAttribute('data-len', L);
+    });
+    void scope.getBoundingClientRect();
+    scope.classList.remove('notrans');
+  }
+  function show(scope, on){
+    scope.querySelectorAll('.draw').forEach(function(p){
+      var L = p.getAttribute('data-len'); if (L === null) return;
+      p.style.strokeDashoffset = on ? 0 : L;
+    });
+  }
+
+  /* ---------- Hero ---------- */
+  var hero = $('#hero');
+  if (reduce){ hero.classList.add('ready'); }
+  else {
+    prep(hero);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ show(hero, true); hero.classList.add('ready'); }); });
+  }
+
+  /* ---------- Model + harness ---------- */
+  var comps = [
+    ['system prompt', 'The standing instructions that frame every task: who the agent is and how it should approach the work.'],
+    ['guardrails', 'Rules the agent must respect, such as checks it has to run before it calls a job done.'],
+    ['memory', 'Notes the agent writes and reads back, so useful facts aren’t lost partway through a task.'],
+    ['skills', 'Packaged how-to guides for particular kinds of work, pulled in when they’re relevant.'],
+    ['tool guidance', 'Advice on which tool to reach for and how to use it without tripping up.'],
+    ['scripts', 'Small ready-made programs the agent can run, like a checker that reopens a file it wrote.'],
+    ['subagents', 'Helper agents it can hand a sub-problem to, each with its own narrow focus.'],
+    ['middleware', 'A plugin that sits between the model and its tools, shaping each step as it happens.']
+  ];
+  var mg = $('#model-g'), info = $('#comp-info');
+  var cx = 200, cy = 192, R = 132, out = '';
+  comps.forEach(function(c, i){
+    var a = (-90 + i * 45) * Math.PI / 180;
+    out += '<line x1="' + (cx + 50 * Math.cos(a)).toFixed(1) + '" y1="' + (cy + 50 * Math.sin(a)).toFixed(1) + '" x2="' + (cx + R * Math.cos(a)).toFixed(1) + '" y2="' + (cy + R * Math.sin(a)).toFixed(1) + '" class="s-line" stroke-width="1.2"/>';
+  });
+  out += '<circle cx="' + cx + '" cy="' + cy + '" r="46" class="f-bg2 s-soft" stroke-width="1.5"/>';
+  out += '<g transform="translate(' + cx + ' ' + (cy - 17) + ')"><path d="M-5 -2 v-4 a5 5 0 0 1 10 0 v4" class="nofill s-soft" stroke-width="1.6"/><rect x="-7.5" y="-2" width="15" height="11" rx="2" class="f-soft"/></g>';
+  out += '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" font-size="14">model</text>';
+  out += '<text x="' + cx + '" y="' + (cy + 28) + '" text-anchor="middle" font-size="10.5" class="f-soft">weights frozen</text>';
+  comps.forEach(function(c, i){
+    var a = (-90 + i * 45) * Math.PI / 180, x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    out += '<g class="node" data-i="' + i + '" tabindex="0" role="button" aria-label="' + c[0] + '">' +
+      '<rect x="' + (x - 53).toFixed(1) + '" y="' + (y - 17).toFixed(1) + '" width="106" height="34" rx="17"/>' +
+      '<text x="' + x.toFixed(1) + '" y="' + (y + 4.5).toFixed(1) + '" text-anchor="middle" font-size="12.5">' + c[0] + '</text></g>';
+  });
+  mg.innerHTML = out;
+  var nodes = Array.prototype.slice.call(mg.querySelectorAll('.node'));
+  var selComp = 0;
+  function selectComp(i){
+    selComp = (i + comps.length) % comps.length;
+    nodes.forEach(function(n, j){ n.classList.toggle('sel', j === selComp); n.setAttribute('aria-pressed', j === selComp ? 'true' : 'false'); });
+    var label = comps[selComp][0];
+    info.innerHTML = '<strong>' + label.charAt(0).toUpperCase() + label.slice(1) + '.</strong> ' + comps[selComp][1];
+  }
+  nodes.forEach(function(n){
+    n.addEventListener('click', function(){ selectComp(+n.getAttribute('data-i')); });
+    n.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); selectComp(+n.getAttribute('data-i')); } });
+  });
+  $('#comp-prev').addEventListener('click', function(){ selectComp(selComp - 1); });
+  $('#comp-next').addEventListener('click', function(){ selectComp(selComp + 1); });
+  selectComp(0);
+
+  /* ---------- Propose / Probe / Compose stepper ---------- */
+  var ppc = $('#ppc'); prep(ppc);
+  var groups = Array.prototype.slice.call(ppc.querySelectorAll('.stp'));
+  var stepData = [
+    ['Run it once', 'The agent does the task with its current harness. This reference run doesn’t say whether the answer is right. It shows how the agent behaves: what it read, which tools it used, where it stalled.'],
+    ['Propose two edits', 'An editor reads that trajectory and writes two candidate harnesses. The invariant edit targets habits that matter in any job, like planning, tool use, managing context and delegating. The domain edit targets this field’s knowledge, procedures and constraints.'],
+    ['Probe', 'Each candidate runs the same task, with the same model and setup. Comparing each run against the reference gives a behavioral contrast: did an edit fix the weakness it aimed at, change nothing, or break something else?'],
+    ['Compose', 'A composer reads the candidates, their diffs and all the runs, then builds the next harness. It can merge supported edits, rework conflicting ones, adopt one candidate whole, or keep the current harness. Every decision points to something it actually observed.'],
+    ['Run and record', 'The composed harness runs to produce the deliverable. The step also writes down what it tried, what it saw and why it chose as it did. That record feeds the outer loop.']
+  ];
+  var dotsWrap = $('#ppc-dots'), dots = [];
+  stepData.forEach(function(s, i){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'dot'; b.setAttribute('aria-label', 'Go to step ' + (i + 1) + ': ' + s[0]);
+    b.addEventListener('click', function(){ cs = i; renderStep(); });
+    dotsWrap.appendChild(b); dots.push(b);
+  });
+  var cs = 0;
+  function renderStep(){
+    groups.forEach(function(g, i){
+      g.classList.toggle('on', i <= cs); g.classList.toggle('cur', i === cs); show(g, i <= cs);
+    });
+    $('#ppc-title').textContent = 'Step ' + (cs + 1) + ' of 5: ' + stepData[cs][0];
+    $('#ppc-text').textContent = stepData[cs][1];
+    dots.forEach(function(d, i){ if (i === cs) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current'); });
+    $('#ppc-back').disabled = cs === 0;
+    $('#ppc-next').textContent = cs === 4 ? 'Start over' : 'Next step';
+  }
+  $('#ppc-next').addEventListener('click', function(){ cs = cs === 4 ? 0 : cs + 1; renderStep(); });
+  $('#ppc-back').addEventListener('click', function(){ if (cs > 0){ cs--; renderStep(); } });
+  renderStep();
+
+  /* ---------- Parallel / sequential ---------- */
+  var SUB = ['₀','₁','₂','₃','₄','₅'];
+  function lin(a, b, n){ if (n === 1) return [(a + b) / 2]; var r = []; for (var i = 0; i < n; i++) r.push(a + (b - a) * i / (n - 1)); return r; }
+  function starPts(x, y, Ro, Ri){
+    var p = [];
+    for (var i = 0; i < 10; i++){ var a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? Ri : Ro; p.push((x + r * Math.cos(a)).toFixed(1) + ',' + (y + r * Math.sin(a)).toFixed(1)); }
+    return p.join(' ');
+  }
+  function hbox(x, y, w, h, color, label, fs){
+    return '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="8" class="f-bg2 s-' + color + '" stroke-width="1.6"/>' +
+      '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (y + h / 2 + fs * 0.36).toFixed(1) + '" text-anchor="middle" class="m f-' + color + '" font-size="' + fs + '">' + label + '</text>';
+  }
+  var psMode = 'par', k = 1;
+  function buildPar(){
+    var s = '';
+    s += hbox(172, 18, 56, 36, 'blue', 'ℋ', 19);
+    var n = 2 * k, xs = n === 2 ? [150, 250] : lin(48, 352, n);
+    var r = n > 8 ? 8 : 9.5;
+    xs.forEach(function(x, i){
+      var col = i < k ? 'teal' : 'violet';
+      s += '<line x1="200" y1="54" x2="' + x.toFixed(1) + '" y2="' + (100 - r) + '" class="s-line" stroke-width="1.2"/>';
+      s += '<line x1="' + x.toFixed(1) + '" y1="' + (100 + r) + '" x2="' + x.toFixed(1) + '" y2="150" class="s-line" stroke-width="1.2"/>';
+      s += '<circle cx="' + x.toFixed(1) + '" cy="100" r="' + r + '" class="f-bg2 s-' + col + '" stroke-width="1.8"/>';
+    });
+    var lx = k === 1 ? 150 : (xs[0] + xs[k - 1]) / 2, rx = k === 1 ? 250 : (xs[k] + xs[n - 1]) / 2;
+    s += '<text x="' + lx.toFixed(1) + '" y="80" text-anchor="middle" font-size="11" class="halo f-teal">' + k + ' invariant</text>';
+    s += '<text x="' + rx.toFixed(1) + '" y="80" text-anchor="middle" font-size="11" class="halo f-violet">' + k + ' domain</text>';
+    s += '<rect x="40" y="150" width="320" height="38" rx="19" class="f-bg2 s-soft" stroke-width="1.3"/>';
+    s += '<text x="200" y="173.5" text-anchor="middle" font-size="12">shared pool: every candidate and its run</text>';
+    var cxs = lin(k === 1 ? 200 : 76, k === 1 ? 200 : 324, k);
+    var w = Math.min(54, 300 / k - 10);
+    cxs.forEach(function(x, j){
+      s += '<line x1="' + x.toFixed(1) + '" y1="188" x2="' + x.toFixed(1) + '" y2="226" class="s-blue" stroke-width="1.3" marker-end="url(#a-blue)"/>';
+      s += hbox(x - w / 2, 230, w, 34, 'blue', 'ℋ′' + SUB[j + 1], 14);
+    });
+    if (k > 1){
+      cxs.forEach(function(x){ s += '<line x1="' + x.toFixed(1) + '" y1="264" x2="' + x.toFixed(1) + '" y2="292" class="s-line" stroke-width="1.2"/>'; });
+      s += '<polygon points="64,292 336,292 236,324 164,324" class="f-bg2 s-soft" stroke-width="1.3"/>';
+      s += '<text x="200" y="311" text-anchor="middle" font-size="11.5">blind selector</text>';
+      s += '<line x1="200" y1="324" x2="200" y2="344" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>';
+    } else {
+      s += '<line x1="200" y1="264" x2="200" y2="344" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>';
+      s += '<text x="214" y="306" font-size="11" class="f-soft">k = 1: one step, nothing to choose</text>';
+    }
+    s += '<polygon points="' + starPts(200, 364, 12, 5.2) + '" class="f-yellow"/>';
+    s += '<text x="220" y="369" font-size="12.5" class="f-yellow">adopted <tspan class="m">ℋ</tspan>★</text>';
+    return s;
+  }
+  function buildSeq(){
+    var s = '', n = k + 1, gap = 22;
+    var W = Math.min(58, (344 - (n - 1) * gap) / n);
+    var total = n * W + (n - 1) * gap, x0 = 200 - total / 2;
+    var bx = []; for (var i = 0; i < n; i++) bx.push(x0 + i * (W + gap));
+    // evidence history bar
+    s += '<text x="40" y="20" font-size="11" class="f-soft">evidence history <tspan class="m">ℰ</tspan>, growing each step</text>';
+    var baseW = 84, sw = (320 - baseW) / k;
+    s += '<rect x="40" y="30" width="' + baseW + '" height="22" rx="4" class="f-line"/>';
+    s += '<text x="' + (40 + baseW / 2) + '" y="45" text-anchor="middle" font-size="10.5">' + k + ' base run' + (k > 1 ? 's' : '') + '</text>';
+    for (var j = 0; j < k; j++){
+      s += '<rect x="' + (40 + baseW + j * sw + 2).toFixed(1) + '" y="30" width="' + (sw - 2).toFixed(1) + '" height="22" rx="4" class="f-yellow" opacity="' + (0.28 + 0.1 * j) + '"/>';
+    }
+    // boxes and arrows
+    for (var b = 0; b < n; b++){
+      var lab = 'ℋ<tspan font-size="9" dy="-6">(' + b + ')</tspan>';
+      s += hbox(bx[b], 110, W, 36, 'blue', lab, 14);
+      if (b > 0){
+        var ax1 = bx[b - 1] + W + 2, ax2 = bx[b] - 3, mid = (ax1 + ax2) / 2;
+        s += '<line x1="' + ax1.toFixed(1) + '" y1="128" x2="' + ax2.toFixed(1) + '" y2="128" class="s-soft" stroke-width="1.3" marker-end="url(#a-soft)"/>';
+        s += '<text x="' + mid.toFixed(1) + '" y="166" text-anchor="middle" class="m f-soft" font-size="13">Φ</text>';
+        var segX = 40 + baseW + (b - 1) * sw + sw / 2;
+        s += '<path d="M' + mid.toFixed(1) + ' 122 L' + segX.toFixed(1) + ' 58" class="nofill s-yellow dash" stroke-width="1.1" marker-end="url(#a-yellow)"/>';
+      }
+    }
+    if (k > 1){
+      for (var c = 1; c < n; c++){ var mx = bx[c] + W / 2; s += '<line x1="' + mx.toFixed(1) + '" y1="146" x2="' + mx.toFixed(1) + '" y2="196" class="s-line" stroke-width="1.2"/>'; }
+      s += '<polygon points="64,196 336,196 236,228 164,228" class="f-bg2 s-soft" stroke-width="1.3"/>';
+      s += '<text x="200" y="215" text-anchor="middle" font-size="11.5">blind selector</text>';
+      s += '<line x1="200" y1="228" x2="200" y2="248" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>';
+      s += '<polygon points="' + starPts(200, 266, 12, 5.2) + '" class="f-yellow"/>';
+      s += '<text x="220" y="271" font-size="12.5" class="f-yellow">adopted <tspan class="m">ℋ</tspan>★</text>';
+    } else {
+      var sx = bx[1] + W / 2;
+      s += '<line x1="' + sx.toFixed(1) + '" y1="146" x2="' + sx.toFixed(1) + '" y2="232" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>';
+      s += '<polygon points="' + starPts(sx, 250, 12, 5.2) + '" class="f-yellow"/>';
+      s += '<text x="' + (sx + 20) + '" y="255" font-size="12.5" class="f-yellow">adopted <tspan class="m">ℋ</tspan>★</text>';
+      s += '<text x="200" y="292" text-anchor="middle" font-size="11" class="f-soft">k = 1: one step, nothing to choose</text>';
+    }
+    return s;
+  }
+  function renderPS(){
+    var svg = $('#ps');
+    if (psMode === 'par'){ svg.setAttribute('viewBox', '0 0 400 396'); $('#ps-g').innerHTML = buildPar(); }
+    else { svg.setAttribute('viewBox', '0 0 400 304'); $('#ps-g').innerHTML = buildSeq(); }
+    $('#k-out').textContent = k; $('#k-range').value = k;
+    $('#k-minus').disabled = k === 1; $('#k-plus').disabled = k === 5;
+    $('#ps-par').setAttribute('aria-pressed', psMode === 'par'); $('#ps-seq').setAttribute('aria-pressed', psMode === 'seq');
+    var note;
+    if (psMode === 'par'){
+      note = k === 1 ? 'With k = 1 this is just the single contrastive step: one invariant and one domain candidate, one composer.'
+        : k + ' reference runs, ' + k + ' invariant and ' + k + ' domain candidates are probed side by side. ' + k + ' independent composers each read the whole pool, and a selector picks one of their outputs without knowing which harness made it. This is one wide round, not several rounds.';
+    } else {
+      note = k === 1 ? 'With k = 1 this is just the single contrastive step.'
+        : k + ' contrastive steps in a chain. Each one starts from the previous harness and reads all the evidence gathered so far, so later steps can keep, revise or undo earlier changes.';
+    }
+    $('#ps-note').textContent = note;
+  }
+  $('#ps-par').addEventListener('click', function(){ psMode = 'par'; renderPS(); });
+  $('#ps-seq').addEventListener('click', function(){ psMode = 'seq'; renderPS(); });
+  $('#k-minus').addEventListener('click', function(){ if (k > 1){ k--; renderPS(); } });
+  $('#k-plus').addEventListener('click', function(){ if (k < 5){ k++; renderPS(); } });
+  $('#k-range').addEventListener('input', function(e){ k = parseInt(e.target.value, 10) || 1; renderPS(); });
+  renderPS();
+
+  /* ---------- Library timeline ---------- */
+  var T = 0;
+  var libNotes = [
+    'Before the first task, the improvement library is empty.',
+    'Task 1 starts from the base harness ℋ₀ and refines it with nothing to consult. Its adopted harness and the lessons its runs support become entry 1.',
+    'Task 2 starts from the same base harness ℋ₀, not from task 1’s result. But now the editor can browse entry 1 while proposing and composing.',
+    'Lessons are only saved when the runs back them up. Here the evidence was thin, so the adopted harness is kept but no new lesson is written.',
+    'By task 4 the improver has a shelf of tested harness parts and notes about when they help. Each task’s own harness stays fresh; the know-how accumulates.'
+  ];
+  function rowY(t){ return 60 + (t - 1) * 74; }
+  function buildLib(){
+    var s = '';
+    s += '<rect x="282" y="20" width="104" height="320" rx="10" class="nofill s-yellow" stroke-width="1.6"/>';
+    s += '<text x="334" y="40" text-anchor="middle" font-size="11.5" class="f-yellow">improvement</text>';
+    s += '<text x="334" y="54" text-anchor="middle" font-size="11.5" class="f-yellow">library</text>';
+    if (T === 0) s += '<text x="334" y="186" text-anchor="middle" font-size="11.5" class="f-soft">empty</text>';
+    for (var t = 1; t <= T; t++){
+      var y = rowY(t), newest = t === T ? ' class="pop"' : '';
+      s += '<g' + newest + '>';
+      s += '<text x="12" y="' + (y + 4) + '" font-size="11.5" class="f-soft">task ' + t + '</text>';
+      s += '<rect x="58" y="' + (y - 15) + '" width="44" height="30" rx="7" class="f-bg2 s-blue" stroke-width="1.5"/>';
+      s += '<text x="80" y="' + (y + 5) + '" text-anchor="middle" class="m f-blue" font-size="15">ℋ<tspan font-size="10" dy="3">0</tspan></text>';
+      s += '<line x1="104" y1="' + y + '" x2="132" y2="' + y + '" class="s-soft" stroke-width="1.2" marker-end="url(#a-soft)"/>';
+      s += '<path d="M' + (150 + 13 * Math.cos(-1.2)).toFixed(1) + ' ' + (y + 13 * Math.sin(-1.2)).toFixed(1) + ' A13 13 0 1 1 ' + (150 + 13 * Math.cos(-2.0)).toFixed(1) + ' ' + (y + 13 * Math.sin(-2.0)).toFixed(1) + '" class="nofill s-blue" stroke-width="1.8" marker-end="url(#a-blue)"/>';
+      s += '<text x="150" y="' + (y + 29) + '" text-anchor="middle" font-size="10.5" class="f-soft">refine</text>';
+      s += '<line x1="167" y1="' + y + '" x2="194" y2="' + y + '" class="s-soft" stroke-width="1.2" marker-end="url(#a-soft)"/>';
+      s += '<polygon points="' + starPts(210, y, 11, 4.8) + '" class="f-blue"/>';
+      s += '<line x1="224" y1="' + y + '" x2="278" y2="' + y + '" class="s-yellow" stroke-width="1.3" marker-end="url(#a-yellow)"/>';
+      if (t > 1){
+        s += '<path d="M282 ' + (y - 16) + ' C 250 ' + (y - 38) + ', 192 ' + (y - 40) + ', 160 ' + (y - 20) + '" class="nofill s-yellow dash" stroke-width="1.2" marker-end="url(#a-yellow)"/>';
+        if (t === T) s += '<text x="222" y="' + (y - 38) + '" text-anchor="middle" font-size="10.5" class="halo f-yellow">consults</text>';
+      }
+      // card
+      var cyT = 296 - (t - 1) * 46;
+      s += '<rect x="292" y="' + cyT + '" width="84" height="36" rx="6" class="f-bg2 s-line" stroke-width="1.1"/>';
+      s += '<rect x="301" y="' + (cyT + 9) + '" width="16" height="18" rx="3" class="nofill s-blue" stroke-width="1.4"/>';
+      if (t === 3){
+        s += '<rect x="323" y="' + (cyT + 9) + '" width="16" height="18" rx="2" class="nofill s-yellow dash" stroke-width="1.2" opacity=".6"/>';
+      } else {
+        s += '<rect x="323" y="' + (cyT + 9) + '" width="16" height="18" rx="2" class="nofill s-yellow" stroke-width="1.4"/>';
+        s += '<line x1="326.5" y1="' + (cyT + 15) + '" x2="335.5" y2="' + (cyT + 15) + '" class="s-yellow" stroke-width="1.2"/>';
+        s += '<line x1="326.5" y1="' + (cyT + 20) + '" x2="333" y2="' + (cyT + 20) + '" class="s-yellow" stroke-width="1.2"/>';
+      }
+      s += '<text x="360" y="' + (cyT + 23) + '" text-anchor="middle" font-size="11" class="f-soft">' + t + '</text>';
+      s += '</g>';
+    }
+    return s;
+  }
+  function renderLib(){
+    $('#lib-g').innerHTML = buildLib();
+    $('#lib-note').textContent = libNotes[T];
+    var nb = $('#lib-next');
+    if (T >= 4){ nb.textContent = 'All four tasks done'; nb.disabled = true; }
+    else { nb.textContent = 'Run task ' + (T + 1); nb.disabled = false; }
+    $('#lib-reset').disabled = T === 0;
+  }
+  $('#lib-next').addEventListener('click', function(){ if (T < 4){ T++; renderLib(); } });
+  $('#lib-reset').addEventListener('click', function(){ T = 0; renderLib(); });
+  renderLib();
+
+  /* ---------- Results chart ---------- */
+  var RES = {
+    wb: { unit:'points', dom:[60, 85], d:{
+      'gemini|opencode':[72.4,73.4,76.4,75.3,77.5,80.8], 'gemini|codex':[74.5,72.5,73.3,73.8,77.5,80.4],
+      'glm|opencode':[64.2,65.6,69.7,67.8,75.7,79.6], 'glm|codex':[64.4,64.1,74.2,62.9,75.3,78.3] } },
+    jb: { unit:'points', dom:[15, 40], d:{
+      'gemini|opencode':[31.5,30.8,35.8,32.9,36.0,39.0], 'gemini|codex':[33.9,30.2,34.8,33.6,35.3,39.5],
+      'glm|opencode':[20.6,20.7,20.9,19.3,24.2,28.4], 'glm|codex':[23.6,22.8,23.9,17.5,24.8,27.9] } },
+    lab: { unit:'percentage points', dom:[55, 90], d:{
+      'gemini|opencode':[79.9,77.3,81.6,78.9,81.9,84.5], 'gemini|codex':[71.6,74.8,76.5,67.9,75.6,78.5],
+      'glm|opencode':[59.6,71.3,60.0,67.8,71.4,78.1], 'glm|codex':[58.1,63.8,59.0,63.7,65.9,70.7] } }
+  };
+  var methods = ['Base harness','ReasoningBank','Meta-Harness*','Harness Scaling','Harness²','Harness², k = 5'];
+  var mColor = ['soft','soft','soft','soft','blue','yellow'];
+  var rb = 'wb', rm = 'gemini', rh = 'opencode';
+  var X0 = 150, X1 = 382, TOP = 36, RH = 46;
+  function rowCy(i){ return TOP + 24 + i * RH; }
+  var rowsG = $('#res-rows'), rowEls = [];
+  (function buildRows(){
+    var s = '';
+    methods.forEach(function(m, i){
+      var y = rowCy(i), strong = i >= 4;
+      s += '<text x="8" y="' + (y + 4.5) + '" font-size="12.5" class="' + (strong ? 'f-' + mColor[i] : '') + '">' + m.replace('k = 5', '<tspan class="m">k</tspan> = 5') + '</text>';
+      s += '<line class="gain" data-i="' + i + '" x1="' + X0 + '" x2="' + X0 + '" y1="' + y + '" y2="' + y + '" stroke-width="3" opacity=".45"/>';
+      s += '<g class="dotg" data-i="' + i + '"><circle r="' + (strong ? 7 : 6) + '" class="f-' + mColor[i] + '"/><text y="-11" text-anchor="middle" font-size="11.5" class="halo ' + (strong ? 'f-' + mColor[i] : 'f-soft') + '"></text></g>';
+    });
+    rowsG.innerHTML = s;
+    for (var i = 0; i < methods.length; i++){
+      rowEls.push({ gain: rowsG.querySelector('.gain[data-i="' + i + '"]'), dot: rowsG.querySelector('.dotg[data-i="' + i + '"]') });
+    }
+  })();
+  var resSvg = $('#res'), first = true, lastBench = null;
+  function sx(v, dom){ return X0 + (v - dom[0]) / (dom[1] - dom[0]) * (X1 - X0); }
+  function f1(v){ return (Math.round(v * 10) / 10).toFixed(1); }
+  function renderRes(){
+    var B = RES[rb], dom = B.dom, vals = B.d[rm + '|' + rh];
+    var bottom = rowCy(methods.length - 1) + 22;
+    if (lastBench !== rb){
+      var a = '';
+      for (var v = dom[0]; v <= dom[1]; v += 5){
+        var x = sx(v, dom).toFixed(1);
+        a += '<line x1="' + x + '" x2="' + x + '" y1="' + (TOP - 4) + '" y2="' + bottom + '" class="s-line" stroke-width="1" opacity=".7"/>';
+        a += '<text x="' + x + '" y="' + (TOP - 12) + '" text-anchor="middle" font-size="11" class="f-soft">' + v + '</text>';
+      }
+      $('#res-axis').innerHTML = a; lastBench = rb;
+    }
+    if (first) resSvg.classList.add('notrans');
+    var bx = sx(vals[0], dom);
+    var bl = $('#res-base');
+    bl.setAttribute('x1', bx); bl.setAttribute('x2', bx); bl.setAttribute('y1', TOP - 4); bl.setAttribute('y2', bottom);
+    vals.forEach(function(v, i){
+      var x = sx(v, dom), y = rowCy(i), el = rowEls[i];
+      el.dot.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y + 'px)';
+      el.dot.querySelector('text').textContent = f1(v);
+      if (i === 0){ el.gain.style.opacity = 0; }
+      else {
+        el.gain.setAttribute('x1', bx); el.gain.setAttribute('x2', x);
+        el.gain.setAttribute('class', 'gain ' + (v >= vals[0] ? 's-green' : 's-red'));
+        el.gain.style.opacity = '';
+      }
+    });
+    if (first){ void resSvg.getBoundingClientRect(); resSvg.classList.remove('notrans'); first = false; }
+
+    // note
+    var base = vals[0], h2 = vals[4], k5 = vals[5];
+    var bi = 1; for (var j = 2; j <= 3; j++) if (vals[j] > vals[bi]) bi = j;
+    var bestName = methods[bi].replace('*', '');
+    var u = B.unit;
+    var note = 'One improvement step adds ' + f1(h2 - base) + ' ' + u + ' over the base harness; parallel recursion at k = 5 brings the total gain to ' + f1(k5 - base) + '. ';
+    if (vals[bi] > h2) note += 'Here ' + bestName + ' (' + f1(vals[bi]) + ') edges out a single Harness² step (' + f1(h2) + '), though recursion moves ahead.';
+    else note += 'The strongest comparison method here is ' + bestName + ' at ' + f1(vals[bi]) + '.';
+    if (rb === 'wb' && rm === 'glm'){
+      var gb = RES.wb.d['gemini|' + rh][0];
+      note += ' GLM-5 with Harness² (' + f1(h2) + ') now beats the stronger Gemini 3.5 Flash on its untouched harness (' + f1(gb) + ').';
+    }
+    $('#res-note').textContent = note;
+  }
+  $$('[data-b]').forEach(function(b){ b.addEventListener('click', function(){ rb = b.getAttribute('data-b'); $$('[data-b]').forEach(function(x){ x.setAttribute('aria-pressed', x === b); }); renderRes(); }); });
+  $$('[data-m]').forEach(function(b){ b.addEventListener('click', function(){ rm = b.getAttribute('data-m'); $$('[data-m]').forEach(function(x){ x.setAttribute('aria-pressed', x === b); }); renderRes(); }); });
+  $$('[data-h]').forEach(function(b){ b.addEventListener('click', function(){ rh = b.getAttribute('data-h'); $$('[data-h]').forEach(function(x){ x.setAttribute('aria-pressed', x === b); }); renderRes(); }); });
+  renderRes();
+
+  /* ---------- Case study ---------- */
+  var caseBase = {
+    labels:['read the brief and the files','never reconciled data across files','write the memo','never reopened what it wrote','hand in'],
+    kinds:['','ghost','','ghost',''], score:43.1,
+    cap:'Base run: the memo was written straight from the files, with no cross-checking and no second look. Score 43.1.'
+  };
+  var caseNew = {
+    labels:['inventory every input file','reconcile figures across files','write the memo, tracing each figure','reopen outputs, check with a script','hand in'],
+    kinds:['teal','violet','teal','teal',''], score:77.8,
+    cap:'After composing: teal steps come from the general-habits edit, violet from the domain skill. The rerun cross-referenced the figures and restored the memo’s missing sections. Score 77.8.'
+  };
+  var cg = $('#case-g'), cs2 = '';
+  for (var i = 0; i < 5; i++){
+    var y = 24 + i * 50;
+    if (i < 4) cs2 += '<line x1="150" y1="' + (y + 36) + '" x2="150" y2="' + (y + 50) + '" class="s-line" stroke-width="1.3"/>';
+    cs2 += '<g class="chip" data-i="' + i + '"><rect x="16" y="' + y + '" width="276" height="36" rx="18"/><text x="34" y="' + (y + 22.5) + '" font-size="12.5"></text></g>';
+  }
+  cg.innerHTML = cs2;
+  var chips = Array.prototype.slice.call(cg.querySelectorAll('.chip'));
+  var fill = $('#case-fill'), scoreT = $('#case-score'), curScore = 43.1;
+  function setScore(v){
+    var h = Math.max(0, v / 100 * 232);
+    fill.setAttribute('y', (260 - h).toFixed(1)); fill.setAttribute('height', h.toFixed(1));
+    scoreT.textContent = f1(v); curScore = v;
+  }
+  function tween(from, to, dur, fn){
+    if (reduce){ fn(to); return; }
+    var t0 = null;
+    function f(t){ if (t0 === null) t0 = t; var p = Math.min(1, (t - t0) / dur); var e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; fn(from + (to - from) * e); if (p < 1) requestAnimationFrame(f); }
+    requestAnimationFrame(f);
+  }
+  function renderCase(improved){
+    var d = improved ? caseNew : caseBase;
+    chips.forEach(function(c, i){ c.setAttribute('class', 'chip ' + d.kinds[i]); c.querySelector('text').textContent = d.labels[i]; });
+    $('#case-base').setAttribute('aria-pressed', !improved); $('#case-new').setAttribute('aria-pressed', improved);
+    $('#case-cap').textContent = d.cap;
+    tween(curScore, d.score, 900, setScore);
+  }
+  $('#case-base').addEventListener('click', function(){ renderCase(false); });
+  $('#case-new').addEventListener('click', function(){ renderCase(true); });
+  setScore(43.1); renderCase(false);
+})();
+</script>
+</body>
+</html>
