@@ -48,3 +48,6 @@
 - Emerging Trends in AI Agent Evaluation
   - https://sage.cs.princeton.edu/trends/emerging-trends-paper.pdf
   - https://edangx100.github.io/interesting_papers/emerging-trends-paper
+- JevAgentHarness: Benchmarking, Deploying and Training Decision Models That Share Control with LLMs
+  - https://arxiv.org/html/2610.21412v1
+  - https://edangx100.github.io/interesting_papers/JevAgentHarness
