@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Who makes the agent’s next move? An explainer of JevAgentHarness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --serif:"STIX Two Text","STIX Two","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --ui:"Atkinson Hyperlegible",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --fs:18px;
+  /* light: cool paper, never pure white, never pure black */
+  --bg:#f3f5f6; --surface:#e8ecee; --ink:#262c33; --muted:#5a626b; --faint:#d3d9dd;
+  --blue:#2c7898; --yellow:#94730c; --green:#387d4b; --red:#b04c3a; --purple:#64579f;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    /* 3Blue1Brown-style slate, softened for long reading */
+    --bg:#171b21; --surface:#20262d; --ink:#d6dbe1; --muted:#949da7; --faint:#2f363f;
+    --blue:#6dbcd8; --yellow:#dfcb70; --green:#89c193; --red:#de8b7d; --purple:#ada0da;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#171b21; --surface:#20262d; --ink:#d6dbe1; --muted:#949da7; --faint:#2f363f;
+  --blue:#6dbcd8; --yellow:#dfcb70; --green:#89c193; --red:#de8b7d; --purple:#ada0da;
+  color-scheme:dark;
+}
+@media (min-width:700px){ :root{ --fs:19px; } }
+
+*,*::before,*::after{ box-sizing:inherit; }
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; scroll-padding-top:env(safe-area-inset-top,0px); }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--serif); font-size:var(--fs); line-height:1.72;
+  font-kerning:normal; font-variant-numeric:oldstyle-nums proportional-nums;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:96px;
+  transition:background-color .3s ease,color .3s ease;
+}
+main{ max-width:36rem; margin:0 auto; padding:0 22px; }
+@media (min-width:700px){ main{ padding:0 32px; } }
+
+/* ---------- header ---------- */
+header{ padding:4.5rem 0 1rem; }
+h1{
+  font-weight:600; font-size:2.35em; line-height:1.12; letter-spacing:-.012em;
+  margin:0 0 .55em; text-wrap:balance;
+}
+.summary{ font-size:1.22em; line-height:1.5; margin:0 0 1.4em; text-wrap:pretty; }
+.byline{ font-family:var(--ui); font-size:.8em; line-height:1.55; color:var(--muted); margin:0; }
+.byline a{ color:var(--blue); }
+.byline cite{ font-style:italic; }
+
+/* ---------- prose ---------- */
+h2{
+  font-weight:600; font-size:1.5em; line-height:1.22; letter-spacing:-.005em;
+  margin:3.6em 0 .7em; text-wrap:balance;
+}
+h3{ font-weight:600; font-size:1.15em; margin:2.4em 0 .4em; }
+p{ margin:0 0 1.15em; text-wrap:pretty; hyphens:auto; -webkit-hyphens:auto; }
+a{ color:var(--blue); text-underline-offset:.18em; text-decoration-thickness:1px; }
+strong{ font-weight:600; }
+.lede{ font-size:1.06em; }
+.num{ font-variant-numeric:lining-nums tabular-nums; }
+.c-blue{ color:var(--blue); } .c-yellow{ color:var(--yellow); } .c-red{ color:var(--red); } .c-green{ color:var(--green); }
+.aside{
+  border-left:2px solid var(--faint); padding:.2em 0 .2em 1.1em; margin:1.6em 0;
+  color:var(--muted); font-size:.94em;
+}
+
+/* ---------- figures ---------- */
+figure{ margin:2.6em 0 2.8em; }
+figure svg{ display:block; width:100%; height:auto; max-width:520px; margin:0 auto; overflow:visible; }
+figcaption{
+  font-family:var(--ui); font-size:.8em; line-height:1.55; color:var(--muted);
+  max-width:520px; margin:1em auto 0;
+}
+figcaption em{ font-style:italic; }
+
+/* svg vocabulary */
+svg text{ font-family:var(--ui); font-size:14px; fill:var(--ink); }
+svg .t-s{ font-size:12.5px; }
+svg .t-l{ font-size:16.5px; font-weight:700; }
+svg .t-m{ fill:var(--muted); }
+svg .t-mid{ text-anchor:middle; }
+svg .t-end{ text-anchor:end; }
+svg .t-math{ font-family:var(--serif); font-style:italic; font-size:19px; }
+svg .t-blue{ fill:var(--blue); } svg .t-yellow{ fill:var(--yellow); } svg .t-red{ fill:var(--red); }
+svg .t-green{ fill:var(--green); } svg .t-purple{ fill:var(--purple); }
+.f-ink{fill:var(--ink)} .f-muted{fill:var(--muted)} .f-faint{fill:var(--faint)} .f-bg{fill:var(--bg)} .f-surface{fill:var(--surface)}
+.f-blue{fill:var(--blue)} .f-yellow{fill:var(--yellow)} .f-green{fill:var(--green)} .f-red{fill:var(--red)} .f-purple{fill:var(--purple)}
+.f-blue-s{fill:var(--blue);fill-opacity:.14} .f-yellow-s{fill:var(--yellow);fill-opacity:.14} .f-red-s{fill:var(--red);fill-opacity:.11}
+.f-green-s{fill:var(--green);fill-opacity:.14}
+.nf{fill:none}
+.k-ink{stroke:var(--ink)} .k-muted{stroke:var(--muted)} .k-faint{stroke:var(--faint)} .k-bg{stroke:var(--bg)}
+.k-blue{stroke:var(--blue)} .k-yellow{stroke:var(--yellow)} .k-green{stroke:var(--green)} .k-red{stroke:var(--red)} .k-purple{stroke:var(--purple)}
+.w1{stroke-width:1} .w15{stroke-width:1.5} .w2{stroke-width:2} .w25{stroke-width:2.5}
+.dash{stroke-dasharray:3 5} .round{stroke-linecap:round; stroke-linejoin:round}
+.pulse{ transform-box:fill-box; transform-origin:center; transition:transform .22s ease-out; }
+.bar{ transition:transform .55s cubic-bezier(.3,.7,.2,1), fill .3s ease; }
+.fade{ transition:opacity .3s ease; }
+
+/* ---------- interactive controls ---------- */
+.controls{
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+  max-width:520px; margin:1.1em auto 0; font-family:var(--ui); font-size:16px;
+}
+.controls .spacer{ flex:1 1 auto; }
+.status{ font-family:var(--ui); font-size:15px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.btn{
+  -webkit-appearance:none; appearance:none;
+  font-family:var(--ui); font-size:16px; line-height:1; color:var(--ink);
+  min-height:44px; min-width:44px; padding:0 18px;
+  border:1.5px solid var(--faint); border-radius:22px; background:var(--surface);
+  cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+  transition:transform .12s ease, border-color .2s ease, color .2s ease, background-color .2s ease;
+}
+.btn:active{ transform:scale(.96); }
+.btn:disabled{ opacity:.4; cursor:default; transform:none; }
+.btn[aria-pressed="true"]{ border-color:var(--blue); color:var(--blue); }
+.btn:focus-visible, input[type=range]:focus-visible, a:focus-visible{ outline:2.5px solid var(--blue); outline-offset:3px; }
+@media (hover:hover){ .btn:not(:disabled):hover{ border-color:var(--muted); } }
+
+.slider{ max-width:520px; margin:1em auto 0; font-family:var(--ui); }
+.slider label{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:15.5px; color:var(--muted); }
+.slider output{ color:var(--ink); font-variant-numeric:tabular-nums; font-weight:700; }
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:44px; margin:2px 0 0;
+  background:transparent; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+input[type=range]::-webkit-slider-runnable-track{ height:6px; border-radius:3px; background:var(--faint); }
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:28px; height:28px; margin-top:-11px;
+  border-radius:50%; background:var(--blue); border:4px solid var(--bg); box-shadow:0 0 0 1.5px var(--blue);
+}
+input[type=range]::-moz-range-track{ height:6px; border-radius:3px; background:var(--faint); }
+input[type=range]::-moz-range-thumb{
+  width:22px; height:22px; border-radius:50%; background:var(--blue); border:4px solid var(--bg); box-shadow:0 0 0 1.5px var(--blue);
+}
+.readout{ max-width:520px; margin:.9em auto 0; font-family:var(--ui); font-size:16px; line-height:1.6; }
+.readout p{ margin:0 0 .25em; }
+.readout .big{ font-family:var(--serif); font-size:1.25em; }
+
+/* transcript box for the stepper */
+.transcript{
+  max-width:520px; margin:0 auto 1.1em; padding:.1em 0 .1em 1em;
+  border-left:2px solid var(--blue); font-family:var(--ui); font-size:15.5px; line-height:1.55;
+}
+.transcript p{ margin:0 0 .35em; }
+.transcript .who{ color:var(--muted); }
+.transcript .q{ color:var(--muted); font-style:italic; margin-top:.6em; }
+.transcript code{ font-family:inherit; font-weight:700; }
+
+/* ---------- reading tools (fixed, bottom right) ---------- */
+.tools{
+  position:fixed; z-index:30;
+  right:calc(12px + env(safe-area-inset-right,0px));
+  bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  display:flex; gap:4px; padding:5px;
+  background:var(--surface); border:1px solid var(--faint); border-radius:28px;
+  box-shadow:0 2px 14px rgba(0,0,0,.08);
+}
+.tools .btn{ padding:0; width:44px; border:none; background:transparent; border-radius:50%; display:grid; place-items:center; }
+.tools .btn svg{ width:22px; height:22px; display:block; }
+.tools .btn svg *{ stroke:var(--ink); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.tools .aa{ font-family:var(--serif); font-size:15px; }
+.tools .aa.lg{ font-size:21px; }
+
+.ending{ margin-top:3.6em; padding-top:1.6em; border-top:1px solid var(--faint); font-family:var(--ui); font-size:.84em; color:var(--muted); }
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ transition:none !important; animation:none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="tools" role="toolbar" aria-label="Reading settings">
+  <button class="btn aa" type="button" id="txtDown" aria-label="Smaller text">A</button>
+  <button class="btn aa lg" type="button" id="txtUp" aria-label="Larger text">A</button>
+  <button class="btn" type="button" id="themeBtn" aria-label="Switch to dark theme"></button>
+</div>
+
+<main>
+
+<header>
+  <h1>Who makes the agent’s next move?</h1>
+  <p class="summary">Most steps an AI agent takes are really multiple-choice picks, and this paper shows that a small, fast “decision model” can make most of them, cutting cost by more than 80% without hurting success, as long as it hands the uncertain ones back to the big language model.</p>
+  <p class="byline">An illustrated explainer of <cite>JevAgentHarness: Benchmarking, Deploying and Training Decision Models That Share Control with LLMs</cite> by Kunlun Zhu, Tao Feng, Xu Han, Heng Wang, Ling Yang, Xiangru Tang, Jiaxuan You and Heng Ji (2026). <a href="https://arxiv.org/html/2610.21412v1">Read the paper</a></p>
+</header>
+
+<!-- HERO -->
+<figure id="hero">
+  <svg viewBox="0 0 400 250" role="img" aria-labelledby="heroT">
+    <title id="heroT">Decisions flow from an agent to a confidence gate. Confident ones go to a small decision model; the rest go to the large language model.</title>
+    <path d="M72 125 L175 125" class="nf k-faint w2"/>
+    <path d="M175 125 Q250 62 312 62" class="nf k-faint w2"/>
+    <path d="M175 125 Q250 185 298 185" class="nf k-faint w2"/>
+    <line x1="175" y1="44" x2="175" y2="206" class="k-muted w15 dash round"/>
+    <text x="175" y="34" class="t-math t-mid">τ</text>
+    <text x="175" y="228" class="t-s t-m t-mid">confidence gate</text>
+
+    <g class="pulse" id="heroAgent">
+      <circle cx="48" cy="125" r="24" class="f-surface k-ink w15"/>
+      <circle cx="48" cy="125" r="4" class="f-ink"/>
+    </g>
+    <text x="48" y="166" class="t-s t-m t-mid">agent</text>
+
+    <text x="330" y="28" class="t-s t-mid t-blue">small decision model</text>
+    <g class="pulse" id="heroDM"><circle cx="330" cy="62" r="18" class="f-blue-s k-blue w2"/></g>
+    <text x="330" y="102" class="t-s t-mid" id="cntDM">0 answered</text>
+
+    <g class="pulse" id="heroLLM"><circle cx="330" cy="185" r="32" class="f-yellow-s k-yellow w2"/></g>
+    <text x="330" y="190" class="t-mid t-yellow">LLM</text>
+    <text x="330" y="236" class="t-s t-mid" id="cntLLM">0 answered</text>
+
+    <g id="heroDots"></g>
+  </svg>
+  <div class="controls" style="justify-content:center">
+    <button class="btn" type="button" id="heroReplay">Replay</button>
+  </div>
+  <figcaption>Each dot is one decision the agent has to make. If the small model is confident enough, meaning its confidence clears the threshold <em>τ</em>, its answer is used. Otherwise the question goes to the LLM as usual. <em>Illustration, not data.</em></figcaption>
+</figure>
+
+<p class="lede">AI agents work through a task one step at a time. They read a customer’s message, look something up, take an action, check the result, and go around again. Today a large language model is asked to think at every one of those steps, which makes long tasks slow and expensive. Look closely, though, and most steps end with a simple pick from a short list: which tool to use next, which value to fill in, whether the job is finished. This paper asks a practical question. Can a much smaller model make those picks instead, and how would we know when to trust it?</p>
+
+<h2>Every step is a multiple-choice question</h2>
+
+<p>The program that runs an agent is called its <strong>harness</strong>. At each step it shows the model the task, what has happened so far and the latest result, then asks something like “which tool should the agent call next?” The paper’s test world, called DecisionGym, is a customer-service desk with 69 tools. Here is one of its tasks, cut down to six tools: a customer wants a pending order shipped, express if they’re a gold-tier customer, but forgot to say who they are.</p>
+
+<p>A decision model doesn’t write an answer. It returns a probability for every option at once. Step through the episode and watch the bars.</p>
+
+<figure id="stepper">
+  <div class="transcript" id="epState" aria-live="polite"></div>
+  <svg viewBox="0 0 400 262" role="img" aria-label="Probability the small model gives each tool at this step, with the confidence threshold marked">
+    <g id="epRows"></g>
+    <line x1="207" y1="6" x2="207" y2="222" class="k-muted w15 dash round"/>
+    <text x="207" y="240" class="t-s t-m t-mid">τ = 0.445</text>
+    <text x="0" y="258" class="t-s" id="epVerdict"></text>
+  </svg>
+  <div class="controls">
+    <button class="btn" type="button" id="epPrev">Back</button>
+    <span class="status" id="epCount">Decision 1 of 5</span>
+    <span class="spacer"></span>
+    <button class="btn" type="button" id="epNext">Next decision</button>
+  </div>
+  <figcaption>The threshold 0.445 is the value the paper fitted for tool choices with its own model, AgentDecision-4B. The probabilities here are made up to show the mechanism; the task and tools come from the paper’s worked example.</figcaption>
+</figure>
+
+<p>Look at the very first decision. The customer gave no name, the small model wasn’t sure what to do, and its top option stayed below the line, so the LLM took that step. For the next four it was confident, and each answer cost one quick pass of a small network instead of a full LLM call. That handoff is the whole idea of the paper.</p>
+
+<h2>Two kinds of minds</h2>
+
+<p>An LLM reaches a decision by writing: it generates text token by token until a tool call comes out the other end. A decision model reads the situation once and returns a probability for each listed option, without generating any text. The commercial decision model the paper builds on is called <strong>Jev</strong>. The authors also train their own open one, and it is cheap to run: on a single NVIDIA L4 GPU it answers in a median of <span class="num">31</span> milliseconds and costs about <span class="num">$0.0045</span> per thousand decisions, roughly a quarter of Jev’s price per decision.</p>
+
+<figure>
+  <svg viewBox="0 0 400 302" role="img" aria-label="An LLM writes tokens one by one to reach a tool call; a decision model reads once and outputs a probability bar for each option">
+    <text x="0" y="20" class="t-l t-yellow">LLM</text>
+    <text x="0" y="40" class="t-s t-m">writes its way to an answer, one token at a time</text>
+    <g class="k-faint w15 nf">
+      <rect x="0" y="54" width="33" height="24" rx="5"/><rect x="37" y="54" width="68" height="24" rx="5"/>
+      <rect x="109" y="54" width="40" height="24" rx="5"/><rect x="153" y="54" width="40" height="24" rx="5"/>
+      <rect x="197" y="54" width="19" height="24" rx="5"/><rect x="220" y="54" width="48" height="24" rx="5"/>
+      <rect x="0" y="84" width="26" height="24" rx="5"/><rect x="30" y="84" width="40" height="24" rx="5"/>
+      <rect x="74" y="84" width="40" height="24" rx="5"/>
+    </g>
+    <rect x="118" y="84" width="100" height="24" rx="5" class="f-yellow-s k-yellow w15"/>
+    <g class="t-s">
+      <text x="16.5" y="71" class="t-mid">The</text><text x="71" y="71" class="t-mid">customer</text>
+      <text x="129" y="71" class="t-mid">just</text><text x="173" y="71" class="t-mid">gave</text>
+      <text x="206.5" y="71" class="t-mid">a</text><text x="244" y="71" class="t-mid">name,</text>
+      <text x="13" y="101" class="t-mid">so</text><text x="50" y="101" class="t-mid">I’ll</text>
+      <text x="94" y="101" class="t-mid">call</text><text x="168" y="101" class="t-mid">find_user(…)</text>
+    </g>
+    <text x="400" y="101" class="t-s t-m t-end">one full LLM call</text>
+
+    <line x1="0" y1="134" x2="400" y2="134" class="k-faint w1"/>
+
+    <text x="0" y="164" class="t-l t-blue">Decision model</text>
+    <text x="0" y="184" class="t-s t-m">reads once, scores every option</text>
+    <rect x="0" y="202" width="80" height="70" rx="7" class="nf k-muted w15"/>
+    <text x="40" y="232" class="t-s t-mid">state</text>
+    <text x="40" y="250" class="t-s t-mid">+ options</text>
+    <path d="M86 237 L132 237" class="nf k-ink w15 round"/>
+    <path d="M126 232 L133 237 L126 242" class="nf k-ink w15 round"/>
+    <text x="109" y="226" class="t-s t-m t-mid">one pass</text>
+    <g>
+      <rect x="148" y="207" width="16" height="66" rx="2" class="f-blue"/>
+      <rect x="172" y="270" width="16" height="3" rx="1" class="f-muted"/>
+      <rect x="196" y="270.5" width="16" height="2.5" rx="1" class="f-muted"/>
+      <rect x="220" y="272" width="16" height="1" class="f-muted"/>
+      <rect x="244" y="272" width="16" height="1" class="f-muted"/>
+      <rect x="268" y="272" width="16" height="1" class="f-muted"/>
+      <line x1="142" y1="273.5" x2="290" y2="273.5" class="k-faint w1"/>
+    </g>
+    <g class="t-s t-m t-mid">
+      <text x="156" y="292">A</text><text x="180" y="292">B</text><text x="204" y="292">C</text>
+      <text x="228" y="292">D</text><text x="252" y="292">E</text><text x="276" y="292">F</text>
+    </g>
+    <text x="400" y="222" class="t-s t-end">31 ms per answer</text>
+    <text x="400" y="241" class="t-s t-end">$0.0045 per</text>
+    <text x="400" y="258" class="t-s t-end">1,000 decisions</text>
+  </svg>
+  <figcaption>Speed and cost are for the paper’s AgentDecision-4B served with vLLM on one L4 GPU. The bars show a probability for each option, A to F; the tallest is the model’s answer, and its height is the model’s confidence.</figcaption>
+</figure>
+
+<h2>Good at quizzes, worse at the job</h2>
+
+<p>To see whether decision models can actually run an agent, the authors built <strong>AgentDecisionBench</strong>. Its key design choice is to test the same models at three levels of realism, from a quiz to the real job.</p>
+
+<figure>
+  <svg viewBox="0 0 400 420" role="img" aria-label="Three levels of testing: isolated questions, recorded agent runs, and a live running agent where mistakes carry forward">
+    <text x="0" y="20" class="t-l">Level 1: isolated questions</text>
+    <text x="0" y="40" class="t-s t-m">one question, one answer, scored on its own</text>
+    <rect x="20" y="56" width="70" height="44" rx="7" class="nf k-muted w15"/>
+    <text x="55" y="84" class="t-math t-mid">Q</text>
+    <path d="M98 78 L146 78" class="nf k-ink w15 round"/><path d="M140 73 L147 78 L140 83" class="nf k-ink w15 round"/>
+    <circle cx="164" cy="78" r="9" class="f-blue"/>
+    <text x="186" y="83" class="t-s t-m">scored right or wrong</text>
+
+    <text x="0" y="152" class="t-l">Level 2: recorded runs</text>
+    <text x="0" y="172" class="t-s t-m">real agent states; answers are scored but never acted on</text>
+    <path d="M30 230 L290 230" class="nf k-muted w15"/>
+    <g class="f-surface k-muted w15">
+      <circle cx="30" cy="230" r="9"/><circle cx="95" cy="230" r="9"/><circle cx="160" cy="230" r="9"/>
+      <circle cx="225" cy="230" r="9"/><circle cx="290" cy="230" r="9"/>
+    </g>
+    <g class="k-blue w15 dash round">
+      <line x1="30" y1="220" x2="30" y2="202"/><line x1="95" y1="220" x2="95" y2="202"/>
+      <line x1="160" y1="220" x2="160" y2="202"/><line x1="225" y1="220" x2="225" y2="202"/>
+      <line x1="290" y1="220" x2="290" y2="202"/>
+    </g>
+    <g class="f-blue">
+      <circle cx="30" cy="197" r="5"/><circle cx="95" cy="197" r="5"/><circle cx="160" cy="197" r="5"/>
+      <circle cx="225" cy="197" r="5"/><circle cx="290" cy="197" r="5"/>
+    </g>
+    <text x="400" y="235" class="t-s t-m t-end">path fixed</text>
+
+    <text x="0" y="286" class="t-l">Level 3: a running agent</text>
+    <text x="0" y="306" class="t-s t-m">the model’s choices steer what happens next</text>
+    <path d="M30 346 L160 346" class="nf k-blue w15"/>
+    <path d="M160 346 C185 346 200 366 225 370 S265 382 290 384" class="nf k-red w15"/>
+    <g class="f-surface k-blue w15"><circle cx="30" cy="346" r="9"/><circle cx="95" cy="346" r="9"/><circle cx="160" cy="346" r="9"/></g>
+    <g class="f-blue"><circle cx="62" cy="346" r="5"/><circle cx="127" cy="346" r="5"/></g>
+    <circle cx="192" cy="357" r="5" class="f-red"/>
+    <g class="f-bg k-red w15"><circle cx="225" cy="370" r="9"/><circle cx="290" cy="384" r="9"/></g>
+    <circle cx="257" cy="378" r="5" class="f-red" opacity=".55"/>
+    <text x="192" y="337" class="t-s t-red t-mid">slip</text>
+    <text x="400" y="389" class="t-s t-m t-end">new territory</text>
+    <text x="0" y="414" class="t-s t-m">one wrong choice changes every state after it</text>
+  </svg>
+  <figcaption>Level 1 uses public benchmarks such as BFCL and When2Call. Levels 2 and 3 use DecisionGym, plus a “shifted” version with renamed tools, more distracting options and new kinds of tasks.</figcaption>
+</figure>
+
+<p>The headline finding is that a good quiz score didn’t predict a good agent. The decision model with the best score on isolated tool-choice questions solved only <span class="num">69.5%</span> of agent tasks. And when tool choices were simply handed over with no confidence threshold, task success fell by <span class="num">19.0</span> points.</p>
+
+<figure>
+  <svg viewBox="0 0 400 330" role="img" aria-label="Scatter plot: isolated-question accuracy against task success. The model with the highest quiz score has the lowest task success.">
+    <g class="k-faint w1">
+      <line x1="50" y1="20" x2="380" y2="20"/><line x1="50" y1="82.5" x2="380" y2="82.5"/>
+      <line x1="50" y1="145" x2="380" y2="145"/><line x1="50" y1="207.5" x2="380" y2="207.5"/>
+      <line x1="80" y1="20" x2="80" y2="270"/><line x1="140" y1="20" x2="140" y2="270"/>
+      <line x1="200" y1="20" x2="200" y2="270"/><line x1="260" y1="20" x2="260" y2="270"/>
+      <line x1="320" y1="20" x2="320" y2="270"/><line x1="380" y1="20" x2="380" y2="270"/>
+    </g>
+    <line x1="50" y1="270" x2="380" y2="270" class="k-muted w15"/>
+    <line x1="50" y1="20" x2="50" y2="270" class="k-muted w15"/>
+    <g class="t-s t-m t-mid">
+      <text x="80" y="288">88</text><text x="140" y="288">89</text><text x="200" y="288">90</text>
+      <text x="260" y="288">91</text><text x="320" y="288">92</text><text x="380" y="288">93</text>
+    </g>
+    <g class="t-s t-m t-end">
+      <text x="42" y="274">60</text><text x="42" y="211.5">70</text><text x="42" y="149">80</text>
+      <text x="42" y="86.5">90</text><text x="42" y="24">100</text>
+    </g>
+    <text x="215" y="312" class="t-s t-m t-mid">accuracy on isolated tool-choice questions, BFCL (%)</text>
+    <text transform="translate(10 145) rotate(-90)" class="t-s t-m t-mid">task success on shifted tasks (%)</text>
+
+    <circle cx="104" cy="45" r="7" class="f-green"/>
+    <text x="115" y="49" class="t-s">AgentDecision-4B v1</text>
+    <circle cx="158" cy="73" r="7" class="f-blue"/>
+    <text x="169" y="77" class="t-s">AgentDecision-4B</text>
+    <circle cx="194" cy="132.5" r="7" class="f-yellow"/>
+    <text x="205" y="137" class="t-s">Jev, the teacher</text>
+    <circle cx="332" cy="210.6" r="7" class="f-red"/>
+    <text x="322" y="236" class="t-s t-end">StartLux-Decision-9B</text>
+  </svg>
+  <figcaption>Points further right did better on the quiz; points higher did better at the job. The order flips: the best quiz-taker is the weakest agent. Success is measured with the decision model in charge of tool choices on 200 shifted DecisionGym tasks.</figcaption>
+</figure>
+
+<p>Why would a model that answers questions well fail at running an agent? The paper’s results point to two reasons, and both are easier to see than to state.</p>
+
+<h3>Small slips compound</h3>
+
+<p>An agent makes many decisions in a row, and in the live setting one bad pick can derail everything after it. Here is a deliberately simple model of that, not taken from the paper: if each decision is right with probability <em>p</em>, a run of <em>n</em> decisions with zero mistakes happens with probability <em>p</em><sup><em>n</em></sup>. Move the sliders.</p>
+
+<figure>
+  <svg viewBox="0 0 400 248" role="img" aria-label="Curve of the chance of a mistake-free run falling as the number of decisions grows">
+    <g class="k-faint w1">
+      <line x1="40" y1="20" x2="390" y2="20"/><line x1="40" y1="65" x2="390" y2="65"/>
+      <line x1="40" y1="110" x2="390" y2="110"/><line x1="40" y1="155" x2="390" y2="155"/>
+    </g>
+    <line x1="40" y1="200" x2="390" y2="200" class="k-muted w15"/>
+    <line x1="40" y1="20" x2="40" y2="200" class="k-muted w15"/>
+    <g class="t-s t-m t-end">
+      <text x="33" y="204">0%</text><text x="33" y="114">50%</text><text x="33" y="24">100%</text>
+    </g>
+    <g class="t-s t-m t-mid">
+      <text x="40" y="218">0</text><text x="156.7" y="218">10</text><text x="273.3" y="218">20</text><text x="390" y="218">30</text>
+    </g>
+    <text x="215" y="240" class="t-s t-m t-mid">number of decisions in the task</text>
+    <path id="cmpCurve" class="nf k-blue w25 round" d=""/>
+    <line id="cmpV" x1="0" y1="200" x2="0" y2="0" class="k-yellow w15 dash round"/>
+    <line id="cmpH" x1="40" y1="0" x2="0" y2="0" class="k-yellow w15 dash round"/>
+    <circle id="cmpDot" r="6" class="f-yellow"/>
+  </svg>
+  <div class="slider">
+    <label for="cmpP"><span>accuracy per decision, <em>p</em></span><output id="cmpPo">95.0%</output></label>
+    <input type="range" id="cmpP" min="0.8" max="1" step="0.005" value="0.95">
+  </div>
+  <div class="slider">
+    <label for="cmpN"><span>decisions per task, <em>n</em></span><output id="cmpNo">12</output></label>
+    <input type="range" id="cmpN" min="1" max="30" step="1" value="12">
+  </div>
+  <div class="readout"><p class="big" id="cmpOut"></p></div>
+  <figcaption>A toy. Real agents can sometimes recover from a slip, and some slips don’t matter. But it shows why a few points of accuracy per question can turn into many points of success per task.</figcaption>
+</figure>
+
+<h3>The states nobody practises</h3>
+
+<p>The second reason is subtler. Quiz questions, and most training data, come from tidy situations. A running agent that has just made a mistake ends up somewhere unusual: a wrong lookup, a confused customer, a half-finished order. Existing decision models had rarely, if ever, seen states like these, so they were weakest exactly when the agent most needed a steady hand.</p>
+
+<figure>
+  <svg viewBox="0 0 400 244" role="img" aria-label="A clean path of states with a branch after a mistake leading into a shaded region of unfamiliar states">
+    <ellipse cx="292" cy="172" rx="112" ry="54" class="f-red-s"/>
+    <text x="0" y="28" class="t-s t-blue">the path a careful agent takes</text>
+    <path d="M24 66 L384 66" class="nf k-blue w2"/>
+    <g class="f-surface k-blue w15">
+      <circle cx="24" cy="66" r="8"/><circle cx="84" cy="66" r="8"/><circle cx="144" cy="66" r="8"/>
+      <circle cx="204" cy="66" r="8"/><circle cx="264" cy="66" r="8"/><circle cx="324" cy="66" r="8"/><circle cx="384" cy="66" r="8"/>
+    </g>
+    <path d="M144 74 C150 110 175 135 205 142" class="nf k-red w2"/>
+    <path d="M205 142 C230 148 240 160 258 162 S295 150 310 152 S340 172 352 178" class="nf k-red w15"/>
+    <path d="M205 142 C215 170 228 188 248 198" class="nf k-red w15"/>
+    <g class="f-bg k-red w15">
+      <circle cx="205" cy="142" r="7"/><circle cx="258" cy="162" r="7"/><circle cx="310" cy="152" r="7"/>
+      <circle cx="352" cy="178" r="7"/><circle cx="248" cy="198" r="7"/>
+    </g>
+    <text x="134" y="122" class="t-s t-red t-end">a wrong tool call</text>
+    <text x="300" y="218" class="t-s t-m t-mid">states after a mistake</text>
+  </svg>
+  <figcaption>Training data tends to live on the top line. A real agent spends time in the shaded region too. In the paper’s training set, <span class="num">30.9%</span> of states come from there on purpose.</figcaption>
+</figure>
+
+<h2>The fix: a confidence gate</h2>
+
+<p>These findings shape the paper’s harness, <strong>JevAgentHarness</strong>. For each kind of choice, such as picking a tool or filling in an argument, it sets a confidence threshold <em>τ</em>. When the decision model’s confidence is at or above <em>τ</em>, its answer is used. Below it, the LLM decides as it always would. The decision model only takes the turns it is sure about.</p>
+
+<p>Where the line sits is a trade-off. Too low, and confident mistakes slip through. Too high, and the LLM does nearly all the work, so nothing is saved. Drag the gate and watch both numbers move.</p>
+
+<figure>
+  <svg viewBox="0 0 400 232" role="img" aria-label="Dots representing decisions placed by confidence, with a movable threshold splitting them between the small model and the LLM">
+    <rect id="thL" x="20" y="10" width="0" height="180" class="f-yellow-s"/>
+    <rect id="thR" x="20" y="10" width="360" height="180" class="f-blue-s"/>
+    <g id="thDots"></g>
+    <line x1="20" y1="190" x2="380" y2="190" class="k-muted w15"/>
+    <g class="t-s t-m t-mid">
+      <text x="20" y="207">0</text><text x="110" y="207">0.25</text><text x="200" y="207">0.5</text>
+      <text x="290" y="207">0.75</text><text x="380" y="207">1</text>
+    </g>
+    <text x="200" y="227" class="t-s t-m t-mid">the small model’s confidence</text>
+    <line id="thGate" x1="20" y1="4" x2="20" y2="190" class="k-ink w2 round"/>
+    <text id="thTau" x="20" y="0" class="t-math t-mid" style="font-size:16px">τ</text>
+  </svg>
+  <div class="slider">
+    <label for="thS"><span>threshold, <em>τ</em></span><output id="thSo">0.50</output></label>
+    <input type="range" id="thS" min="0" max="1" step="0.01" value="0.5">
+  </div>
+  <div class="controls" role="group" aria-label="Threshold presets">
+    <button class="btn" type="button" data-tau="0">No gate</button>
+    <button class="btn" type="button" data-tau="0.5">τ = 0.5</button>
+    <button class="btn" type="button" data-tau="0.85">τ = 0.85</button>
+  </div>
+  <div class="readout" aria-live="polite">
+    <p id="thOut1"></p>
+    <p id="thOut2"></p>
+  </div>
+  <figcaption><span class="c-blue">Filled dots</span> are decisions the small model would get right; <span class="c-red">hollow dots</span> are ones it would get wrong. Dots left of the gate are passed to the LLM and fade out. <em>Made-up data, to show the trade-off.</em></figcaption>
+</figure>
+
+<p>How do you find the right <em>τ</em> without risking real tasks? The harness runs the decision model in <strong>shadow mode</strong> first. The LLM keeps full control while the small model quietly answers every question it would have been asked, and its answers are logged. Comparing the log with what actually worked gives a threshold fitted to this agent, these tools and this kind of task.</p>
+
+<figure>
+  <svg viewBox="0 0 400 236" role="img" aria-label="Shadow mode: the LLM acts on the task while the small model silently answers and its answers are logged, then compared to fit the threshold">
+    <rect x="0" y="92" width="82" height="52" rx="8" class="nf k-muted w15"/>
+    <text x="41" y="114" class="t-s t-mid">agent</text>
+    <text x="41" y="131" class="t-s t-mid">state</text>
+    <path d="M86 108 C120 90 140 70 166 64" class="nf k-ink w15 round"/>
+    <path d="M86 128 C120 150 145 168 172 172" class="nf k-blue w15 dash round"/>
+    <circle cx="192" cy="60" r="24" class="f-yellow-s k-yellow w2"/>
+    <text x="192" y="65" class="t-s t-mid t-yellow">LLM</text>
+    <text x="192" y="22" class="t-s t-mid">acts</text>
+    <circle cx="190" cy="174" r="15" class="f-blue-s k-blue w2"/>
+    <text x="190" y="212" class="t-s t-mid t-blue">small model,</text>
+    <text x="190" y="228" class="t-s t-mid t-blue">silent</text>
+    <path d="M218 60 L292 60" class="nf k-ink w15 round"/><path d="M286 55 L293 60 L286 65" class="nf k-ink w15 round"/>
+    <path d="M207 174 L292 174" class="nf k-blue w15 dash round"/><path d="M286 169 L293 174 L286 179" class="nf k-blue w15 round"/>
+    <rect x="298" y="40" width="102" height="40" rx="8" class="nf k-muted w15"/>
+    <text x="349" y="65" class="t-s t-mid">the task</text>
+    <rect x="298" y="154" width="102" height="40" rx="8" class="nf k-blue w15"/>
+    <text x="349" y="179" class="t-s t-mid">answer log</text>
+    <line x1="349" y1="84" x2="349" y2="150" class="k-muted w15 dash round"/>
+    <rect x="312" y="104" width="74" height="26" rx="13" class="f-bg k-ink w15"/>
+    <text x="349" y="122" class="t-s t-mid">fit <tspan class="t-math" style="font-size:15px">τ</tspan></text>
+  </svg>
+  <figcaption>In the paper, thresholds were fitted on <span class="num">150</span> calibration tasks. The small model never touches the task while it is being measured.</figcaption>
+</figure>
+
+<p>The fitted values are revealing. For AgentDecision-4B working alongside Gemini 3.5 Flash, the gate for choosing a tool sat at <span class="num">0.445</span>, while the gate for filling in an argument value sat far higher, at <span class="num">0.996</span>. The authors stress that these numbers only hold for the setting they were fitted in. A different LLM, different tools or a different task family means running shadow mode again.</p>
+
+<h2>Training a model on its own mistakes</h2>
+
+<p>Since existing decision models never saw the states that follow an agent’s errors, the authors trained one that has. <strong>AgentDecision-4B</strong> is a small adapter on top of the open Qwen3-4B model, built in three stages.</p>
+
+<figure>
+  <svg viewBox="0 0 400 352" role="img" aria-label="Three training stages: learning from a teacher including after mistakes, practising inside the agent loop, and one more pass on public tool-use data">
+    <line x1="16" y1="30" x2="16" y2="262" class="k-faint w2"/>
+    <circle cx="16" cy="30" r="13" class="f-bg k-blue w2"/><text x="16" y="35" class="t-s t-mid t-blue">1</text>
+    <circle cx="16" cy="146" r="13" class="f-bg k-blue w2"/><text x="16" y="151" class="t-s t-mid t-blue">2</text>
+    <circle cx="16" cy="262" r="13" class="f-bg k-blue w2"/><text x="16" y="267" class="t-s t-mid t-blue">3</text>
+
+    <text x="42" y="35" class="t-l">Learn from a teacher</text>
+    <text x="42" y="57" class="t-s t-m">15,694 agent states from 587 tasks,</text>
+    <text x="42" y="75" class="t-s t-m">with Jev’s answers as labels</text>
+    <circle cx="352" cy="50" r="28" class="nf k-faint" style="stroke-width:10"/>
+    <circle cx="352" cy="50" r="28" class="nf k-red" style="stroke-width:10" stroke-dasharray="54.36 175.93" transform="rotate(-90 352 50)"/>
+    <text x="352" y="55" class="t-s t-mid">30.9%</text>
+    <text x="352" y="97" class="t-s t-mid t-red">after a mistake</text>
+
+    <text x="42" y="151" class="t-l">Practise inside the loop</text>
+    <text x="42" y="173" class="t-s t-m">the model makes real decisions; it is rewarded</text>
+    <text x="42" y="191" class="t-s t-m">for solving tasks with fewer LLM calls</text>
+    <path d="M352 140 A22 22 0 1 1 332.95 151" class="nf k-green w2 round"/>
+    <path d="M333.8 159.6 L333 151 L325.2 154.6" class="nf k-green w2 round"/>
+    <text x="352" y="200" class="t-s t-mid t-green">reinforcement</text>
+    <text x="352" y="216" class="t-s t-mid t-green">learning</text>
+
+    <text x="42" y="267" class="t-l">Broaden with public data</text>
+    <text x="42" y="289" class="t-s t-m">one more pass: 7,000 public tool-use</text>
+    <text x="42" y="307" class="t-s t-m">questions mixed with 7,000 of its own states</text>
+    <rect x="306" y="254" width="46" height="18" rx="3" class="f-purple" opacity=".75"/>
+    <rect x="352" y="254" width="46" height="18" rx="3" class="f-blue" opacity=".75"/>
+    <text x="329" y="290" class="t-s t-mid t-purple">public</text>
+    <text x="375" y="290" class="t-s t-mid t-blue">own</text>
+    <text x="42" y="340" class="t-s">= AgentDecision-4B</text>
+  </svg>
+  <figcaption>Mistakes were planted on purpose: a scripted policy repeated errors seen during development, so nearly a third of the training states come after a slip. The data cost about $5 to label.</figcaption>
+</figure>
+
+<p>One detail in the first stage is worth seeing. Rather than training only on the single correct answer, the model learns a blend: mostly the teacher’s full spread of probabilities, plus some weight on the correct answer. That way it also learns how unsure to be, which matters a lot when a confidence gate is going to read its probabilities.</p>
+
+<figure>
+  <svg viewBox="0 0 400 186" role="img" aria-label="The training target is 0.3 times the correct answer plus 0.7 times the teacher's probabilities">
+    <text x="0" y="104" class="t-math">0.3 ×</text>
+    <g>
+      <rect x="44" y="139" width="14" height="1" class="f-muted"/>
+      <rect x="64" y="40" width="14" height="100" class="f-green"/>
+      <rect x="84" y="139" width="14" height="1" class="f-muted"/>
+      <rect x="104" y="139" width="14" height="1" class="f-muted"/>
+      <line x1="40" y1="140.5" x2="122" y2="140.5" class="k-faint w1"/>
+    </g>
+    <text x="81" y="164" class="t-s t-mid t-green">right answer</text>
+
+    <text x="147" y="104" class="t-math t-mid">+ 0.7 ×</text>
+    <g>
+      <rect x="176" y="130" width="14" height="10" class="f-yellow"/>
+      <rect x="196" y="70" width="14" height="70" class="f-yellow"/>
+      <rect x="216" y="125" width="14" height="15" class="f-yellow"/>
+      <rect x="236" y="135" width="14" height="5" class="f-yellow"/>
+      <line x1="172" y1="140.5" x2="254" y2="140.5" class="k-faint w1"/>
+    </g>
+    <text x="213" y="164" class="t-s t-mid t-yellow">Jev’s view</text>
+
+    <text x="276" y="104" class="t-math t-mid">=</text>
+    <g>
+      <rect x="298" y="133" width="14" height="7" class="f-blue"/>
+      <rect x="318" y="61" width="14" height="79" class="f-blue"/>
+      <rect x="338" y="129.5" width="14" height="10.5" class="f-blue"/>
+      <rect x="358" y="136.5" width="14" height="3.5" class="f-blue"/>
+      <line x1="294" y1="140.5" x2="376" y2="140.5" class="k-faint w1"/>
+    </g>
+    <text x="335" y="164" class="t-s t-mid t-blue">the target</text>
+    <text x="200" y="184" class="t-s t-m t-mid">four options, A to D</text>
+  </svg>
+  <figcaption>The blend is used only when the teacher ranks the right answer first. When the teacher is wrong, the model simply learns the right answer. Bar heights are illustrative.</figcaption>
+</figure>
+
+<p class="aside">Two honest notes from the paper. The reinforcement-learning stage added no measurable gain in task success over the first stage alone. And the final pass on public data raised the model’s quiz score from <span class="num">78.8%</span> to <span class="num">85.1%</span> while lowering its success on shifted tasks from <span class="num">96.0%</span> to <span class="num">91.5%</span>: the same quiz-versus-job tension, showing up inside one model.</p>
+
+<h2>What it bought</h2>
+
+<p>Put the pieces together, a decision model trained on agent states and a gate fitted in shadow mode, and the agent got much cheaper and faster without getting worse. On 200 new DecisionGym tasks, with Gemini 3.5 Flash as the LLM and AgentDecision-4B on its own GPU, this is how the harness compared with the LLM working alone.</p>
+
+<figure>
+  <svg viewBox="0 0 400 252" role="img" aria-label="Bar chart: with the harness, cost per task is 86.3% lower, time per task is 2.5 times shorter, and success is 0.5 points higher">
+    <rect x="0" y="2" width="12" height="12" rx="2" class="f-yellow"/><text x="18" y="13" class="t-s">LLM alone</text>
+    <rect x="110" y="2" width="12" height="12" rx="2" class="f-blue"/><text x="128" y="13" class="t-s">with the harness</text>
+
+    <text x="0" y="56" class="t-s">cost</text>
+    <text x="0" y="72" class="t-s">per task</text>
+    <rect x="80" y="44" width="300" height="16" rx="3" class="f-yellow"/>
+    <rect x="80" y="66" width="41.1" height="16" rx="3" class="f-blue"/>
+    <text x="129" y="79" class="t-s t-blue">86.3% lower</text>
+
+    <text x="0" y="132" class="t-s">time</text>
+    <text x="0" y="148" class="t-s">per task</text>
+    <rect x="80" y="120" width="300" height="16" rx="3" class="f-yellow"/>
+    <rect x="80" y="142" width="120" height="16" rx="3" class="f-blue"/>
+    <text x="208" y="155" class="t-s t-blue">2.5× faster</text>
+
+    <text x="0" y="208" class="t-s">task</text>
+    <text x="0" y="224" class="t-s">success</text>
+    <rect x="80" y="196" width="300" height="16" rx="3" class="f-yellow"/>
+    <rect x="80" y="218" width="301.5" height="16" rx="3" class="f-blue"/>
+    <text x="80" y="250" class="t-s t-blue">0.5 points higher: about the same</text>
+  </svg>
+  <figcaption>Cost and time are shown relative to the LLM working alone. Across the 4B models trained this way, the paper reports agents that were <span class="num">81.1–89.0%</span> cheaper and up to <span class="num">2.5</span> times faster, without losing <span class="num">3</span> or more points of task success.</figcaption>
+</figure>
+
+<p>The savings come from how much the small model ended up handling. In a test registered before it was run, on 500 new tasks, the earlier version of the model made <span class="num">99.9%</span> of tool choices and <span class="num">75.0%</span> of argument choices, saving about <span class="num">4.5</span> LLM calls per task. And on unfamiliar, shifted tasks where the decision model made every tool choice with no gate at all, the agent solved <span class="num">91.5%</span> of them with AgentDecision-4B against <span class="num">82.0%</span> with Jev, the very teacher it learned from.</p>
+
+<h2>Where it breaks</h2>
+
+<p>The paper is unusually direct about its limits, and they matter for anyone tempted to deploy this.</p>
+
+<figure>
+  <svg viewBox="0 0 400 210" role="img" aria-label="Two comparisons: on shifted tasks the harness solved 92.5% against 100% for the LLM alone; on tasks with a new rule it solved 3.0% against 88.0%">
+    <text x="0" y="18" class="t-s">Shifted tasks, gate fitted on the original tasks</text>
+    <line x1="20" y1="54" x2="380" y2="54" class="k-faint w2 round"/>
+    <line x1="353" y1="54" x2="380" y2="54" class="k-red w2 round"/>
+    <circle cx="380" cy="54" r="7" class="f-yellow"/>
+    <circle cx="353" cy="54" r="7" class="f-blue"/>
+    <text x="380" y="84" class="t-s t-mid t-yellow">100%</text>
+    <text x="340" y="84" class="t-s t-mid t-blue">92.5%</text>
+    <text x="20" y="84" class="t-s t-m t-mid">0%</text>
+
+    <text x="0" y="128" class="t-s">A new ordering rule it was never trained on</text>
+    <line x1="20" y1="164" x2="380" y2="164" class="k-faint w2 round"/>
+    <line x1="30.8" y1="164" x2="336.8" y2="164" class="k-red w2 round"/>
+    <circle cx="336.8" cy="164" r="7" class="f-yellow"/>
+    <circle cx="30.8" cy="164" r="7" class="f-blue"/>
+    <text x="336.8" y="194" class="t-s t-mid t-yellow">88.0%</text>
+    <text x="38" y="194" class="t-s t-mid t-blue">3.0%</text>
+    <text x="380" y="194" class="t-s t-m t-mid">100%</text>
+  </svg>
+  <figcaption>Task success for the <span class="c-yellow">LLM alone</span> and <span class="c-blue">with a 4B decision model</span>. The second row used the earlier version of the model, on harder DecisionGym tasks with ten customers and an unfamiliar rule.</figcaption>
+</figure>
+
+<p><strong>A gate fitted on familiar work doesn’t protect you on unfamiliar work.</strong> On shifted tasks, the thresholds fitted on the original tasks still let the model take every tool choice, including 22 wrong ones, and success dropped 7.5 points below the LLM alone. Confidence that was trustworthy at home was overconfident abroad.</p>
+
+<p><strong>New rules are a cliff, not a slope.</strong> Given an order rule it had never trained on, the model still made most of the cancel-or-ship decisions, got too many wrong, and the agent solved almost nothing. Retraining on the rule largely fixed the accuracy, which says the approach works but needs data from the actual job.</p>
+
+<p><strong>Irreversible steps need a second check.</strong> A confident wrong answer at a step that can’t be undone, like cancelling an order when the agent should have asked first, ends the task. The authors’ advice is plain: never make a decision model the only safeguard on an irreversible action.</p>
+
+<p><strong>The scope is narrow so far.</strong> Everything was trained and tested on English customer-service tasks with one family of LLMs. Coding agents weren’t validated, and the models weren’t tested against adversarial input such as instructions hidden in tool output.</p>
+
+<h2>The bigger lesson</h2>
+
+<p>The practical recipe is simple to state. Let a small model handle the routine picks, gate it with a threshold fitted on the agent’s own runs, and let the LLM take everything it isn’t sure about. The deeper point is about measurement. A decision model’s quiz score said little about how it would run an agent; what mattered was how it behaved inside the loop, on the messy states that real agents actually visit. Test and train it there, and a 4B model can carry most of the load for a fraction of the cost.</p>
+
+<div class="ending">
+  <p>Paper: <a href="https://arxiv.org/html/2610.21412v1">arXiv 2610.21412</a>. Models, data and harness: <a href="https://github.com/JevAgentHarness/JevAgentHarness">github.com/JevAgentHarness</a>.</p>
+</div>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var root = document.documentElement;
+  var NS = "http://www.w3.org/2000/svg";
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function $(id){ return document.getElementById(id); }
+  function el(tag, attrs, parent){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function store(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){ return null; } }
+
+  /* ---------- theme ---------- */
+  var themeBtn = $("themeBtn");
+  var SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>';
+  var MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+  function effectiveTheme(){
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  function paintThemeBtn(){
+    var dark = effectiveTheme() === "dark";
+    themeBtn.innerHTML = dark ? SUN : MOON;
+    themeBtn.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  }
+  var savedTheme = store("jah-theme");
+  if (savedTheme === "dark" || savedTheme === "light") root.setAttribute("data-theme", savedTheme);
+  paintThemeBtn();
+  themeBtn.addEventListener("click", function(){
+    var next = effectiveTheme() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    store("jah-theme", next);
+    paintThemeBtn();
+  });
+  if (window.matchMedia){
+    var mq = matchMedia("(prefers-color-scheme: dark)");
+    var onChange = function(){ if (!root.getAttribute("data-theme")) paintThemeBtn(); };
+    if (mq.addEventListener) mq.addEventListener("change", onChange); else if (mq.addListener) mq.addListener(onChange);
+  }
+
+  /* ---------- text size ---------- */
+  var SIZES = [15, 16, 17, 18, 19, 20, 22, 24];
+  function currentSize(){ return parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 18; }
+  function setSize(px){
+    root.style.setProperty("--fs", px + "px");
+    store("jah-fs", String(px));
+    $("txtDown").disabled = px <= SIZES[0];
+    $("txtUp").disabled = px >= SIZES[SIZES.length - 1];
+  }
+  var savedFs = parseFloat(store("jah-fs"));
+  if (savedFs && SIZES.indexOf(savedFs) > -1) setSize(savedFs);
+  function stepSize(dir){
+    var cur = currentSize(), i = 0, best = 1e9;
+    SIZES.forEach(function(s, j){ var d = Math.abs(s - cur); if (d < best){ best = d; i = j; } });
+    i = Math.max(0, Math.min(SIZES.length - 1, i + dir));
+    setSize(SIZES[i]);
+  }
+  $("txtDown").addEventListener("click", function(){ stepSize(-1); });
+  $("txtUp").addEventListener("click", function(){ stepSize(1); });
+
+  /* ---------- seeded random ---------- */
+  function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  /* ---------- hero animation ---------- */
+  (function(){
+    var dotsG = $("heroDots"), cDM = $("cntDM"), cLLM = $("cntLLM");
+    var nDM = $("heroDM"), nLLM = $("heroLLM"), nAgent = $("heroAgent");
+    var START = {x:72, y:125}, GATE = {x:175, y:125}, DM = {x:312, y:62}, LLM = {x:298, y:185};
+    var COUNT = 26, GAP = 270, TRAVEL = 1800, TAU = 0.5;
+    var raf = null;
+    function pulse(g){ g.style.transform = "scale(1.14)"; setTimeout(function(){ g.style.transform = ""; }, 200); }
+    function pos(d, t){
+      if (t < 0.42){ var u = t / 0.42; return {x: START.x + (GATE.x - START.x) * u, y: START.y}; }
+      var v = (t - 0.42) / 0.58, end = d.up ? DM : LLM, cx = 250, cy = end.y, w = 1 - v;
+      return {x: w*w*GATE.x + 2*w*v*cx + v*v*end.x, y: w*w*GATE.y + 2*w*v*cy + v*v*end.y};
+    }
+    function run(){
+      if (raf) cancelAnimationFrame(raf);
+      while (dotsG.firstChild) dotsG.removeChild(dotsG.firstChild);
+      var r = rng(7), dots = [], dm = 0, llm = 0;
+      for (var i = 0; i < COUNT; i++){
+        var conf = Math.pow(r(), 0.55);
+        dots.push({start: i * GAP, up: conf >= TAU, done: false, node: null, sent: false});
+      }
+      if (reduceMotion){
+        dots.forEach(function(d){ if (d.up) dm++; else llm++; });
+        cDM.textContent = dm + " answered"; cLLM.textContent = llm + " answered";
+        return;
+      }
+      cDM.textContent = "0 answered"; cLLM.textContent = "0 answered";
+      var t0 = null;
+      function frame(ts){
+        if (t0 === null) t0 = ts;
+        var now = ts - t0, active = false;
+        dots.forEach(function(d){
+          if (d.done) return;
+          var t = (now - d.start) / TRAVEL;
+          if (t < 0){ active = true; return; }
+          if (!d.node){ d.node = el("circle", {r: 4.5, "class": "f-muted"}, dotsG); pulse(nAgent); }
+          if (t >= 1){
+            d.done = true; dotsG.removeChild(d.node);
+            if (d.up){ dm++; cDM.textContent = dm + " answered"; pulse(nDM); }
+            else { llm++; cLLM.textContent = llm + " answered"; pulse(nLLM); }
+            return;
+          }
+          active = true;
+          if (t >= 0.42 && !d.sent){ d.sent = true; d.node.setAttribute("class", d.up ? "f-blue" : "f-yellow"); }
+          var p = pos(d, t);
+          d.node.setAttribute("cx", p.x.toFixed(1)); d.node.setAttribute("cy", p.y.toFixed(1));
+        });
+        if (active) raf = requestAnimationFrame(frame); else raf = null;
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    $("heroReplay").addEventListener("click", run);
+    var hero = $("hero");
+    if ("IntersectionObserver" in window){
+      var io = new IntersectionObserver(function(entries){
+        if (entries[0].isIntersecting){ io.disconnect(); setTimeout(run, 350); }
+      }, {threshold: 0.35});
+      io.observe(hero);
+    } else { run(); }
+  })();
+
+  /* ---------- episode stepper ---------- */
+  (function(){
+    var TOOLS = ["find_user", "search_users", "get_orders", "ship_order", "ask_user", "finish"];
+    var TAU = 0.445;
+    var STEPS = [
+      { who: "Customer", text: "Please ship my pending order, express if I’m gold tier.",
+        p: [0.22, 0.12, 0.10, 0.06, 0.41, 0.09], llmPick: 4 },
+      { who: "Customer, after the agent asked for a name", text: "Oh, sorry, my name is Ivan Kim.",
+        p: [0.90, 0.04, 0.03, 0.01, 0.01, 0.01] },
+      { who: "Result of <code>find_user</code>", text: "Ivan Kim, user u_417, tier: gold.",
+        p: [0.02, 0.01, 0.86, 0.08, 0.02, 0.01] },
+      { who: "Result of <code>get_orders</code>", text: "One pending order, #8812.",
+        p: [0.005, 0.005, 0.02, 0.93, 0.02, 0.02] },
+      { who: "Result of <code>ship_order</code>", text: "Order #8812 shipped, express.",
+        p: [0.005, 0.005, 0.01, 0.01, 0.02, 0.95] }
+    ];
+    var rowsG = $("epRows"), X0 = 118, W = 200, bars = [], pct = [];
+    TOOLS.forEach(function(name, i){
+      var y = 10 + i * 36;
+      var t = el("text", {x: 0, y: y + 12, "class": "t-s"}, rowsG); t.textContent = name;
+      el("rect", {x: X0, y: y, width: W, height: 14, rx: 3, "class": "f-faint"}, rowsG);
+      var b = el("rect", {x: X0, y: y, width: W, height: 14, rx: 3, "class": "bar f-muted"}, rowsG);
+      b.style.transformOrigin = X0 + "px " + (y + 7) + "px";
+      b.style.transform = "scaleX(0)";
+      bars.push(b);
+      var pt = el("text", {x: 400, y: y + 12, "class": "t-s t-end"}, rowsG); pct.push(pt);
+    });
+    var idx = 0;
+    function render(){
+      var s = STEPS[idx];
+      $("epState").innerHTML =
+        '<p class="who">' + s.who + '</p><p>' + s.text + '</p>' +
+        '<p class="q">Which tool should the agent call next?</p>';
+      var top = 0; s.p.forEach(function(v, i){ if (v > s.p[top]) top = i; });
+      var conf = s.p[top], dmAnswers = conf >= TAU;
+      var chosen = dmAnswers ? top : s.llmPick;
+      s.p.forEach(function(v, i){
+        bars[i].style.transform = "scaleX(" + Math.max(v, 0.004) + ")";
+        var cls = "bar f-muted";
+        if (i === chosen) cls = dmAnswers ? "bar f-blue" : "bar f-yellow";
+        bars[i].setAttribute("class", cls);
+        pct[i].textContent = Math.round(v * 100) + "%";
+        pct[i].setAttribute("class", "t-s t-end" + (i === chosen ? (dmAnswers ? " t-blue" : " t-yellow") : " t-m"));
+      });
+      var v = $("epVerdict");
+      if (dmAnswers){
+        v.setAttribute("class", "t-s t-blue");
+        v.textContent = "Confidence " + conf.toFixed(2) + " clears τ, so the small model picks " + TOOLS[top];
+      } else {
+        v.setAttribute("class", "t-s t-yellow");
+        v.textContent = "Confidence " + conf.toFixed(2) + " is below τ, so the LLM decides: " + TOOLS[chosen];
+      }
+      $("epCount").textContent = "Decision " + (idx + 1) + " of " + STEPS.length;
+      $("epPrev").disabled = idx === 0;
+      $("epNext").textContent = idx === STEPS.length - 1 ? "Start over" : "Next decision";
+    }
+    $("epPrev").addEventListener("click", function(){ if (idx > 0){ idx--; render(); } });
+    $("epNext").addEventListener("click", function(){ idx = idx === STEPS.length - 1 ? 0 : idx + 1; render(); });
+    render();
+  })();
+
+  /* ---------- compounding toy ---------- */
+  (function(){
+    var P = $("cmpP"), N = $("cmpN");
+    function X(k){ return 40 + k * (350 / 30); }
+    function Y(v){ return 200 - 180 * v; }
+    function draw(){
+      var p = parseFloat(P.value), n = parseInt(N.value, 10), d = "";
+      for (var k = 0; k <= 30; k++) d += (k ? " L" : "M") + X(k).toFixed(1) + " " + Y(Math.pow(p, k)).toFixed(1);
+      $("cmpCurve").setAttribute("d", d);
+      var v = Math.pow(p, n), x = X(n), y = Y(v);
+      $("cmpV").setAttribute("x1", x); $("cmpV").setAttribute("x2", x); $("cmpV").setAttribute("y2", y);
+      $("cmpH").setAttribute("y1", y); $("cmpH").setAttribute("y2", y); $("cmpH").setAttribute("x2", x);
+      $("cmpDot").setAttribute("cx", x); $("cmpDot").setAttribute("cy", y);
+      $("cmpPo").textContent = (p * 100).toFixed(1) + "%";
+      $("cmpNo").textContent = n;
+      $("cmpOut").innerHTML = "<em>p</em><sup><em>n</em></sup> = " + p.toFixed(3) + "<sup>" + n + "</sup> ≈ <strong>" +
+        (v * 100).toFixed(v < 0.1 ? 1 : 0) + "%</strong> chance of no mistakes";
+    }
+    P.addEventListener("input", draw); N.addEventListener("input", draw);
+    draw();
+  })();
+
+  /* ---------- threshold explorer ---------- */
+  (function(){
+    var r = rng(42), data = [], TOTAL = 60, WRONG = 12;
+    for (var i = 0; i < TOTAL; i++){
+      var wrong = i < WRONG, c;
+      if (wrong) c = 0.1 + 0.78 * Math.pow(r(), 1.15);
+      else c = 0.99 - 0.6 * Math.pow(r(), 1.05);
+      data.push({c: Math.min(0.995, Math.max(0.01, c)), wrong: wrong});
+    }
+    data.sort(function(a, b){ return a.c - b.c; });
+    var bins = {}, g = $("thDots");
+    data.forEach(function(d){
+      var b = Math.min(19, Math.floor(d.c * 20));
+      bins[b] = (bins[b] || 0) + 1;
+      var cx = 20 + (b + 0.5) * 18, cy = 181 - (bins[b] - 1) * 12.5;
+      d.node = el("circle", {cx: cx, cy: cy, r: d.wrong ? 4.8 : 5.4,
+        "class": "fade " + (d.wrong ? "f-bg k-red w2" : "f-blue")}, g);
+      d.bin = b;
+    });
+    var S = $("thS"), presets = document.querySelectorAll("[data-tau]");
+    function update(){
+      var tau = parseFloat(S.value), gx = 20 + tau * 360;
+      $("thGate").setAttribute("x1", gx); $("thGate").setAttribute("x2", gx);
+      $("thTau").setAttribute("x", gx); $("thTau").setAttribute("y", 0);
+      $("thL").setAttribute("width", gx - 20);
+      $("thR").setAttribute("x", gx); $("thR").setAttribute("width", 380 - gx);
+      var taken = 0, slipped = 0, caught = 0;
+      data.forEach(function(d){
+        var mine = d.c >= tau;
+        d.node.style.opacity = mine ? 1 : 0.28;
+        if (mine){ taken++; if (d.wrong) slipped++; } else if (d.wrong) caught++;
+      });
+      $("thSo").textContent = tau.toFixed(2);
+      $("thOut1").innerHTML = 'The <span class="c-blue">small model</span> answers <strong>' + taken + '</strong> of ' + TOTAL +
+        ' decisions (' + Math.round(100 * taken / TOTAL) + '%). The <span class="c-yellow">LLM</span> handles the other ' + (TOTAL - taken) + '.';
+      $("thOut2").innerHTML = 'Wrong answers let through: <strong class="c-red">' + slipped + '</strong>. Wrong answers caught by sending them to the LLM: <strong>' + caught + '</strong>.';
+      presets.forEach ? presets.forEach(mark) : Array.prototype.forEach.call(presets, mark);
+      function mark(b){ b.setAttribute("aria-pressed", Math.abs(parseFloat(b.getAttribute("data-tau")) - tau) < 0.005 ? "true" : "false"); }
+    }
+    S.addEventListener("input", update);
+    Array.prototype.forEach.call(presets, function(b){
+      b.addEventListener("click", function(){ S.value = b.getAttribute("data-tau"); update(); });
+    });
+    update();
+  })();
+})();
+</script>
+</body>
+</html>
