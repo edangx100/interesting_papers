@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>When an AI agent leans, experts follow: an explainer</title>
+<meta name="description" content="A visual explainer of Anthropic’s study on how AI agents shape experts’ judgment calls.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=STIX+Two+Text:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F4F6; --panel:#E6EBEE; --ink:#27313A; --soft:#56636E; --faint:#8B97A1; --rule:#D0D8DD;
+  --a:#2E7E9F; --a-tint:#D2E7EF; --b:#B07720; --b-tint:#F1E2C6;
+  --green:#4C8639; --green-tint:#DCEBD3; --red:#B5504A; --red-tint:#F2D9D6;
+  --purple:#755A8C; --brown:#7A6A5D; --brown-tint:#E7E0DA; --hl:#EFE3A0;
+  --sans:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --serif:"STIX Two Text", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --fs:clamp(1.0625rem, 0.99rem + 0.35vw, 1.1875rem);
+  --scale:1;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top, 0px);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1D2227; --panel:#262C32; --ink:#D2D9DF; --soft:#9AA5AF; --faint:#6E7984; --rule:#353D45;
+    --a:#66B8D4; --a-tint:#1F3D49; --b:#E2A75C; --b-tint:#46361F;
+    --green:#8DBF72; --green-tint:#26392A; --red:#E07A72; --red-tint:#4A2C2A;
+    --purple:#AC90C3; --brown:#AE9C8C; --brown-tint:#3A332D; --hl:#4E4622;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1D2227; --panel:#262C32; --ink:#D2D9DF; --soft:#9AA5AF; --faint:#6E7984; --rule:#353D45;
+  --a:#66B8D4; --a-tint:#1F3D49; --b:#E2A75C; --b-tint:#46361F;
+  --green:#8DBF72; --green-tint:#26392A; --red:#E07A72; --red-tint:#4A2C2A;
+  --purple:#AC90C3; --brown:#AE9C8C; --brown-tint:#3A332D; --hl:#4E4622;
+  color-scheme:dark;
+}
+:root[data-size="large"]{ --scale:1.14; }
+*,*::before,*::after{ box-sizing:border-box; }
+html{ scroll-padding-top:env(safe-area-inset-top, 0px); -webkit-text-size-adjust:100%; text-size-adjust:100%; background:var(--bg); }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:calc(var(--fs) * var(--scale)); line-height:1.7;
+  padding-left:max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-right:max(1.25rem, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease, color .3s ease;
+}
+main{ max-width:40rem; margin:0 auto; padding:clamp(3rem, 8vw, 6rem) 0 7rem; }
+h1,h2,h3{ font-family:var(--serif); font-weight:500; line-height:1.15; color:var(--ink); letter-spacing:-.005em; }
+h1{ font-size:clamp(2.1rem, 1.5rem + 3vw, 3.2rem); margin:0 0 1.5rem; max-width:15ch; }
+h2{ font-size:clamp(1.55rem, 1.3rem + 1.1vw, 2rem); margin:0 0 1rem; }
+h3{ font-size:1.2rem; margin:0 0 .35rem; }
+section > h3{ font-size:1.4rem; margin-top:3rem; }
+p{ margin:0 0 1.15em; }
+a{ color:var(--a); text-underline-offset:.18em; text-decoration-thickness:1px; }
+a:focus-visible, button:focus-visible{ outline:2px solid var(--a); outline-offset:3px; border-radius:6px; }
+strong{ font-weight:700; }
+.summary{ font-size:1.22em; line-height:1.55; color:var(--ink); margin-bottom:1.25rem; }
+.byline{ font-size:.86em; color:var(--soft); margin-bottom:2.75rem; }
+.intro{ font-size:1.02em; }
+section{ margin-top:clamp(4.5rem, 10vw, 6.5rem); }
+.lede{ color:var(--soft); }
+.num{ font-family:var(--serif); font-variant-numeric:lining-nums tabular-nums; }
+
+figure{ margin:2.25rem 0 2.5rem; }
+figure svg{ display:block; width:100%; height:auto; overflow:visible; }
+@media (max-width:559px){ figure:not(.fig-panel) > svg{ width:calc(100% + 1.5rem); margin-left:-.75rem; } .fig-panel{ margin-left:-.5rem; margin-right:-.5rem; } }
+figcaption{ font-size:.84em; line-height:1.55; color:var(--soft); margin-top:.9rem; max-width:36rem; }
+.fig-panel{ background:var(--panel); border-radius:18px; padding:1.25rem 1.1rem 1.1rem; }
+@media (min-width:560px){ .fig-panel{ padding:1.6rem 1.6rem 1.3rem; } }
+
+svg text{ font-family:var(--sans); fill:var(--ink); }
+svg .t-soft{ fill:var(--soft); }
+svg .t-serif{ font-family:var(--serif); }
+.s-rule{ stroke:var(--rule); } .s-soft{ stroke:var(--soft); } .s-faint{ stroke:var(--faint); } .s-ink{ stroke:var(--ink); }
+.f-a{ fill:var(--a); } .f-b{ fill:var(--b); } .f-at{ fill:var(--a-tint); } .f-bt{ fill:var(--b-tint); }
+.f-panel{ fill:var(--panel); } .f-bg{ fill:var(--bg); } .f-rule{ fill:var(--rule); } .f-faint{ fill:var(--faint); } .f-soft{ fill:var(--soft); }
+.f-green{ fill:var(--green); } .f-gt{ fill:var(--green-tint); } .f-red{ fill:var(--red); } .f-purple{ fill:var(--purple); }
+.f-brown{ fill:var(--brown); } .f-brt{ fill:var(--brown-tint); } .f-hl{ fill:var(--hl); }
+.s-a{ stroke:var(--a); } .s-b{ stroke:var(--b); } .s-green{ stroke:var(--green); } .s-brown{ stroke:var(--brown); } .s-purple{ stroke:var(--purple); } .s-red{ stroke:var(--red); }
+
+.key{ display:inline-block; width:.7em; height:.7em; border-radius:50%; vertical-align:baseline; margin-right:.3em; transform:translateY(.02em); }
+.key.a{ background:var(--a); } .key.b{ background:var(--b); } .key.p{ background:var(--purple); }
+.key.g{ background:var(--green); } .key.br{ background:var(--brown); }
+.legend{ display:flex; flex-wrap:wrap; gap:.4rem 1.25rem; font-size:.86em; color:var(--soft); margin-bottom:.75rem; }
+
+/* Buttons: large tap targets, no hover dependence */
+.btn{
+  font:inherit; font-size:.9rem; line-height:1.2; min-height:44px; padding:.6rem 1.15rem;
+  border-radius:999px; border:1px solid var(--rule); background:var(--bg); color:var(--ink);
+  cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none; appearance:none; user-select:none; -webkit-user-select:none;
+  transition:background-color .2s ease, color .2s ease, border-color .2s ease, transform .1s ease;
+}
+.btn:active{ transform:scale(.97); }
+.btn[disabled]{ opacity:.5; cursor:default; }
+.btn.primary{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.btn[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+@media (hover:hover){ .btn:not([disabled]):not(.primary):not([aria-pressed="true"]):hover{ border-color:var(--soft); } }
+.controls{ display:flex; flex-wrap:wrap; gap:.55rem; margin-top:1rem; align-items:center; }
+.status{ font-size:.86em; color:var(--soft); margin-top:.8rem; min-height:1.6em; }
+
+/* Study design widget */
+.drows{ display:grid; gap:1rem; }
+.drow{ display:grid; grid-template-columns:34px 1fr; column-gap:.75rem; row-gap:.45rem; align-items:center; }
+.drow .dname{ font-weight:700; font-size:.92em; }
+.drow .pills{ grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+@media (min-width:600px){
+  .drow{ grid-template-columns:34px 9.5rem 1fr; }
+  .drow .pills{ grid-column:auto; }
+}
+.dcoin{ width:32px; height:32px; display:block; }
+.dcoin circle{ fill:var(--bg); stroke:var(--faint); stroke-width:1.5; transition:fill .3s, stroke .3s; }
+.dcoin text{ font-family:var(--serif); font-size:15px; font-weight:600; fill:var(--soft); }
+.drow[data-lean="A"] .dcoin circle{ fill:var(--a-tint); stroke:var(--a); }
+.drow[data-lean="B"] .dcoin circle{ fill:var(--b-tint); stroke:var(--b); }
+.drow[data-lean="A"] .dcoin text{ fill:var(--a); } .drow[data-lean="B"] .dcoin text{ fill:var(--b); }
+.dcoin.spin{ animation:coinspin .55s ease-in-out; }
+@keyframes coinspin{ 0%{transform:scaleX(1)} 25%{transform:scaleX(0)} 50%{transform:scaleX(1)} 75%{transform:scaleX(0)} 100%{transform:scaleX(1)} }
+.pill{ border:1.5px solid var(--rule); border-radius:12px; padding:.5rem .7rem; font-size:.86em; line-height:1.35; background:var(--bg); transition:border-color .3s, background-color .3s; }
+.pill .tag{ display:block; font-size:.82em; color:var(--soft); margin-top:.2rem; opacity:0; transition:opacity .3s; }
+.drow[data-lean="A"] .pill[data-side="A"]{ border-color:var(--a); background:var(--a-tint); }
+.drow[data-lean="B"] .pill[data-side="B"]{ border-color:var(--b); background:var(--b-tint); }
+.drow[data-lean="A"] .pill[data-side="A"] .tag, .drow[data-lean="B"] .pill[data-side="B"] .tag{ opacity:1; }
+
+/* Threshold widget */
+.segs{ display:grid; gap:.85rem; margin-top:1rem; }
+@media (min-width:600px){ .segs{ grid-template-columns:1fr 1fr; } }
+.seg-label{ display:block; font-size:.84em; color:var(--soft); margin-bottom:.3rem; }
+.seg-btns{ display:grid; grid-template-columns:1fr 1fr; gap:.35rem; }
+.seg-btns .btn{ border-radius:12px; padding:.5rem .55rem; font-size:.84rem; }
+.verdict{ font-family:var(--serif); font-size:1.35em; margin-top:.3rem; }
+#marker{ transition:transform .55s cubic-bezier(.3,.7,.2,1); }
+
+/* Hero scale */
+#beam, #panA, #panB{ transition:transform 1s cubic-bezier(.35,.6,.25,1); }
+.weight{ opacity:0; transition:opacity .4s ease .35s; }
+.weight.on{ opacity:1; }
+#heroCoin{ transform-origin:220px 38px; }
+#heroCoin.spin{ animation:coinspin .9s ease-in-out; }
+#heroCoin circle{ transition:fill .3s, stroke .3s; }
+
+/* Simulation */
+.sdot{ fill:var(--faint); stroke:none; transition:transform .7s cubic-bezier(.35,.6,.25,1), fill .35s ease; }
+.sdot[data-lean="A"]{ stroke:var(--a); stroke-width:2; }
+.sdot[data-lean="B"]{ stroke:var(--b); stroke-width:2; }
+.sdot[data-c="A"]{ fill:var(--a); }
+.sdot[data-c="B"]{ fill:var(--b); }
+.chips{ display:flex; flex-wrap:wrap; gap:.45rem; }
+.chips .btn{ font-size:.84rem; padding:.5rem .9rem; }
+.simlabel{ transition:opacity .4s ease; }
+.hide{ opacity:0; }
+
+/* Noise widget */
+.trait circle{ fill:var(--bg); stroke:var(--rule); stroke-width:1.5; transition:fill .25s, stroke .25s; }
+.trait.lit circle{ fill:var(--red-tint); stroke:var(--red); }
+.trait text{ font-size:13px; fill:var(--soft); }
+.trait.lit text{ fill:var(--ink); }
+
+/* Independence */
+.indep, .shared{ transition:opacity .6s ease; }
+#indepSvg .shared{ opacity:0; }
+#indepSvg.mode-shared .indep{ opacity:.08; }
+#indepSvg.mode-shared .shared{ opacity:1; }
+.team circle{ transition:stroke .5s, fill .5s; }
+#indepSvg.mode-shared .team circle{ stroke:var(--brown); fill:var(--brown-tint); }
+
+/* Ideas */
+.idea{ display:grid; grid-template-columns:52px 1fr; gap:1rem; margin:1.75rem 0; }
+.idea svg{ width:52px; height:52px; }
+.idea p{ margin:0; }
+
+.limit{ margin:0 0 1.25rem; }
+.closing{ font-family:var(--serif); font-size:1.3em; line-height:1.5; margin-top:3rem; }
+.endnote{ font-size:.86em; color:var(--soft); margin-top:2rem; }
+
+/* Reader controls, fixed, clear of the home indicator */
+.reader{
+  position:fixed; right:max(.9rem, env(safe-area-inset-right, 0px)); bottom:calc(.9rem + env(safe-area-inset-bottom, 0px));
+  display:flex; gap:.35rem; padding:.3rem; border-radius:999px; background:var(--panel);
+  border:1px solid var(--rule); z-index:20;
+}
+.reader .btn{ width:44px; height:44px; padding:0; display:grid; place-items:center; background:transparent; border-color:transparent; }
+.reader .btn[aria-pressed="true"]{ background:var(--ink); color:var(--bg); }
+.reader svg{ width:20px; height:20px; }
+.reader svg *{ stroke:currentColor; fill:none; }
+.reader .aa{ font-family:var(--serif); font-size:1rem; line-height:1; }
+.reader .aa small{ font-size:.7em; }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; transition-delay:0ms !important; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>When an AI agent leans one way, experts tend to follow</h1>
+  <p class="summary">In a randomized trial, professional analysts went with whichever option their AI agent had been secretly assigned, by coin flip, to favor 86% of the time, and mostly didn’t notice.</p>
+  <p class="byline">An explainer of “How AI agents shape experts’ judgment calls” by Amaç Herdağdelen, Hailey Joren and Alex Tamkin, Anthropic, October 2026. <a href="https://www.anthropic.com/research/agents-judgment-calls">Original article</a> and <a href="https://www-cdn.anthropic.com/519c17a5d23a794e8b6d50a854048d0b61e0d73a.pdf">full paper</a>.</p>
+  <p class="intro">When a professional hands work to an AI assistant, we usually assume the person still makes the calls that matter: what to measure, how to read messy evidence, what to recommend. Researchers at Anthropic tested that assumption. They gave 50 experienced data analysts a realistic, hour-long analysis to do with an AI coding agent, and on every big decision they quietly tilted the agent toward one answer. The tilt was set by a coin flip, so it had nothing to do with which answer was better. Then they looked at what the analysts chose.</p>
+</header>
+
+<figure>
+  <svg id="heroSvg" viewBox="0 0 440 262" role="img" aria-labelledby="heroTitle">
+    <title id="heroTitle">A balance scale with option A and option B. A coin decides which side the AI adds its weight to, and the scale tips that way.</title>
+    <!-- coin -->
+    <g id="heroCoin">
+      <circle id="heroCoinC" cx="220" cy="38" r="20" class="f-panel s-faint" stroke-width="1.5"/>
+      <text id="heroCoinT" x="220" y="45" text-anchor="middle" class="t-serif" font-size="19" font-weight="600">?</text>
+    </g>
+    <text x="252" y="34" class="t-soft" font-size="13.5">the coin sets</text>
+    <text x="252" y="50" class="t-soft" font-size="13.5">the agent’s lean</text>
+    <!-- post and base -->
+    <line x1="220" y1="62" x2="220" y2="226" class="s-soft" stroke-width="2"/>
+    <path d="M190 236 L220 214 L250 236 Z" class="f-panel s-soft" stroke-width="1.5"/>
+    <line x1="160" y1="238" x2="280" y2="238" class="s-soft" stroke-width="2" stroke-linecap="round"/>
+    <!-- beam -->
+    <g id="beam" style="transform-origin:220px 90px; transform:rotate(0deg)">
+      <line x1="80" y1="90" x2="360" y2="90" class="s-ink" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <circle cx="220" cy="90" r="5" class="f-bg s-ink" stroke-width="2"/>
+    <!-- pans -->
+    <g id="panA" style="transform:translate(80px,90px)">
+      <line x1="0" y1="0" x2="-36" y2="70" class="s-soft" stroke-width="1.2"/>
+      <line x1="0" y1="0" x2="36" y2="70" class="s-soft" stroke-width="1.2"/>
+      <rect id="wA" class="weight f-a" x="-13" y="50" width="26" height="20" rx="3"/>
+      <path d="M-44 70 Q0 102 44 70 Z" class="f-at s-a" stroke-width="2"/>
+      <text x="0" y="128" text-anchor="middle" font-size="15" class="t-serif">Option A</text>
+    </g>
+    <g id="panB" style="transform:translate(360px,90px)">
+      <line x1="0" y1="0" x2="-36" y2="70" class="s-soft" stroke-width="1.2"/>
+      <line x1="0" y1="0" x2="36" y2="70" class="s-soft" stroke-width="1.2"/>
+      <rect id="wB" class="weight f-b" x="-13" y="50" width="26" height="20" rx="3"/>
+      <path d="M-44 70 Q0 102 44 70 Z" class="f-bt s-b" stroke-width="2"/>
+      <text x="0" y="128" text-anchor="middle" font-size="15" class="t-serif">Option B</text>
+    </g>
+  </svg>
+  <div class="controls" style="justify-content:center">
+    <button class="btn" type="button" id="heroFlip">Flip the coin again</button>
+  </div>
+  <figcaption style="margin-inline:auto; text-align:center">Both options are reasonable. The agent’s argument is the small weight in one pan, and the coin, not the evidence, picked the pan.</figcaption>
+</figure>
+
+<section aria-labelledby="s-task">
+  <h2 id="s-task">The task: should a farm program grow?</h2>
+  <p>The analysts were asked to advise a fictional farming cooperative. About 40% of its member farms had paid to join an advisory program meant to raise crop yields. The board would expand and subsidize the program only if it lifted productivity by roughly 3–4%, but it never said exactly how productivity should be measured.</p>
+  <figure>
+    <svg viewBox="0 0 440 112" role="img" aria-label="Twenty farm plots, eight of them highlighted as enrolled in the program.">
+      <g id="plots"></g>
+      <text x="20" y="104" font-size="13" class="t-soft"><tspan class="f-green" style="fill:var(--green)">●</tspan> enrolled in the advisory program (about 4 in 10)</text>
+    </svg>
+  </figure>
+  <p>All the analysts had passed a screening test in causal inference, the craft of working out from data whether one thing really causes another. On the way to an answer, each of them had to make four judgment calls with two defensible options apiece, then give a final recommendation.</p>
+
+  <figure class="fig-panel">
+    <div class="drows" id="drows">
+      <div class="drow">
+        <svg class="dcoin" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle">?</text></svg>
+        <div class="dname">What to measure</div>
+        <div class="pills">
+          <div class="pill" data-side="A">Crop yield per hectare<span class="tag">agent argues for this</span></div>
+          <div class="pill" data-side="B">Yield per unit of operating cost<span class="tag">agent argues for this</span></div>
+        </div>
+      </div>
+      <div class="drow">
+        <svg class="dcoin" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle">?</text></svg>
+        <div class="dname">How to compare</div>
+        <div class="pills">
+          <div class="pill" data-side="A">Track how enrolled farms changed against other farms over the same years<span class="tag">agent argues for this</span></div>
+          <div class="pill" data-side="B">Compare yields directly, adjusting for differences between farms<span class="tag">agent argues for this</span></div>
+        </div>
+      </div>
+      <div class="drow">
+        <svg class="dcoin" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle">?</text></svg>
+        <div class="dname">Which farms count</div>
+        <div class="pills">
+          <div class="pill" data-side="A">Only the farms that enrolled<span class="tag">agent argues for this</span></div>
+          <div class="pill" data-side="B">The whole cooperative<span class="tag">agent argues for this</span></div>
+        </div>
+      </div>
+      <div class="drow">
+        <svg class="dcoin" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle">?</text></svg>
+        <div class="dname">How to weight</div>
+        <div class="pills">
+          <div class="pill" data-side="A">Every farm counts equally<span class="tag">agent argues for this</span></div>
+          <div class="pill" data-side="B">Bigger producers count more<span class="tag">agent argues for this</span></div>
+        </div>
+      </div>
+      <div class="drow">
+        <svg class="dcoin" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><text x="16" y="21" text-anchor="middle">?</text></svg>
+        <div class="dname">Final call</div>
+        <div class="pills">
+          <div class="pill" data-side="A">Roll the program out to everyone<span class="tag">agent argues for this</span></div>
+          <div class="pill" data-side="B">Don’t roll it out<span class="tag">agent argues for this</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="controls"><button class="btn primary" type="button" id="flipFive">Flip the five coins</button></div>
+    <figcaption>One analyst’s setup. The analyst never saw these coins. They only saw an agent that, on each decision, sincerely argued for the side its coin picked.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-weight">
+  <h2 id="s-weight">Why small choices carry big weight</h2>
+  <p>None of these calls has a single right answer, but each could shift the estimated benefit by several percentage points. With the board’s bar set at 3–4%, a couple of quiet methodological choices can decide whether a program is expanded or shut down. Try it.</p>
+  <figure class="fig-panel">
+    <svg viewBox="0 0 440 150" role="img" aria-label="Number line of the estimated productivity gain, with the board's 3 to 4 percent bar shaded and a marker for the current estimate.">
+      <rect x="220" y="70" width="49" height="28" rx="3" class="f-hl"/>
+      <line x1="20" y1="84" x2="420" y2="84" class="s-soft" stroke-width="1.5"/>
+      <g id="ticks"></g>
+      <text x="244.5" y="142" text-anchor="middle" font-size="14" class="t-soft">board’s bar: 3–4%</text>
+      <g id="marker" style="transform:translate(220px,0px)">
+        <path d="M-9 54 L9 54 L0 70 Z" class="f-purple"/>
+        <text id="markerT" x="0" y="44" text-anchor="middle" font-size="20" class="t-serif" font-weight="600">3.2%</text>
+      </g>
+    </svg>
+    <div class="verdict" id="verdict" aria-live="polite">Too close to call</div>
+    <div class="segs" id="segs">
+      <div><span class="seg-label">What to measure</span><div class="seg-btns" data-k="outcome"><button class="btn" type="button" data-v="0">Per hectare</button><button class="btn" type="button" data-v="1">Per unit of cost</button></div></div>
+      <div><span class="seg-label">How to compare</span><div class="seg-btns" data-k="method"><button class="btn" type="button" data-v="0">Direct, adjusted</button><button class="btn" type="button" data-v="1">Before vs after</button></div></div>
+      <div><span class="seg-label">Which farms count</span><div class="seg-btns" data-k="farms"><button class="btn" type="button" data-v="0">Enrolled only</button><button class="btn" type="button" data-v="1">Whole co-op</button></div></div>
+      <div><span class="seg-label">How to weight</span><div class="seg-btns" data-k="weight"><button class="btn" type="button" data-v="0">Every farm equal</button><button class="btn" type="button" data-v="1">Bigger farms more</button></div></div>
+    </div>
+    <figcaption>The numbers here are invented to show the mechanism; the study didn’t publish a table like this. The real point is from the paper: each choice could move the estimate by several points, and the bar is about one point wide.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-trick">
+  <h2 id="s-trick">The trick: a coin decides the AI’s opinion</h2>
+  <p>For every analyst and every decision, a coin flip set which option the agent would favor. Hidden instructions told the agent to hold that lean as its own view, raise it when the decision came up, and make the strongest case the data honestly allowed. It was also told to change its mind if the evidence turned decisively against it, and never to misstate results, hide data, or make an argument the numbers didn’t support.</p>
+  <p>Because the lean was random, it can’t be related to which option is better or to who the analyst is. So the experiment is a clean comparison: split the analysts by which way their agent leaned, and see how often each group picked option A. If the agent had no pull, the two groups would pick A at about the same rate.</p>
+  <figure>
+    <svg viewBox="0 0 440 214" role="img" aria-label="Diagram: analysts pass through a coin flip into two groups, one whose AI favors A and one whose AI favors B; we compare how often each group picks A.">
+      <g id="forkDots"></g>
+      <text x="62" y="160" text-anchor="middle" font-size="13" class="t-soft">analysts</text>
+      <path d="M108 107 L136 107" class="s-soft" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <circle cx="160" cy="107" r="17" class="f-panel s-faint" stroke-width="1.5"/>
+      <text x="160" y="113" text-anchor="middle" class="t-serif" font-size="15" font-weight="600">?</text>
+      <text x="160" y="145" text-anchor="middle" font-size="13" class="t-soft">coin</text>
+      <path d="M177 100 C200 80 205 60 232 58" class="s-a" stroke-width="2" fill="none" marker-end="url(#arrowA)"/>
+      <path d="M177 114 C200 134 205 154 232 156" class="s-b" stroke-width="2" fill="none" marker-end="url(#arrowB)"/>
+      <rect x="240" y="36" width="190" height="46" rx="12" class="f-at s-a" stroke-width="1.5"/>
+      <text x="335" y="56" text-anchor="middle" font-size="14">AI favors A</text>
+      <text x="335" y="73" text-anchor="middle" font-size="13.5" class="t-soft">how many pick A?</text>
+      <rect x="240" y="134" width="190" height="46" rx="12" class="f-bt s-b" stroke-width="1.5"/>
+      <text x="335" y="154" text-anchor="middle" font-size="14">AI favors B</text>
+      <text x="335" y="171" text-anchor="middle" font-size="13.5" class="t-soft">how many pick A?</text>
+      <text x="335" y="112" text-anchor="middle" font-size="13" class="t-serif" font-style="italic">compare</text>
+      <line x1="335" y1="86" x2="335" y2="96" class="s-soft" stroke-width="1.2"/>
+      <line x1="335" y1="120" x2="335" y2="130" class="s-soft" stroke-width="1.2"/>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="f-soft"/></marker>
+        <marker id="arrowA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-a"/></marker>
+        <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="f-b"/></marker>
+      </defs>
+    </svg>
+    <figcaption>The gap between the two groups is the agent’s average pull. Nothing else differs between them except the coin.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-result">
+  <h2 id="s-result">What happened</h2>
+  <p>Across the four analytical decisions, analysts went with their agent’s lean <strong class="num">86%</strong> of the time. If the agent’s input made no difference, you would expect about half.</p>
+  <figure>
+    <svg viewBox="0 0 440 140" role="img" aria-label="Meter from 0 to 100 percent: 50 percent marked as no influence, 86 percent marked as what happened.">
+      <line x1="30" y1="72" x2="410" y2="72" class="s-rule" stroke-width="10" stroke-linecap="round"/>
+      <line x1="30" y1="72" x2="356.8" y2="72" class="s-purple" stroke-width="10" stroke-linecap="round" opacity=".85"/>
+      <line x1="220" y1="52" x2="220" y2="92" class="s-soft" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="220" y="40" text-anchor="middle" font-size="13" class="t-soft">no influence: 50%</text>
+      <circle cx="356.8" cy="72" r="10" class="f-bg s-purple" stroke-width="3"/>
+      <text x="356.8" y="114" text-anchor="middle" font-size="15" class="t-serif" font-weight="600">what happened: 86%</text>
+      <text x="30" y="134" font-size="13" class="t-soft" text-anchor="middle">0%</text>
+      <text x="410" y="134" font-size="13" class="t-soft" text-anchor="middle">100%</text>
+    </svg>
+    <figcaption>Share of analytical choices that matched the agent’s randomly assigned lean. By decision: 92% for what to measure, 82% for how to compare, 81% for which farms count, 90% for weighting.</figcaption>
+  </figure>
+
+  <p>Seen the other way round, as the comparison the experiment was built for, the gaps are large. On every analytical decision, whether an analyst picked option A depended mostly on how the coin landed.</p>
+  <figure>
+    <div class="legend"><span><span class="key b"></span>AI favored B</span><span><span class="key a"></span>AI favored A</span></div>
+    <svg viewBox="0 0 440 296" role="img" aria-label="Dot plot of the share of analysts picking option A under each lean. What to measure: 0 versus 82 percent. How to compare: 28 versus 92. Which farms: 38 versus 100. How to weight: 22 versus 100. Final call: 36 versus 54.">
+      <text x="120" y="24" text-anchor="middle" font-size="13" class="t-soft">0%</text>
+      <text x="270" y="24" text-anchor="middle" font-size="13" class="t-soft">50%</text>
+      <text x="420" y="24" text-anchor="end" font-size="13" class="t-soft">100%</text>
+      <line x1="120" y1="34" x2="120" y2="286" class="s-rule" stroke-width="1"/>
+      <line x1="270" y1="34" x2="270" y2="286" class="s-rule" stroke-width="1" stroke-dasharray="3 4"/>
+      <line x1="420" y1="34" x2="420" y2="286" class="s-rule" stroke-width="1"/>
+      <g font-size="14">
+        <text x="108" y="61" text-anchor="end">What to measure</text>
+        <text x="108" y="109" text-anchor="end">How to compare</text>
+        <text x="108" y="157" text-anchor="end">Which farms</text>
+        <text x="108" y="205" text-anchor="end">How to weight</text>
+        <text x="108" y="269" text-anchor="end">Final call</text>
+      </g>
+      <line x1="0" y1="232" x2="440" y2="232" class="s-rule" stroke-dasharray="2 4"/>
+      <g stroke-width="3" class="s-faint">
+        <line x1="120" y1="56" x2="366" y2="56"/>
+        <line x1="204" y1="104" x2="396" y2="104"/>
+        <line x1="234" y1="152" x2="420" y2="152"/>
+        <line x1="186" y1="200" x2="420" y2="200"/>
+        <line x1="228" y1="264" x2="282" y2="264"/>
+      </g>
+      <g class="f-b"><circle cx="120" cy="56" r="7"/><circle cx="204" cy="104" r="7"/><circle cx="234" cy="152" r="7"/><circle cx="186" cy="200" r="7"/><circle cx="228" cy="264" r="7"/></g>
+      <g class="f-a"><circle cx="366" cy="56" r="7"/><circle cx="396" cy="104" r="7"/><circle cx="420" cy="152" r="7"/><circle cx="420" cy="200" r="7"/><circle cx="282" cy="264" r="7"/></g>
+      <g font-size="13" class="t-soft" text-anchor="middle">
+        <text x="243" y="78">82 points</text>
+        <text x="300" y="126">64 points</text>
+        <text x="327" y="174">62 points</text>
+        <text x="303" y="222">78 points</text>
+        <text x="255" y="286">17 points</text>
+      </g>
+    </svg>
+    <figcaption>In each pair, one option is labeled A. Rows show the share of analysts who picked A when their agent favored B versus when it favored A. For the final call, A means rolling the program out. The gaps are rounded, as in the paper.</figcaption>
+  </figure>
+
+  <p>Run the experiment yourself. Pick a decision, and fifty simulated analysts will each get a coin flip, then choose using the rates the study measured. Then switch off the agent’s pull to see what “no influence” would look like.</p>
+  <figure class="fig-panel">
+    <div class="chips" id="simChips" role="group" aria-label="Decision to simulate">
+      <button class="btn" type="button" data-d="outcome" aria-pressed="true">What to measure</button>
+      <button class="btn" type="button" data-d="method" aria-pressed="false">How to compare</button>
+      <button class="btn" type="button" data-d="farms" aria-pressed="false">Which farms</button>
+      <button class="btn" type="button" data-d="weight" aria-pressed="false">How to weight</button>
+      <button class="btn" type="button" data-d="final" aria-pressed="false">Final call</button>
+    </div>
+    <svg viewBox="0 0 440 286" role="img" aria-label="Simulation of fifty analysts sorted by their agent's lean and their choice." style="margin-top:1rem">
+      <line x1="220" y1="80" x2="220" y2="282" class="s-rule" stroke-width="1"/>
+      <text x="110" y="98" text-anchor="middle" font-size="14" style="fill:var(--a)">AI favored A</text>
+      <text x="330" y="98" text-anchor="middle" font-size="14" style="fill:var(--b)">AI favored B</text>
+      <g font-size="13" class="t-soft" text-anchor="middle">
+        <text x="65" y="254">picked A</text><text x="160" y="254">picked B</text>
+        <text x="285" y="254">picked A</text><text x="380" y="254">picked B</text>
+      </g>
+      <line x1="30" y1="240" x2="100" y2="240" class="s-rule"/><line x1="125" y1="240" x2="195" y2="240" class="s-rule"/>
+      <line x1="250" y1="240" x2="320" y2="240" class="s-rule"/><line x1="345" y1="240" x2="415" y2="240" class="s-rule"/>
+      <text id="simLA" class="simlabel hide t-serif" x="110" y="278" text-anchor="middle" font-size="14.5">&nbsp;</text>
+      <text id="simLB" class="simlabel hide t-serif" x="330" y="278" text-anchor="middle" font-size="14.5">&nbsp;</text>
+      <g id="simDots"></g>
+    </svg>
+    <div class="controls">
+      <button class="btn primary" type="button" id="simRun">Run 50 analysts</button>
+      <button class="btn" type="button" id="simPull" aria-pressed="false">Turn off the agent’s pull</button>
+    </div>
+    <div class="status" id="simStatus" aria-live="polite"></div>
+    <figcaption>Each dot is one simulated analyst. Its ring shows the agent’s lean; its fill shows what the analyst chose. Small samples wobble from run to run, just as real ones do.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-switch">
+  <h2 id="s-switch">They switched sides, too</h2>
+  <p>Sometimes an analyst stated a preference before the agent had weighed in. That happened 38 times. When the agent then disagreed, the analyst switched away from their own pick 60% of the time. When the agent agreed, they switched just 6% of the time.</p>
+  <figure>
+    <svg viewBox="0 0 440 162" role="img" aria-label="Bars: when the agent agreed with their pick, 6 percent switched; when it disagreed, 60 percent switched.">
+      <text x="20" y="34" font-size="14">When the agent agreed with their pick</text>
+      <rect x="20" y="44" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="44" width="24" height="16" rx="8" class="f-purple"/>
+      <text x="54" y="57" font-size="13.5" class="t-serif" font-weight="600">6% switched</text>
+      <text x="20" y="104" font-size="14">When the agent disagreed</text>
+      <rect x="20" y="114" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="114" width="240" height="16" rx="8" class="f-purple"/>
+      <text x="270" y="127" font-size="13.5" class="t-serif" font-weight="600">60% switched</text>
+    </svg>
+    <figcaption>Based on only 38 cases, so the 54-point gap is imprecise: the 95% confidence interval runs from 24 to 82 points. Analysts who volunteered a view early may also differ from those who didn’t.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-predict">
+  <h2 id="s-predict">The coin flips predicted the verdict</h2>
+  <p>The agent’s lean on the final recommendation itself mattered less. When it leaned toward rolling the program out, 54% of analysts recommended doing so, compared with 36% when it leaned the other way. The authors think that’s because, by then, the answer mostly followed from whether the estimate cleared the board’s bar.</p>
+  <p>But the estimate had already been shaped by the four earlier choices. Using nothing except those four coin flips, a simple statistical model correctly predicted 82% of analysts’ recommendations. In other words, much of the verdict was settled before the analysts had started working.</p>
+  <figure>
+    <svg viewBox="0 0 440 272" role="img" aria-label="Chain from four coin flips to four choices to the estimate to the verdict. Below, guessing the most common verdict is right 61 percent of the time; predicting from the coin flips alone is right 82 percent of the time.">
+      <g>
+        <circle cx="45" cy="50" r="8" class="f-at s-a" stroke-width="1.5"/><circle cx="65" cy="50" r="8" class="f-bt s-b" stroke-width="1.5"/>
+        <circle cx="45" cy="70" r="8" class="f-bt s-b" stroke-width="1.5"/><circle cx="65" cy="70" r="8" class="f-at s-a" stroke-width="1.5"/>
+        <text x="55" y="104" text-anchor="middle" font-size="13.5" class="t-soft">coin flips</text>
+      </g>
+      <path d="M86 60 L118 60" class="s-soft" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <g>
+        <rect x="134" y="42" width="16" height="16" rx="3" class="f-a"/><rect x="154" y="42" width="16" height="16" rx="3" class="f-b"/>
+        <rect x="134" y="62" width="16" height="16" rx="3" class="f-b"/><rect x="154" y="62" width="16" height="16" rx="3" class="f-a"/>
+        <text x="152" y="104" text-anchor="middle" font-size="13.5" class="t-soft">choices</text>
+      </g>
+      <path d="M182 60 L214 60" class="s-soft" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <g>
+        <rect x="258" y="50" width="12" height="20" class="f-hl"/>
+        <line x1="226" y1="60" x2="306" y2="60" class="s-soft" stroke-width="1.5"/>
+        <path d="M279 42 L289 42 L284 52 Z" class="f-purple"/>
+        <text x="266" y="104" text-anchor="middle" font-size="13.5" class="t-soft">estimate</text>
+      </g>
+      <path d="M316 60 L348 60" class="s-soft" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <g>
+        <circle cx="384" cy="60" r="20" class="f-gt s-green" stroke-width="1.5"/>
+        <path d="M374 60 L381 67 L394 53" class="s-green" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="384" y="104" text-anchor="middle" font-size="13.5" class="t-soft">verdict</text>
+      </g>
+      <text x="20" y="164" font-size="14">Always guess the most common verdict</text>
+      <rect x="20" y="174" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="174" width="244" height="16" rx="8" class="f-soft"/>
+      <text x="274" y="187" font-size="13.5" class="t-serif" font-weight="600">61% right</text>
+      <text x="20" y="232" font-size="14">Predict from the four coin flips alone</text>
+      <rect x="20" y="242" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="242" width="328" height="16" rx="8" class="f-purple"/>
+      <text x="358" y="255" font-size="13.5" class="t-serif" font-weight="600">82% right</text>
+    </svg>
+    <figcaption>Excludes analysts who proposed a one-year extension instead of a yes or no.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-own">
+  <h2 id="s-own">It still felt like their own call</h2>
+  <p>Afterward, analysts were asked whose judgment the final recommendation mostly reflected. Just over half, 52%, said it was more theirs than the agent’s.</p>
+  <figure>
+    <div class="legend"><span><span class="key br"></span>more the agent’s</span><span><span class="key g"></span>more mine</span></div>
+    <svg viewBox="0 0 440 226" role="img" aria-label="Dot columns of 48 survey answers. More the agent's: entirely 0, mostly 9, slightly 14. More mine: slightly 8, mostly 13, entirely 4.">
+      <g id="ownDots"></g>
+      <line x1="220" y1="20" x2="220" y2="204" class="s-rule" stroke-dasharray="2 4"/>
+      <text x="115" y="18" text-anchor="middle" font-size="13.5" class="t-soft">agent’s (23 people)</text>
+      <text x="325" y="18" text-anchor="middle" font-size="13.5" class="t-soft">mine (25 people)</text>
+      <g font-size="13.5" class="t-soft" text-anchor="middle">
+        <text x="50" y="220">entirely</text><text x="115" y="220">mostly</text><text x="180" y="220">slightly</text>
+        <text x="260" y="220">slightly</text><text x="325" y="220">mostly</text><text x="390" y="220">entirely</text>
+      </g>
+    </svg>
+    <figcaption>Each dot is one of 48 survey answers. 35% said the recommendation was mostly or entirely their own.</figcaption>
+  </figure>
+  <p>Yet both groups had been pulled about equally hard. Those who called the recommendation their own had shifted about 65 points toward their agent’s lean, on average; those who credited the agent had shifted about 79. The difference is within the margin of error.</p>
+  <figure>
+    <svg viewBox="0 0 440 136" role="img" aria-label="Bars: analysts who said 'mine' shifted 65 points toward the agent; analysts who said 'the agent's' shifted 79 points.">
+      <text x="20" y="30" font-size="14">Said it was more theirs</text>
+      <rect x="20" y="40" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="40" width="260" height="16" rx="8" class="f-green"/>
+      <text x="290" y="53" font-size="13.5" class="t-serif" font-weight="600">65 points</text>
+      <text x="20" y="96" font-size="14">Said it was more the agent’s</text>
+      <rect x="20" y="106" width="400" height="16" rx="8" class="f-rule"/>
+      <rect x="20" y="106" width="316" height="16" rx="8" class="f-brown"/>
+      <text x="346" y="119" font-size="13.5" class="t-serif" font-weight="600">79 points</text>
+    </svg>
+    <figcaption>How far each group’s choices moved toward the agent’s lean. Confidence told the same story: on a 0 to 100 scale, analysts who followed the lean on all four decisions averaged 71, against 73 for everyone else.</figcaption>
+  </figure>
+
+  <h3>In the agent’s words</h3>
+  <p>The survey also asked analysts to explain each choice, without letting them look back at their conversation with the agent. 77% repeated their agent’s argument in at least one answer, sometimes word for word. Only 15% mentioned the agent at all.</p>
+  <figure>
+    <svg viewBox="0 0 440 336" role="img" aria-label="Two speech bubbles: the agent during the task and the same analyst afterward share the phrase 'funded from surplus on total tonnage'. Below, 77 percent repeated the agent's argument and 15 percent credited the agent.">
+      <text x="12" y="20" font-size="13.5" class="t-soft">the agent, during the task</text>
+      <rect x="10" y="30" width="336" height="72" rx="14" class="f-brt s-brown" stroke-width="1.5"/>
+      <path d="M40 102 L36 118 L58 102 Z" class="f-brt s-brown" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="41" y1="101.5" x2="57" y2="101.5" class="s-brown" stroke-width="3" style="stroke:var(--brown-tint)"/>
+      <rect x="22" y="69" width="282" height="23" rx="4" class="f-hl"/>
+      <text x="26" y="58" font-size="15">Weight by area, because the subsidy is</text>
+      <text x="26" y="86" font-size="15">funded from surplus on total tonnage.</text>
+      <path d="M50 122 C52 165 62 186 90 191" class="s-faint" stroke-width="1.5" fill="none" stroke-dasharray="3 4"/>
+      <text x="428" y="146" text-anchor="end" font-size="13.5" class="t-soft">the analyst, afterward, from memory</text>
+      <rect x="94" y="156" width="336" height="72" rx="14" class="f-gt s-green" stroke-width="1.5"/>
+      <rect x="106" y="195" width="282" height="23" rx="4" class="f-hl"/>
+      <text x="110" y="184" font-size="15">Average over hectares, since it’s</text>
+      <text x="110" y="212" font-size="15">funded from surplus on total tonnage.</text>
+      <text x="20" y="266" font-size="14">Repeated the agent’s argument</text>
+      <rect x="20" y="276" width="400" height="14" rx="7" class="f-rule"/>
+      <rect x="20" y="276" width="308" height="14" rx="7" class="f-brown"/>
+      <text x="336" y="288" font-size="13.5" class="t-serif" font-weight="600">77%</text>
+      <text x="20" y="314" font-size="14">Credited the agent</text>
+      <rect x="20" y="322" width="400" height="14" rx="7" class="f-rule"/>
+      <rect x="20" y="322" width="60" height="14" rx="7" class="f-brown"/>
+      <text x="88" y="334" font-size="13.5" class="t-serif" font-weight="600">15%</text>
+    </svg>
+    <figcaption>Wording paraphrased from an example pair in the study; the highlighted phrase appeared in both. When asked what the study was about, 6 of 48 guessed it concerned the AI’s influence, and none suspected the agent’s preferences had been set on purpose.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-exp">
+  <h2 id="s-exp">Experience didn’t protect anyone</h2>
+  <p>The team checked whether any of ten traits predicted who followed the agent most: years of experience, self-rated expertise, education, a causal-inference quiz score, trust in AI, how often they used AI, how much they enjoy effortful thinking, open-mindedness, gender and age. Only age showed a link, with older analysts following a little more, and it disappeared once the analysis accounted for having tested ten things at once.</p>
+  <p>Why does testing many things matter? Each test has about a 5% chance of a fluke even when nothing real is going on. Run ten, and the chance that at least one lights up is around 40%. Try it.</p>
+  <figure class="fig-panel">
+    <svg viewBox="0 0 440 176" role="img" aria-label="Ten traits as circles; a fluke result lights a circle up.">
+      <g id="traits"></g>
+    </svg>
+    <div class="controls">
+      <button class="btn primary" type="button" id="noise1">Run 10 tests on pure noise</button>
+      <button class="btn" type="button" id="noise100">Run it 100 times</button>
+    </div>
+    <div class="status" id="noiseStatus" aria-live="polite">Shown: the study’s one apparent hit, age, before correction.</div>
+    <figcaption>Pure chance, no data. A second reason to be cautious: almost everyone followed their agent on almost every decision, so there was little variation for any trait to explain.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="s-notagainst">
+  <h2 id="s-notagainst">This is not a case against AI</h2>
+  <p>Eleven of the 61 people recruited chose to work without the agent, and they weren’t counted in the results above. Their work went noticeably worse: more than half made serious methodological errors that invalidated their results, against a handful of those who used the agent. They also took longer.</p>
+  <figure>
+    <svg viewBox="0 0 440 252" role="img" aria-label="Without the agent, 6 of 11 analysts made serious errors; with the agent, 3 of 50. Median time 90 minutes versus 65 minutes.">
+      <text x="20" y="22" font-size="13.5">Without the agent</text>
+      <g id="errNo"></g>
+      <text x="20" y="132" font-size="14" class="t-soft">6 of 11 had serious errors</text>
+      <text x="230" y="22" font-size="13.5">With the agent</text>
+      <g id="errYes"></g>
+      <text x="230" y="132" font-size="14" class="t-soft">3 of 50 had serious errors</text>
+      <text x="20" y="176" font-size="13.5">Median time on the task</text>
+      <rect x="20" y="186" width="300" height="14" rx="7" class="f-soft"/>
+      <text x="328" y="198" font-size="13.5" class="t-serif" font-weight="600">without: 90 min</text>
+      <rect x="20" y="218" width="217" height="14" rx="7" class="f-purple"/>
+      <text x="245" y="230" font-size="13.5" class="t-serif" font-weight="600">with: 65 min</text>
+    </svg>
+    <figcaption>Read this with care. The group without AI was small and less experienced: fewer held advanced degrees, more had two years or less in analysis roles, and fewer rated themselves proficient in causal inference. So the gap can’t be cleanly credited to the agent.</figcaption>
+  </figure>
+  <p>The worry isn’t that agents do bad work. It’s that, as agents take over the hands-on labor, the judgment calls are where human values are supposed to enter, and those calls are exactly what quietly moved.</p>
+</section>
+
+<section aria-labelledby="s-limits">
+  <h2 id="s-limits">What to keep in mind</h2>
+  <p class="limit"><strong>The lean was turned up on purpose.</strong> The agent was told to hold and voice a preference reliably, so its effect could be measured. Real agents do have defaults, though: with no lean assigned, the same model made the same five choices in 112 of 123 runs. How strongly they push those defaults in practice may be weaker.</p>
+  <p class="limit"><strong>One task, one field, one model.</strong> The task took about an hour, concerned farming, and used Claude Opus 4.8. The analysts knew causal inference but not agriculture. In real work they might know the field, hold firmer views, and talk to the people involved.</p>
+  <p class="limit"><strong>These are averages.</strong> Because each analyst got their own coin flips, the study measures the average pull across people. It can’t say how much any one analyst was swayed.</p>
+  <p class="limit"><strong>Choices, not conviction.</strong> The study recorded which option analysts picked, not how strongly they preferred it. Some may simply not have cared much either way.</p>
+</section>
+
+<section aria-labelledby="s-why">
+  <h2 id="s-why">Why it matters beyond one study</h2>
+  <p>Experts often don’t arrive with their views fully formed; they work them out while weighing the options. The agents were honest and often clear about how results would change under each option, but they rarely made a strong case for the other side. With only one side argued well, adopting the agent’s assumptions is the path of least resistance.</p>
+  <p>For one person, that means work going out under their name while the decisions that most needed their judgment were settled elsewhere. For science and policy, the risk compounds. We trust a result more when separate teams reach it independently. If those teams all lean on agents with the same preferences, their agreement means much less.</p>
+  <figure class="fig-panel">
+    <svg id="indepSvg" viewBox="0 0 440 244" role="img" aria-label="Four teams reaching the same conclusion, either from four independent sources of judgment or from one shared agent.">
+      <g class="indep">
+        <circle cx="70" cy="38" r="12" class="f-a"/><circle cx="170" cy="38" r="12" class="f-b"/>
+        <circle cx="270" cy="38" r="12" class="f-green"/><circle cx="370" cy="38" r="12" class="f-purple"/>
+        <g class="s-faint" stroke-width="1.5">
+          <line x1="70" y1="52" x2="70" y2="96"/><line x1="170" y1="52" x2="170" y2="96"/>
+          <line x1="270" y1="52" x2="270" y2="96"/><line x1="370" y1="52" x2="370" y2="96"/>
+        </g>
+      </g>
+      <g class="shared">
+        <circle cx="220" cy="36" r="20" class="f-brt s-brown" stroke-width="2"/>
+        <text x="220" y="41" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--brown)">AI</text>
+        <g class="s-brown" stroke-width="1.5">
+          <line x1="205" y1="50" x2="84" y2="100"/><line x1="214" y1="55" x2="176" y2="97"/>
+          <line x1="226" y1="55" x2="264" y2="97"/><line x1="235" y1="50" x2="356" y2="100"/>
+        </g>
+      </g>
+      <g class="team">
+        <circle cx="70" cy="120" r="22" class="f-bg s-soft" stroke-width="1.5"/>
+        <circle cx="170" cy="120" r="22" class="f-bg s-soft" stroke-width="1.5"/>
+        <circle cx="270" cy="120" r="22" class="f-bg s-soft" stroke-width="1.5"/>
+        <circle cx="370" cy="120" r="22" class="f-bg s-soft" stroke-width="1.5"/>
+      </g>
+      <g font-size="13" text-anchor="middle">
+        <text x="70" y="124">team</text><text x="170" y="124">team</text><text x="270" y="124">team</text><text x="370" y="124">team</text>
+      </g>
+      <g class="s-faint" stroke-width="1.5">
+        <line x1="80" y1="141" x2="180" y2="194"/><line x1="174" y1="143" x2="204" y2="192"/>
+        <line x1="266" y1="143" x2="236" y2="192"/><line x1="360" y1="141" x2="260" y2="194"/>
+      </g>
+      <rect x="140" y="194" width="160" height="38" rx="12" class="f-panel s-ink" stroke-width="1.5"/>
+      <text x="220" y="218" text-anchor="middle" font-size="14" class="t-serif">same conclusion</text>
+    </svg>
+    <div class="controls" role="group" aria-label="Where the judgment comes from">
+      <button class="btn" type="button" id="modeIndep" aria-pressed="true">Independent teams</button>
+      <button class="btn" type="button" id="modeShared" aria-pressed="false">Teams sharing one agent</button>
+    </div>
+    <div class="status" id="indepStatus" aria-live="polite">Four separate routes to one answer. Their agreement is strong evidence.</div>
+  </figure>
+  <p>The same applies to AI safety research, where researchers have started using agents to run and analyze experiments. A human reviewer is only an independent check if their judgment is their own. And this kind of deferral is hard to catch: on a judgment call there’s no answer key, so the work looks sound whichever way it went, and, as the survey showed, people may not notice the influence themselves.</p>
+</section>
+
+<section aria-labelledby="s-help">
+  <h2 id="s-help">What might help</h2>
+  <p>The authors stress this isn’t an argument for using AI less. Used well, it could expand people’s agency rather than erode it. They point to three directions for future work.</p>
+  <div class="idea">
+    <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M8 38 A18 18 0 0 1 44 38" fill="none" class="s-rule" stroke-width="4" stroke-linecap="round"/><path d="M8 38 A18 18 0 0 1 34 22" fill="none" class="s-purple" stroke-width="4" stroke-linecap="round"/><line x1="26" y1="38" x2="36" y2="24" class="s-ink" stroke-width="2" stroke-linecap="round"/><circle cx="26" cy="38" r="3" class="f-bg s-ink" stroke-width="2"/></svg>
+    <div><h3>Measuring deferral</h3><p>Randomizing an agent’s lean is rarely possible in real work, and people can’t reliably report it themselves. We need everyday ways to measure it, and a clearer picture of models’ default preferences and how they express them.</p></div>
+  </div>
+  <div class="idea">
+    <svg viewBox="0 0 52 52" aria-hidden="true"><line x1="10" y1="18" x2="42" y2="18" class="s-ink" stroke-width="2" stroke-linecap="round"/><line x1="26" y1="12" x2="26" y2="42" class="s-ink" stroke-width="2"/><path d="M4 32 Q10 38 16 32 Z" class="f-at s-a" stroke-width="1.5"/><path d="M36 32 Q42 38 48 32 Z" class="f-bt s-b" stroke-width="1.5"/><line x1="10" y1="18" x2="6" y2="32" class="s-soft"/><line x1="10" y1="18" x2="14" y2="32" class="s-soft"/><line x1="42" y1="18" x2="38" y2="32" class="s-soft"/><line x1="42" y1="18" x2="46" y2="32" class="s-soft"/></svg>
+    <div><h3>Designing agents differently</h3><p>Agents could argue the best case for each option, or ask for the expert’s view before giving their own. The catch: an analysis has many open decisions, so agents would need to flag only the ones that matter most, which is itself a judgment call. Tone matters too, since a very confident voice can sway people more than it should.</p></div>
+  </div>
+  <div class="idea">
+    <svg viewBox="0 0 52 52" aria-hidden="true"><path d="M8 18 L26 8 L44 18 Z" class="f-panel s-ink" stroke-width="1.8" stroke-linejoin="round"/><g class="s-ink" stroke-width="2.2" stroke-linecap="round"><line x1="14" y1="22" x2="14" y2="38"/><line x1="22" y1="22" x2="22" y2="38"/><line x1="30" y1="22" x2="30" y2="38"/><line x1="38" y1="22" x2="38" y2="38"/></g><line x1="8" y1="43" x2="44" y2="43" class="s-ink" stroke-width="2.2" stroke-linecap="round"/></svg>
+    <div><h3>Changing institutions</h3><p>Organizations often treat an expert’s sign-off as proof of independent judgment. They’ll need to decide which decisions truly need a person’s own informed view, give people time to form one, and protect the skills that judgment depends on.</p></div>
+  </div>
+  <p class="closing">There may be no single right split of work between people and AI. The authors’ hope is that the split becomes something we choose, rather than something we drift into.</p>
+  <p class="endnote">Read the <a href="https://www.anthropic.com/research/agents-judgment-calls">original article</a> or the <a href="https://www-cdn.anthropic.com/519c17a5d23a794e8b6d50a854048d0b61e0d73a.pdf">full paper</a> for methods and details.</p>
+</section>
+
+</main>
+
+<div class="reader" role="group" aria-label="Reading comfort">
+  <button class="btn" type="button" id="sizeBtn" aria-pressed="false" aria-label="Larger text"><span class="aa"><small>A</small>A</span></button>
+  <button class="btn" type="button" id="themeBtn" aria-label="Switch to dark theme">
+    <svg viewBox="0 0 24 24" id="themeIcon" aria-hidden="true" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+  </button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function $(s){ return document.querySelector(s); }
+  function el(tag, attrs, parent){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs){ e.setAttribute(k, attrs[k]); }
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function wait(ms){ return reduce ? 0 : ms; }
+
+  /* ---------- Reader controls ---------- */
+  var root = document.documentElement;
+  var themeBtn = $("#themeBtn"), themeIcon = $("#themeIcon"), sizeBtn = $("#sizeBtn");
+  var MOON = '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>';
+  var SUN = '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>';
+  function effectiveTheme(){
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  function syncThemeBtn(){
+    var dark = effectiveTheme() === "dark";
+    themeIcon.innerHTML = dark ? SUN : MOON;
+    themeBtn.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  }
+  themeBtn.addEventListener("click", function(){
+    root.setAttribute("data-theme", effectiveTheme() === "dark" ? "light" : "dark");
+    syncThemeBtn();
+  });
+  if (window.matchMedia){
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", syncThemeBtn);
+  }
+  syncThemeBtn();
+  sizeBtn.addEventListener("click", function(){
+    var on = root.getAttribute("data-size") === "large";
+    if (on) root.removeAttribute("data-size"); else root.setAttribute("data-size", "large");
+    sizeBtn.setAttribute("aria-pressed", on ? "false" : "true");
+    sizeBtn.setAttribute("aria-label", on ? "Larger text" : "Normal text size");
+  });
+
+  /* ---------- Hero scale ---------- */
+  var beam = $("#beam"), panA = $("#panA"), panB = $("#panB");
+  var heroCoin = $("#heroCoin"), heroC = $("#heroCoinC"), heroT = $("#heroCoinT");
+  var wA = $("#wA"), wB = $("#wB"), heroBtn = $("#heroFlip");
+  function tilt(side){
+    var deg = side === "A" ? -9 : side === "B" ? 9 : 0;
+    var r = deg * Math.PI / 180, L = 140;
+    beam.style.transform = "rotate(" + deg + "deg)";
+    panA.style.transform = "translate(" + (220 - L*Math.cos(r)).toFixed(2) + "px," + (90 - L*Math.sin(r)).toFixed(2) + "px)";
+    panB.style.transform = "translate(" + (220 + L*Math.cos(r)).toFixed(2) + "px," + (90 + L*Math.sin(r)).toFixed(2) + "px)";
+  }
+  function heroFlip(){
+    heroBtn.disabled = true;
+    wA.classList.remove("on"); wB.classList.remove("on");
+    tilt(null);
+    heroT.textContent = "?";
+    heroC.style.fill = ""; heroC.style.stroke = "";
+    heroT.style.fill = "";
+    heroCoin.classList.remove("spin"); void heroCoin.getBoundingClientRect(); heroCoin.classList.add("spin");
+    setTimeout(function(){
+      var side = Math.random() < 0.5 ? "A" : "B";
+      heroCoin.classList.remove("spin");
+      heroT.textContent = side;
+      heroC.style.fill = side === "A" ? "var(--a-tint)" : "var(--b-tint)";
+      heroC.style.stroke = side === "A" ? "var(--a)" : "var(--b)";
+      heroT.style.fill = side === "A" ? "var(--a)" : "var(--b)";
+      (side === "A" ? wA : wB).classList.add("on");
+      tilt(side);
+      setTimeout(function(){ heroBtn.disabled = false; }, wait(700));
+    }, wait(950));
+  }
+  heroBtn.addEventListener("click", heroFlip);
+  setTimeout(heroFlip, wait(700));
+
+  /* ---------- Farm plots ---------- */
+  var plots = $("#plots");
+  var enrolled = [1,4,6,9,10,13,15,18];
+  for (var i = 0; i < 20; i++){
+    var col = i % 10, row = Math.floor(i / 10);
+    var x = 20 + col * 40.5, y = 8 + row * 40;
+    var on = enrolled.indexOf(i) >= 0;
+    el("rect", {x:x, y:y, width:34, height:32, rx:5, "class": on ? "f-gt s-green" : "f-panel s-rule", "stroke-width":1.3}, plots);
+    for (var l = 0; l < 3; l++){
+      el("line", {x1:x+7, y1:y+9+l*7, x2:x+27, y2:y+9+l*7, "class": on ? "s-green" : "s-faint", "stroke-width":1.2, "stroke-linecap":"round", opacity: on ? .9 : .5}, plots);
+    }
+  }
+
+  /* ---------- Five coins ---------- */
+  var drows = document.querySelectorAll(".drow");
+  $("#flipFive").addEventListener("click", function(){
+    Array.prototype.forEach.call(drows, function(row, idx){
+      var coin = row.querySelector(".dcoin"), txt = coin.querySelector("text");
+      row.removeAttribute("data-lean"); txt.textContent = "?";
+      coin.classList.remove("spin"); void coin.getBoundingClientRect(); coin.classList.add("spin");
+      setTimeout(function(){
+        var side = Math.random() < 0.5 ? "A" : "B";
+        coin.classList.remove("spin");
+        txt.textContent = side;
+        row.setAttribute("data-lean", side);
+      }, wait(560 + idx * 90));
+    });
+  });
+
+  /* ---------- Threshold widget ---------- */
+  var SHIFT = { outcome:[0, 2.2], method:[0, -1.8], farms:[1.9, 0], weight:[0, 1.4] };
+  var BASE = 0.9;
+  var state = { outcome:1, method:1, farms:0, weight:0 };
+  var X = function(v){ return 24 + 49 * (v + 1); };
+  var ticks = $("#ticks");
+  for (var t = -1; t <= 7; t++){
+    el("line", {x1:X(t), y1:80, x2:X(t), y2:88, "class":"s-soft", "stroke-width":1}, ticks);
+    var tx = el("text", {x:X(t), y:114, "text-anchor":"middle", "font-size":14, "class":"t-soft"}, ticks);
+    tx.textContent = (t < 0 ? "−" + Math.abs(t) : t) + "%";
+  }
+  var marker = $("#marker"), markerT = $("#markerT"), verdict = $("#verdict");
+  function updateEstimate(){
+    var v = BASE;
+    for (var k in state){ v += SHIFT[k][state[k]]; }
+    marker.style.transform = "translate(" + X(v).toFixed(1) + "px,0px)";
+    markerT.textContent = (v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%";
+    verdict.textContent = v < 3 ? "Verdict: discontinue the program" : v > 4 ? "Verdict: roll it out" : "Too close to call";
+    document.querySelectorAll("#segs .seg-btns").forEach(function(g){
+      var k = g.getAttribute("data-k");
+      g.querySelectorAll("button").forEach(function(b){
+        b.setAttribute("aria-pressed", String(+b.getAttribute("data-v") === state[k]));
+      });
+    });
+  }
+  document.querySelectorAll("#segs .seg-btns").forEach(function(g){
+    g.addEventListener("click", function(e){
+      var b = e.target.closest("button"); if (!b) return;
+      state[g.getAttribute("data-k")] = +b.getAttribute("data-v");
+      updateEstimate();
+    });
+  });
+  updateEstimate();
+
+  /* ---------- Fork dots ---------- */
+  var fork = $("#forkDots");
+  for (var f = 0; f < 12; f++){
+    el("circle", {cx: 36 + (f % 4) * 17, cy: 82 + Math.floor(f / 4) * 17, r: 6, "class":"f-faint"}, fork);
+  }
+
+  /* ---------- Simulation ---------- */
+  var P = { outcome:[0.82, 0.00], method:[0.92, 0.28], farms:[1.00, 0.38], weight:[1.00, 0.22], final:[0.54, 0.36] };
+  var NAMES = { outcome:"what to measure", method:"how to compare", farms:"which farms count", weight:"how to weight", final:"the final call" };
+  var decision = "outcome", noPull = false, sorted = false, busy = false;
+  var simG = $("#simDots"), dots = [];
+  for (var d = 0; d < 50; d++){ dots.push(el("circle", {cx:0, cy:0, r:5.5, "class":"sdot"}, simG)); }
+  var simLA = $("#simLA"), simLB = $("#simLB"), simStatus = $("#simStatus");
+  var simRun = $("#simRun"), simPull = $("#simPull");
+  function place(c, x, y, delay){
+    c.style.transitionDelay = (reduce ? 0 : delay) + "ms";
+    c.style.transform = "translate(" + x + "px," + y + "px)";
+  }
+  function toPool(){
+    dots.forEach(function(c, i){
+      c.removeAttribute("data-lean"); c.removeAttribute("data-c");
+      place(c, 34 + (i % 25) * 15.5, 28 + Math.floor(i / 25) * 17, 0);
+    });
+    simLA.classList.add("hide"); simLB.classList.add("hide");
+    sorted = false;
+  }
+  function describeReal(){
+    var p = P[decision];
+    simStatus.textContent = "In the study, for " + NAMES[decision] + ": " + Math.round(p[0]*100) + "% picked A when the agent favored A, and " + Math.round(p[1]*100) + "% when it favored B.";
+  }
+  function runSim(){
+    if (busy) return;
+    busy = true; simRun.disabled = true;
+    var delay0 = 0;
+    if (sorted){ toPool(); delay0 = wait(650); }
+    setTimeout(function(){
+      var leans = dots.map(function(){ return Math.random() < 0.5 ? "A" : "B"; });
+      var cnt = { A:0, B:0 };
+      dots.forEach(function(c, i){
+        var g = leans[i], k = cnt[g]++, x0 = g === "A" ? 0 : 220;
+        c.setAttribute("data-lean", g);
+        place(c, x0 + 42 + (k % 10) * 15, 128 + Math.floor(k / 10) * 15, i * 9);
+      });
+      setTimeout(function(){
+        var p = P[decision], avg = (p[0] + p[1]) / 2;
+        var stack = { AA:0, AB:0, BA:0, BB:0 }, picks = { A:0, B:0 };
+        dots.forEach(function(c, i){
+          var g = leans[i];
+          var pA = noPull ? avg : (g === "A" ? p[0] : p[1]);
+          var ch = Math.random() < pA ? "A" : "B";
+          if (ch === "A") picks[g]++;
+          var key = g + ch, idx = stack[key]++;
+          var x0 = (g === "A" ? 0 : 220) + (ch === "A" ? 30 : 125);
+          c.setAttribute("data-c", ch);
+          place(c, x0 + 7 + (idx % 5) * 14, 232 - Math.floor(idx / 5) * 14, i * 12);
+        });
+        simLA.textContent = picks.A + " of " + cnt.A + " picked A (" + (cnt.A ? Math.round(100*picks.A/cnt.A) : 0) + "%)";
+        simLB.textContent = picks.B + " of " + cnt.B + " picked A (" + (cnt.B ? Math.round(100*picks.B/cnt.B) : 0) + "%)";
+        setTimeout(function(){
+          simLA.classList.remove("hide"); simLB.classList.remove("hide");
+          sorted = true; busy = false; simRun.disabled = false;
+          simRun.textContent = "Run again";
+          if (noPull){
+            simStatus.textContent = "With no pull, both groups pick A at the same underlying rate. Any gap you see now is just chance.";
+          } else { describeReal(); }
+        }, wait(1100));
+      }, wait(1000));
+    }, delay0);
+  }
+  simRun.addEventListener("click", runSim);
+  simPull.addEventListener("click", function(){
+    if (busy) return;
+    noPull = !noPull;
+    simPull.setAttribute("aria-pressed", String(noPull));
+    simPull.textContent = noPull ? "Turn the agent’s pull back on" : "Turn off the agent’s pull";
+    runSim();
+  });
+  $("#simChips").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b || busy) return;
+    decision = b.getAttribute("data-d");
+    this.querySelectorAll("button").forEach(function(x){ x.setAttribute("aria-pressed", String(x === b)); });
+    runSim();
+  });
+  toPool();
+  describeReal();
+
+  /* ---------- Ownership dots ---------- */
+  var own = $("#ownDots");
+  var cols = [ {x:50,n:0,c:"f-brown"}, {x:115,n:9,c:"f-brown"}, {x:180,n:14,c:"f-brown"},
+               {x:260,n:8,c:"f-green"}, {x:325,n:13,c:"f-green"}, {x:390,n:4,c:"f-green"} ];
+  cols.forEach(function(col){
+    if (col.n === 0){
+      el("line", {x1:col.x-8, y1:196, x2:col.x+8, y2:196, "class":"s-rule", "stroke-width":2, "stroke-linecap":"round"}, own);
+    }
+    for (var j = 0; j < col.n; j++){
+      var cx = col.x + (j % 2 ? 7 : -7), cy = 196 - Math.floor(j / 2) * 14;
+      el("circle", {cx:cx, cy:cy, r:5.5, "class":col.c}, own);
+    }
+  });
+
+  /* ---------- Noise widget ---------- */
+  var traitNames = ["Experience","Expertise","Education","Quiz score","Trust in AI","AI use","Thinking","Openness","Gender","Age"];
+  var traitG = $("#traits"), traits = [];
+  traitNames.forEach(function(name, i){
+    var cx = 44 + (i % 5) * 88, cy = 30 + Math.floor(i / 5) * 86;
+    var g = el("g", {"class":"trait"}, traitG);
+    el("circle", {cx:cx, cy:cy, r:20}, g);
+    var tt = el("text", {x:cx, y:cy + 40, "text-anchor":"middle"}, g);
+    tt.textContent = name;
+    traits.push(g);
+  });
+  traits[9].classList.add("lit");
+  var runs = 0, hits = 0, noiseStatus = $("#noiseStatus");
+  function noiseOnce(){
+    var n = 0;
+    traits.forEach(function(g){
+      var fl = Math.random() < 0.05;
+      g.classList.toggle("lit", fl);
+      if (fl) n++;
+    });
+    runs++; if (n > 0) hits++;
+    return n;
+  }
+  function reportNoise(n){
+    var thisRun = n === 0 ? "no flukes" : n === 1 ? "1 fluke" : n + " flukes";
+    noiseStatus.textContent = "This run: " + thisRun + ". So far, " + hits + " of " + runs + " runs (" + Math.round(100*hits/runs) + "%) had at least one.";
+  }
+  $("#noise1").addEventListener("click", function(){ reportNoise(noiseOnce()); });
+  $("#noise100").addEventListener("click", function(){
+    var n = 0; for (var r = 0; r < 100; r++){ n = noiseOnce(); }
+    reportNoise(n);
+  });
+
+  /* ---------- Error dots ---------- */
+  var errNo = $("#errNo"), errYes = $("#errYes");
+  function errDot(parent, cx, cy, r, bad){
+    el("circle", {cx:cx, cy:cy, r:r, "class": bad ? "f-red" : "f-faint", opacity: bad ? 1 : .55}, parent);
+    if (bad){
+      var s = r * 0.45;
+      el("path", {d:"M"+(cx-s)+" "+(cy-s)+" L"+(cx+s)+" "+(cy+s)+" M"+(cx+s)+" "+(cy-s)+" L"+(cx-s)+" "+(cy+s), stroke:"var(--bg)", "stroke-width":1.8, "stroke-linecap":"round"}, parent);
+    }
+  }
+  for (var e1 = 0; e1 < 11; e1++){
+    errDot(errNo, 30 + (e1 % 6) * 24, 48 + Math.floor(e1 / 6) * 26, 9, e1 < 6);
+  }
+  for (var e2 = 0; e2 < 50; e2++){
+    errDot(errYes, 236 + (e2 % 10) * 19, 40 + Math.floor(e2 / 10) * 15, 6, e2 === 7 || e2 === 23 || e2 === 41);
+  }
+
+  /* ---------- Independence toggle ---------- */
+  var indepSvg = $("#indepSvg"), mI = $("#modeIndep"), mS = $("#modeShared"), iStat = $("#indepStatus");
+  function setMode(shared){
+    indepSvg.classList.toggle("mode-shared", shared);
+    mI.setAttribute("aria-pressed", String(!shared));
+    mS.setAttribute("aria-pressed", String(shared));
+    iStat.textContent = shared
+      ? "Four teams, one set of preferences. The agreement may just echo the agent."
+      : "Four separate routes to one answer. Their agreement is strong evidence.";
+  }
+  mI.addEventListener("click", function(){ setMode(false); });
+  mS.addEventListener("click", function(){ setMode(true); });
+})();
+</script>
+</body>
+</html>
