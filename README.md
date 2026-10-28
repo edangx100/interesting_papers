@@ -51,3 +51,6 @@
 - JevAgentHarness: Benchmarking, Deploying and Training Decision Models That Share Control with LLMs
   - https://arxiv.org/html/2610.21412v1
   - https://edangx100.github.io/interesting_papers/JevAgentHarness
+- How AI agents shape experts’ judgment calls
+  - https://www.anthropic.com/research/agents-judgment-calls
+  - https://edangx100.github.io/interesting_papers/agents-judgment-calls
