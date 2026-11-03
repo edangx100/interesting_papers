@@ -54,3 +54,6 @@
 - How AI agents shape experts’ judgment calls
   - https://www.anthropic.com/research/agents-judgment-calls
   - https://edangx100.github.io/interesting_papers/agents-judgment-calls
+- LLMs can natively read & write neural network weights
+  - https://rikiyat.github.io/blog/weight-space-programming/
+  - https://edangx100.github.io/interesting_papers/weight-space-programming
