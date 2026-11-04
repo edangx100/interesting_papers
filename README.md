@@ -57,3 +57,6 @@
 - LLMs can natively read & write neural network weights
   - https://rikiyat.github.io/blog/weight-space-programming/
   - https://edangx100.github.io/interesting_papers/weight-space-programming
+- The Agentic Scientist: Orchestrating Coding Agents for Automated Scientific (Co-)Discovery
+  - https://arxiv.org/html/2610.18933v1
+  - https://edangx100.github.io/interesting_papers/sakana-agentic-scientist
