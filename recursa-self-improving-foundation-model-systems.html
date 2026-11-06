@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recursa, explained: an AI system that teaches itself a new field</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+/* ---------- Tokens: calm, low-glare palette (never pure white or pure black) ---------- */
+:root{
+  --bg:#F3F5F7; --surface:#FAFBFC; --ink:#2A3037; --muted:#5D6772; --faint:#8E98A3; --rule:#DCE2E8;
+  --blue:#3A82A4; --blue-soft:#DAE9F1; --gold:#B07A28; --gold-soft:#F2E5CC;
+  --green:#4A8C5C; --green-soft:#DBECDF; --red:#B9564B; --red-soft:#F3DDDA;
+  --scale:1;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C2026; --surface:#232830; --ink:#D6DBE1; --muted:#9AA4AF; --faint:#6F7984; --rule:#343B45;
+    --blue:#6BB7D3; --blue-soft:#243848; --gold:#DDAE63; --gold-soft:#3B3122;
+    --green:#88C08D; --green-soft:#24392A; --red:#E28077; --red-soft:#42292A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1C2026; --surface:#232830; --ink:#D6DBE1; --muted:#9AA4AF; --faint:#6F7984; --rule:#343B45;
+  --blue:#6BB7D3; --blue-soft:#243848; --gold:#DDAE63; --gold-soft:#3B3122;
+  --green:#88C08D; --green-soft:#24392A; --red:#E28077; --red-soft:#42292A;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{font-size:calc(var(--scale) * 100%); -webkit-text-size-adjust:100%; text-size-adjust:100%; scroll-padding-top:env(safe-area-inset-top,0px); background:var(--bg)}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Source Serif 4","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  font-optical-sizing:auto; font-size:1.1875rem; line-height:1.72;
+  font-kerning:normal; text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease;
+}
+main{padding:0 1.25rem 7rem}
+.col{max-width:35rem;margin-left:auto;margin-right:auto}
+.wide{max-width:44rem;margin-left:auto;margin-right:auto}
+
+/* ---------- Type ---------- */
+header{padding:4.5rem 0 1rem}
+h1{font-size:clamp(2.05rem,7vw,3.1rem);line-height:1.1;font-weight:600;letter-spacing:-.012em;margin:0 0 1.4rem;text-wrap:balance}
+.summary{font-size:1.32rem;line-height:1.52;margin:0 0 1.25rem;text-wrap:pretty}
+.byline{font-size:1rem;color:var(--muted);margin:0 0 .5rem}
+h2{font-size:1.55rem;line-height:1.25;font-weight:600;margin:5rem 0 1.1rem;text-wrap:balance}
+p{margin:0 0 1.2rem;text-wrap:pretty;hyphens:manual}
+a{color:var(--blue);text-decoration-thickness:1px;text-underline-offset:.18em}
+em{font-style:italic}
+.intro{font-size:1.1875rem}
+.note{font-size:1rem;color:var(--muted)}
+
+/* ---------- Figures ---------- */
+figure{margin:2.5rem auto 2.75rem}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:18px;padding:1.4rem 1.4rem 1.2rem}
+figcaption{font-size:1rem;line-height:1.55;color:var(--muted);margin-top:.9rem}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:inherit}
+.live{min-height:5.4em;font-size:1.05rem;line-height:1.6;margin:1rem 0 0;color:var(--ink)}
+.live b{font-weight:600}
+
+/* SVG paint classes */
+.f-bg{fill:var(--bg)} .f-surface{fill:var(--surface)} .f-ink{fill:var(--ink)} .f-muted{fill:var(--muted)} .f-faint{fill:var(--faint)} .f-none{fill:none}
+.f-blue{fill:var(--blue)} .f-blue-soft{fill:var(--blue-soft)} .f-gold{fill:var(--gold)} .f-gold-soft{fill:var(--gold-soft)}
+.f-green{fill:var(--green)} .f-green-soft{fill:var(--green-soft)} .f-red{fill:var(--red)} .f-red-soft{fill:var(--red-soft)}
+.s-bg{stroke:var(--bg)} .s-ink{stroke:var(--ink)} .s-muted{stroke:var(--muted)} .s-faint{stroke:var(--faint)} .s-rule{stroke:var(--rule)}
+.s-blue{stroke:var(--blue)} .s-gold{stroke:var(--gold)} .s-green{stroke:var(--green)} .s-red{stroke:var(--red)}
+.fade{transition:opacity .45s ease}
+.dim{opacity:.28}
+
+/* ---------- Buttons (touch friendly) ---------- */
+button{
+  font:inherit;font-size:1rem;line-height:1.2;color:var(--ink);
+  min-height:44px;padding:.6rem 1.05rem;border-radius:999px;
+  border:1px solid var(--rule);background:var(--bg);
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;
+  transition:background-color .2s ease,border-color .2s ease,color .2s ease;
+}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default;transform:none}
+button[aria-pressed="true"]{background:var(--blue-soft);border-color:var(--blue)}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.controls{display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;margin-top:1.1rem}
+.controls .count{font-size:.95rem;color:var(--muted);margin-left:auto}
+.seg{display:flex;flex-wrap:wrap;gap:.5rem}
+
+/* ---------- Trace widget ---------- */
+.trace{list-style:none;margin:1.2rem 0 0;padding:0;counter-reset:s}
+.trace li{position:relative;padding:0 0 1rem 2.6rem;line-height:1.55;counter-increment:s;animation:in .35s ease both}
+.trace li::before{content:counter(s);position:absolute;left:0;top:.05rem;width:1.8rem;height:1.8rem;border-radius:50%;
+  border:1.5px solid var(--faint);color:var(--muted);font-size:.9rem;display:flex;align-items:center;justify-content:center}
+.trace li:not(:last-child)::after{content:"";position:absolute;left:.88rem;top:2.05rem;bottom:.15rem;width:1.5px;background:var(--rule)}
+.trace li.good::before{content:"\2713";border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.trace li.bad::before{content:"\2715";border-color:var(--red);background:var(--red-soft);color:var(--red)}
+.trace li.good b{color:var(--green)} .trace li.bad b{color:var(--red)}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ---------- Facts ---------- */
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem 1.5rem;margin:1.6rem 0 2rem;padding:0}
+.facts div{border-left:2px solid var(--rule);padding-left:.9rem}
+.facts dt{font-size:1.55rem;font-weight:600;line-height:1.2}
+.facts dd{margin:0;font-size:.98rem;color:var(--muted)}
+@media (min-width:600px){.facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* ---------- Rubric widget ---------- */
+.task{font-size:1.05rem;margin:0 0 1rem;line-height:1.55}
+.crits{display:grid;gap:.5rem;margin:0;padding:0;list-style:none}
+.crit{width:100%;text-align:left;border-radius:12px;display:flex;gap:.75rem;align-items:center;padding:.7rem .9rem;line-height:1.35}
+.crit .box{flex:none;width:1.6rem;height:1.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.95rem;
+  border:1.5px solid var(--red);color:var(--red);background:var(--red-soft)}
+.crit .box::before{content:"\2715"}
+.crit[aria-pressed="true"]{background:var(--bg);border-color:var(--rule)}
+.crit[aria-pressed="true"] .box{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+.crit[aria-pressed="true"] .box::before{content:"\2713"}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:1.3rem}
+.score{border:1px solid var(--rule);border-radius:14px;padding:.9rem 1rem;background:var(--bg)}
+.score .k{font-size:.95rem;color:var(--muted)}
+.score .v{font-size:1.5rem;font-weight:600;line-height:1.3}
+.meter{height:8px;border-radius:99px;background:var(--rule);overflow:hidden;margin-top:.5rem}
+.meter i{display:block;height:100%;width:80%;background:var(--blue);border-radius:99px;transition:width .4s ease}
+.v.yes{color:var(--green)} .v.no{color:var(--red)}
+
+/* ---------- Reading settings dock ---------- */
+.dock{position:fixed;right:0;bottom:0;z-index:30;padding:0 1rem calc(1rem + env(safe-area-inset-bottom,0px)) 0;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end;gap:.6rem}
+.dock>*{pointer-events:auto}
+.round{width:52px;height:52px;padding:0;border-radius:50%;font-size:1.05rem;font-weight:600;background:var(--surface);
+  box-shadow:0 1px 2px rgba(20,30,40,.08),0 4px 14px rgba(20,30,40,.08)}
+.prefs{width:min(19rem,calc(100vw - 2rem));background:var(--surface);border:1px solid var(--rule);border-radius:16px;padding:1rem;
+  box-shadow:0 6px 24px rgba(20,30,40,.12)}
+.prefs[hidden]{display:none}
+.prefs h3{font-size:.95rem;font-weight:600;margin:0 0 .5rem;color:var(--muted)}
+.prefs .seg+h3{margin-top:1rem}
+.prefs .seg button{flex:1 1 auto;padding:.55rem .7rem}
+
+@media (max-width:520px){
+  body{font-size:1.125rem}
+  main{padding:0 1rem 7rem}
+  .panel{padding:1rem .8rem .95rem;border-radius:16px;margin-left:-.5rem;margin-right:-.5rem}
+  .score{padding:.75rem .8rem}
+  .score .v{font-size:1.3rem}
+  header{padding-top:3rem}
+  h2{margin-top:4rem}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<script>
+/* Apply saved reading preferences before paint */
+(function(){try{var t=localStorage.getItem('rc-theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t);var s=parseFloat(localStorage.getItem('rc-scale'));if(s)document.documentElement.style.setProperty('--scale',s);}catch(e){}})();
+</script>
+
+<!-- Shared SVG markers -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="f-muted"/>
+    </marker>
+    <marker id="ah-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="f-gold"/>
+    </marker>
+  </defs>
+</svg>
+
+<main>
+<article>
+
+<header class="col">
+  <h1>Recursa: an AI system that teaches itself a new field</h1>
+  <p class="summary">Recursa makes an AI system better at an unfamiliar field by letting the model write, test, and keep its own notes, with no human expert, no stronger teacher model, and no retraining.</p>
+  <p class="byline">A visual guide to <a href="https://arxiv.org/abs/2611.04035">“Recursa: Toward Recursively Self-Improving Foundation Model Systems”</a> by Erkang Zhu, Yin Lin, Xiaorong Shi, Xuanrui Lin and Jingren Zhou of Alibaba, November 2026.</p>
+</header>
+
+<figure class="wide" aria-label="Three loops circling a notebook, each loop larger than the last">
+  <svg id="hero" viewBox="122 0 236 230" style="max-width:19rem;margin:0 auto" role="img" aria-label="Loops of practice circling the system’s notebook, growing outward">
+    <g id="hero-loops"></g>
+    <g transform="translate(222 92)">
+      <rect x="0" y="0" width="36" height="46" rx="5" class="f-gold-soft s-gold" stroke-width="2"/>
+      <path d="M8 13h20M8 21h20M8 29h14" class="s-gold" stroke-width="2" stroke-linecap="round"/>
+    </g>
+  </svg>
+</figure>
+
+<section class="col">
+  <p class="intro">AI models learn most of what they know once, during training, and are then sent into a world that keeps moving. Put one to work at a law firm and it meets client names, documents and turns of phrase it has never seen. The usual remedy is more training, but new fields rarely come with stacks of expert-written examples to train on. This paper tries something else. It leaves the model untouched and gives the system a notebook (the paper calls it a <em>knowledge repository</em>). The system practices, notices what went wrong, writes down a better way of working, checks that the advice really helps, and keeps it. On legal research tasks it has never seen, that’s enough to take one model from 30 fully correct answers out of 100 to 55.</p>
+</section>
+
+<!-- ============ 1. The example ============ -->
+<section class="col">
+  <h2>Start with one question</h2>
+  <p>Here is a task from the paper’s test set. A lawyer asks: of all the firm’s merger agreements, which is the most recent <em>signed</em> one that contains a no-shop clause? (A no-shop clause stops a seller from looking for a better offer while a deal is pending.)</p>
+  <p>The catch is that contracts don’t label things consistently. The same idea might sit under a heading like “Exclusivity” or “Non-solicitation,” and a document can mention the idea without being the right answer. Here is the same model, before and after Recursa had a chance to learn.</p>
+</section>
+
+<figure class="col panel" id="trace-fig">
+  <div class="seg" role="group" aria-label="Choose a version of the agent">
+    <button type="button" data-trace="before" aria-pressed="true">Without learning</button>
+    <button type="button" data-trace="after" aria-pressed="false">With learning</button>
+  </div>
+  <ol class="trace" id="trace" aria-live="polite"></ol>
+  <figcaption>One test task, with the agent’s steps paraphrased from the paper. It’s a single example, not an average.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Same model, same search tools. The learned version didn’t simply search harder. It carried a rule for recognizing the clause by what it <em>does</em>, a rule the system wrote for itself while practicing on other tasks.</p>
+</section>
+
+<!-- ============ 2. Two gaps ============ -->
+<section class="col">
+  <h2>Two different ways to fail</h2>
+  <p>When a model walks into an unfamiliar field, it can come up short in two distinct ways. The paper calls them the knowledge gap and the behavior gap. Think of the field as a board of shaped slots, and what the model knows as pieces.</p>
+</section>
+
+<figure class="wide">
+  <svg id="gaps" viewBox="0 0 340 270" style="max-width:30rem;margin:0 auto" role="img" aria-label="Left: a grid of shapes with one piece missing, the knowledge gap. Right: a full grid with one piece in the wrong slot, the behavior gap."></svg>
+</figure>
+
+<section class="col">
+  <p>The knowledge gap is about facts and vocabulary: the model simply doesn’t know what’s in this firm’s files or what its terms mean. The behavior gap is subtler. The model may know the relevant facts and still use them badly, like insisting that a clause must be titled “No-Shop” to count.</p>
+  <p>Earlier methods tend to work on one gap or the other. Building skills from documents helps with knowledge; learning from task feedback helps with behavior. Some systems reflect on a failed attempt and then retry that same task. Recursa does both kinds of learning, in two phases, and carries each lesson forward to <em>other</em> tasks.</p>
+</section>
+
+<!-- ============ 3. Anatomy ============ -->
+<section class="col">
+  <h2>Only the notes change</h2>
+  <p>A modern AI agent is more than a model. Around the model sits a <em>harness</em>: the program that hands it the task, lets it use tools like search, and collects its answer. Recursa adds one more part, the knowledge repository, and that is the only thing that learns. Tap a section to see what goes in it.</p>
+</section>
+
+<figure class="wide panel" id="anatomy">
+  <svg viewBox="0 0 480 380" role="img" aria-label="The harness contains a fixed model and a knowledge repository that learns. The repository holds instructions, skills and memory.">
+    <rect x="6" y="6" width="468" height="368" rx="20" class="f-none s-faint" stroke-width="1.5" stroke-dasharray="6 6"/>
+    <text x="28" y="42" font-size="22" font-weight="600" class="f-ink">Harness</text>
+    <text x="28" y="66" font-size="18" class="f-muted">runs the task, the tools, the answer</text>
+    <g transform="translate(436 26)" class="lock"><rect x="0" y="9" width="16" height="12" rx="2.5" class="f-faint"/><path d="M3.5 9V6a4.5 4.5 0 0 1 9 0v3" class="f-none s-faint" stroke-width="2"/></g>
+
+    <circle cx="112" cy="222" r="62" class="f-blue-soft s-blue" stroke-width="2"/>
+    <text x="112" y="218" text-anchor="middle" font-size="22" font-weight="600" class="f-ink">Model</text>
+    <text x="112" y="242" text-anchor="middle" font-size="18" class="f-muted">fixed</text>
+    <g transform="translate(104 168)"><rect x="0" y="7" width="14" height="10" rx="2" class="f-blue"/><path d="M3 7V5a4 4 0 0 1 8 0v2" class="f-none s-blue" stroke-width="1.8"/></g>
+
+    <line x1="180" y1="222" x2="214" y2="222" class="s-muted" stroke-width="2" marker-start="url(#ah-muted)" marker-end="url(#ah-muted)"/>
+
+    <rect x="222" y="92" width="240" height="266" rx="16" class="f-gold-soft s-gold" stroke-width="2"/>
+    <text x="342" y="124" text-anchor="middle" font-size="21" font-weight="600" class="f-ink">Knowledge repository</text>
+    <text x="342" y="147" text-anchor="middle" font-size="18" font-style="italic" class="f-gold">learns</text>
+    <g class="rows">
+      <g data-part="0" style="cursor:pointer"><rect x="238" y="166" width="208" height="52" rx="11" class="row-bg f-surface s-gold" stroke-width="1.5"/><text x="342" y="198" text-anchor="middle" font-size="21" class="row-t f-ink">Instructions</text></g>
+      <g data-part="1" style="cursor:pointer"><rect x="238" y="228" width="208" height="52" rx="11" class="row-bg f-surface s-gold" stroke-width="1.5"/><text x="342" y="260" text-anchor="middle" font-size="21" class="row-t f-ink">Skills</text></g>
+      <g data-part="2" style="cursor:pointer"><rect x="238" y="290" width="208" height="52" rx="11" class="row-bg f-surface s-gold" stroke-width="1.5"/><text x="342" y="322" text-anchor="middle" font-size="21" class="row-t f-ink">Memory</text></g>
+    </g>
+  </svg>
+  <div class="seg controls" role="group" aria-label="Parts of the repository">
+    <button type="button" data-part="0" aria-pressed="true">Instructions</button>
+    <button type="button" data-part="1" aria-pressed="false">Skills</button>
+    <button type="button" data-part="2" aria-pressed="false">Memory</button>
+  </div>
+  <p class="live" id="anatomy-text" aria-live="polite"></p>
+</figure>
+
+<section class="col">
+  <p>Because the repository is plain text, improving the system doesn’t need new training data, a fine-tuning run, or a stronger model to rewrite anything. The model reads its own notes and writes better ones.</p>
+</section>
+
+<!-- ============ 4. Bootstrap ============ -->
+<section class="col">
+  <h2>Phase one: read the library, then practice</h2>
+  <p>Before the system can learn from mistakes, it needs a first draft of its notes. The paper calls this bootstrapping, and it mostly goes after the knowledge gap. Step through it.</p>
+</section>
+
+<figure class="wide panel" id="boot">
+  <svg viewBox="0 0 480 200" role="img" aria-label="Four stages: documents, a map, practice, first notes">
+    <g class="bn fade" data-i="0">
+      <rect x="44" y="52" width="34" height="42" rx="3" class="f-surface s-muted" stroke-width="1.6"/>
+      <rect x="38" y="58" width="34" height="42" rx="3" class="f-surface s-muted" stroke-width="1.6"/>
+      <rect x="32" y="64" width="34" height="42" rx="3" class="f-surface s-muted" stroke-width="1.6"/>
+      <path d="M39 76h20M39 84h20M39 92h13" class="s-faint" stroke-width="1.6" stroke-linecap="round"/>
+      <text x="56" y="152" text-anchor="middle" font-size="21" class="f-ink">Documents</text>
+    </g>
+    <line x1="96" y1="82" x2="136" y2="82" class="s-muted" stroke-width="1.8" marker-end="url(#ah-muted)"/>
+    <g class="bn fade" data-i="1">
+      <path d="M176 64 L152 98 M176 64 L176 98 M176 64 L200 98" class="s-blue" stroke-width="1.8"/>
+      <circle cx="176" cy="60" r="8" class="f-blue"/>
+      <circle cx="152" cy="102" r="7" class="f-blue-soft s-blue" stroke-width="1.6"/>
+      <circle cx="176" cy="102" r="7" class="f-blue-soft s-blue" stroke-width="1.6"/>
+      <circle cx="200" cy="102" r="7" class="f-blue-soft s-blue" stroke-width="1.6"/>
+      <text x="176" y="152" text-anchor="middle" font-size="21" class="f-ink">A map</text>
+    </g>
+    <line x1="216" y1="82" x2="256" y2="82" class="s-muted" stroke-width="1.8" marker-end="url(#ah-muted)"/>
+    <g class="bn fade" data-i="2">
+      <rect x="279" y="58" width="36" height="46" rx="3" class="f-surface s-muted" stroke-width="1.6"/>
+      <text x="297" y="91" text-anchor="middle" font-size="26" font-weight="600" class="f-blue">?</text>
+      <circle cx="318" cy="102" r="9" class="f-green-soft s-green" stroke-width="1.6"/>
+      <path d="M314 102l3 3 5-6" class="f-none s-green" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="297" y="152" text-anchor="middle" font-size="21" class="f-ink">Practice</text>
+    </g>
+    <line x1="336" y1="82" x2="376" y2="82" class="s-muted" stroke-width="1.8" marker-end="url(#ah-muted)"/>
+    <g class="bn fade" data-i="3">
+      <rect x="401" y="58" width="36" height="46" rx="5" class="f-gold-soft s-gold" stroke-width="2"/>
+      <path d="M409 72h20M409 80h20M409 88h14" class="s-gold" stroke-width="2" stroke-linecap="round"/>
+      <text x="419" y="152" text-anchor="middle" font-size="21" class="f-ink">First notes</text>
+    </g>
+  </svg>
+  <p class="live" id="boot-text" aria-live="polite"></p>
+  <div class="controls">
+    <button type="button" class="prev">Back</button>
+    <button type="button" class="next">Next</button>
+    <span class="count" aria-hidden="true"></span>
+  </div>
+</figure>
+
+<!-- ============ 5. Loop ============ -->
+<section class="col">
+  <h2>Phase two: learn from each mistake</h2>
+  <p>Now the real learning begins, and it goes after the behavior gap. Copies of the model, called solvers, attempt training tasks. A learner, which is the <em>very same model</em> in a different role, studies how they did and edits the notes. Every round goes around this loop.</p>
+</section>
+
+<figure class="wide panel" id="loop">
+  <svg viewBox="50 46 380 308" role="img" aria-label="A loop of four steps around the notes: solve, diagnose, modify, verify">
+    <circle cx="240" cy="200" r="120" class="f-none s-rule" stroke-width="2.5"/>
+    <g id="loop-chev"></g>
+    <g transform="translate(224 172)">
+      <rect x="0" y="0" width="32" height="40" rx="5" class="f-gold-soft s-gold" stroke-width="2"/>
+      <path d="M7 11h18M7 18h18M7 25h12" class="s-gold" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <text x="240" y="236" text-anchor="middle" font-size="18" class="f-muted">the notes</text>
+    <g class="lp" data-i="0"><rect x="180" y="57" width="120" height="46" rx="23" class="lp-bg" stroke-width="1.6"/><text x="240" y="86" text-anchor="middle" font-size="21" class="f-ink">Solve</text></g>
+    <g class="lp" data-i="1"><rect x="300" y="177" width="120" height="46" rx="23" class="lp-bg" stroke-width="1.6"/><text x="360" y="206" text-anchor="middle" font-size="21" class="f-ink">Diagnose</text></g>
+    <g class="lp" data-i="2"><rect x="180" y="297" width="120" height="46" rx="23" class="lp-bg" stroke-width="1.6"/><text x="240" y="326" text-anchor="middle" font-size="21" class="f-ink">Modify</text></g>
+    <g class="lp" data-i="3"><rect x="60" y="177" width="120" height="46" rx="23" class="lp-bg" stroke-width="1.6"/><text x="120" y="206" text-anchor="middle" font-size="21" class="f-ink">Verify</text></g>
+    <circle id="loop-dot" cx="240" cy="80" r="9" class="f-blue" opacity="0"/>
+  </svg>
+  <p class="live" id="loop-text" aria-live="polite"></p>
+  <div class="controls">
+    <button type="button" class="prev">Back</button>
+    <button type="button" class="next">Next</button>
+    <span class="count" aria-hidden="true"></span>
+  </div>
+</figure>
+
+<section class="col">
+  <p>The last step deserves a closer look, because it’s what keeps the system from talking itself into bad habits. With no stronger teacher to say what’s right, the only check is evidence: does the edit fix what it was meant to fix, and does it break anything that used to work? Try two candidate edits.</p>
+</section>
+
+<figure class="wide panel" id="verify">
+  <svg viewBox="0 0 480 140" role="img" aria-label="Six tasks: two that were failing and four that were passing">
+    <text x="100" y="30" text-anchor="middle" font-size="18" class="f-muted">were failing</text>
+    <text x="310" y="30" text-anchor="middle" font-size="18" class="f-muted">were passing</text>
+    <path d="M37 40h126M177 40h266" class="s-rule" stroke-width="1.5"/>
+    <g id="vsq"></g>
+  </svg>
+  <div class="controls">
+    <button type="button" data-edit="a">Test edit A</button>
+    <button type="button" data-edit="b">Test edit B</button>
+    <button type="button" data-edit="reset">Reset</button>
+  </div>
+  <p class="live" id="verify-text" aria-live="polite"></p>
+</figure>
+
+<!-- ============ 6. Parallel learners ============ -->
+<section class="col">
+  <h2>Many learners, one set of notes</h2>
+  <p>A single learner working through 150 tasks in a row would be slow, and its notes could drift toward whatever it saw last. So Recursa divides the work. A parent learner hands groups of tasks to several child learners, then combines what they found.</p>
+</section>
+
+<figure class="wide panel" id="tree">
+  <svg viewBox="0 0 480 340" role="img" aria-label="A parent learner splits tasks among four child learners, each with its own copy of the notes, then merges their edits.">
+    <g id="tree-links"></g>
+    <rect x="150" y="30" width="180" height="52" rx="26" id="parent-pill" class="f-blue-soft s-blue" stroke-width="1.8"/>
+    <text x="240" y="62" text-anchor="middle" font-size="21" font-weight="600" class="f-ink">Parent learner</text>
+    <g id="pile"></g>
+    <text x="88" y="104" text-anchor="middle" font-size="17" class="f-muted">training tasks</text>
+    <g id="parent-nb">
+      <rect x="366" y="34" width="32" height="40" rx="5" class="f-gold-soft s-gold" stroke-width="2"/>
+      <path d="M373 45h18M373 52h18M373 59h12" class="s-gold" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <circle id="parent-glow" cx="382" cy="54" r="30" class="f-none s-gold fade" stroke-width="2" opacity="0"/>
+    <text x="382" y="104" text-anchor="middle" font-size="17" class="f-muted">the notes</text>
+    <text id="thought" x="240" y="140" text-anchor="middle" font-size="18" font-style="italic" class="f-muted fade" opacity="0">What worked in every group? Who tries what next?</text>
+    <g id="kids"></g>
+    <text x="240" y="330" text-anchor="middle" font-size="17" class="f-muted">each child edits its own copy of the notes</text>
+    <g id="flyers"></g>
+  </svg>
+  <p class="live" id="tree-text" aria-live="polite"></p>
+  <div class="controls">
+    <button type="button" class="prev">Back</button>
+    <button type="button" class="next">Next</button>
+    <span class="count" aria-hidden="true"></span>
+  </div>
+</figure>
+
+<section class="col">
+  <p>This is where the word <em>recursive</em> earns its place. The model isn’t only solving tasks. It diagnoses its own failures, rewrites its own guidance, merges its own lessons, and decides how the next round of learning should go. No human expert writes the notes, and no stronger model rewrites them.</p>
+</section>
+
+<!-- ============ 7. The test ============ -->
+<section class="col">
+  <h2>The test: a law firm that doesn’t exist</h2>
+  <p>The authors used the Firm Knowledge track of Harvey’s Legal Agent Benchmark, known as LAB. It recreates an entire fictional law firm:</p>
+  <dl class="facts">
+    <div><dt>46</dt><dd>made-up clients</dd></div>
+    <div><dt>266</dt><dd>legal matters</dd></div>
+    <div><dt>9,288</dt><dd>files</dd></div>
+    <div><dt>~108M</dt><dd>tokens of text</dd></div>
+  </dl>
+  <p>That’s hundreds of novels’ worth of reading. Useful knowledge is scattered across files, the same idea goes by different names, and whether an answer is right depends on scope and context, not on finding a matching phrase.</p>
+  <p>The benchmark has 250 tasks with long written answers. The authors split them into 150 to learn from and 100 held back for the final test, arranged so both halves are about equally hard.</p>
+</section>
+
+<figure class="wide">
+  <svg id="dots" viewBox="0 0 480 252" role="img" aria-label="250 dots: 150 filled training tasks above, 100 hollow held-out test tasks below"></svg>
+  <figcaption class="col" style="margin-top:.4rem">The system never practices on the hollow dots. Every score below comes from them.</figcaption>
+</figure>
+
+<section class="col">
+  <p>Each task comes with its own checklist of rubric criteria, and a separate, larger model, Qwen3.8-Max, marks each criterion as met or not. The paper reports two scores, and the difference between them matters. Tap the criteria in this made-up example.</p>
+</section>
+
+<figure class="col panel" id="rubric">
+  <p class="task"><b>Task:</b> find the most recent signed merger agreement with a no-shop clause.</p>
+  <ul class="crits">
+    <li><button type="button" class="crit" aria-pressed="true"><span class="box" aria-hidden="true"></span>Names the right agreement</button></li>
+    <li><button type="button" class="crit" aria-pressed="true"><span class="box" aria-hidden="true"></span>Gives the signing date</button></li>
+    <li><button type="button" class="crit" aria-pressed="true"><span class="box" aria-hidden="true"></span>Recognizes the clause by its content</button></li>
+    <li><button type="button" class="crit" aria-pressed="false"><span class="box" aria-hidden="true"></span>Excludes the unsigned letter of intent</button></li>
+    <li><button type="button" class="crit" aria-pressed="true"><span class="box" aria-hidden="true"></span>Points to the source document</button></li>
+  </ul>
+  <div class="scores" aria-live="polite">
+    <div class="score"><div class="k">Share of criteria met</div><div class="v" id="r-share">80%</div><div class="meter"><i id="r-bar"></i></div></div>
+    <div class="score"><div class="k">All criteria met?</div><div class="v no" id="r-all">No</div></div>
+  </div>
+  <figcaption>An illustrative rubric, not one from the benchmark. One slip and the task doesn’t count as passed.</figcaption>
+</figure>
+
+<section class="col">
+  <p>The headline number in the paper is the strict one, the <em>all-pass rate</em>: the share of tasks where every single criterion is met.</p>
+</section>
+
+<!-- ============ 8. Results ============ -->
+<section class="col">
+  <h2>What happened</h2>
+  <p>Here are the all-pass rates on the 100 held-back tasks. The model is the same in every bar; only the notes differ.</p>
+</section>
+
+<figure class="wide panel" id="results">
+  <div class="seg" role="group" aria-label="Choose a model">
+    <button type="button" data-model="ds" aria-pressed="true">DeepSeek-V4.1-Flash</button>
+    <button type="button" data-model="qw" aria-pressed="false">Qwen3.8-Flash</button>
+  </div>
+  <svg viewBox="0 0 480 310" role="img" aria-label="Bar chart of all-pass rate on held-out tasks" style="margin-top:1rem">
+    <g id="grid"></g>
+    <rect id="ghost" x="214" y="250" width="92" height="0" rx="6" class="f-none s-faint fade" stroke-width="1.6" stroke-dasharray="5 5" opacity="0"/>
+    <rect class="bar f-rule" x="81" y="250" width="92" height="0" rx="6" style="fill:var(--rule)"/>
+    <rect class="bar f-blue-soft s-blue" x="214" y="250" width="92" height="0" rx="6" stroke-width="1.6"/>
+    <rect class="bar f-gold-soft s-gold" x="347" y="250" width="92" height="0" rx="6" stroke-width="1.8"/>
+    <text class="val f-ink" x="127" y="240" text-anchor="middle" font-size="22" font-weight="600"></text>
+    <text class="val f-ink" x="260" y="240" text-anchor="middle" font-size="22" font-weight="600"></text>
+    <text class="val f-ink" x="393" y="240" text-anchor="middle" font-size="22" font-weight="600"></text>
+    <text x="127" y="278" text-anchor="middle" font-size="19" class="f-ink">No learning</text>
+    <text x="260" y="278" text-anchor="middle" font-size="19" class="f-ink">One learner</text>
+    <text x="393" y="278" text-anchor="middle" font-size="19" class="f-ink">Many learners</text>
+    <text x="127" y="300" text-anchor="middle" font-size="15" class="f-muted">starting system</text>
+    <text x="260" y="300" text-anchor="middle" font-size="15" class="f-muted">same notes, alone</text>
+    <text x="393" y="300" text-anchor="middle" font-size="15" class="f-muted">full Recursa</text>
+  </svg>
+  <p class="live" id="results-text" aria-live="polite" style="min-height:3.4em"></p>
+</figure>
+
+<section class="col">
+  <p>With DeepSeek-V4.1-Flash, the system goes from fully solving 30 of 100 unseen tasks to 55. With Qwen3.8-Flash, it climbs from 35 to 46.</p>
+  <p>The middle bar is the most telling comparison. The single learner started from the same bootstrapped notes, used the same model, and saw the same 150 training tasks, but worked through them alone. It reached 43%. Splitting the work, revising separately, then merging and reflecting reached 55%. Qwen3.8-Flash showed the same pattern, and its single learner even ended up scoring <em>below</em> its starting point on its own training tasks. Editing notes over and over doesn’t automatically make them better.</p>
+</section>
+
+<!-- ============ 9. Caveats ============ -->
+<section class="col">
+  <h2>Reading the result carefully</h2>
+  <p>The gains are on unseen tasks from the same benchmark, not on a different field. The evidence comes from one legal benchmark and two models.</p>
+  <p>A larger model, Qwen3.8-Max, still grades the rubrics. The authors also found 46 criteria across 30 tasks that contradicted the task wording or the source files, including criteria in 13 test tasks, and they report scores on the corrected rubrics. Their appendix shows the same overall pattern with the original rubrics.</p>
+  <p>Finally, the many-learner setup bundles several ideas together: splitting the tasks, separate edits, merging, and reflection. The comparison shows the bundle works better than one learner, but it can’t say which ingredient matters most.</p>
+</section>
+
+<!-- ============ 10. Longer road ============ -->
+<section class="col">
+  <h2>The longer road</h2>
+  <p>The title says “toward” for a reason. The authors’ larger goal is a system that improves every part of itself as it meets new fields: the model, the notes, the harness, and the learning process too. This paper builds one layer of that.</p>
+</section>
+
+<figure class="wide">
+  <svg viewBox="0 0 480 350" role="img" aria-label="Three nested rings: the harness outside, the knowledge repository in the middle, the model inside. Only the repository is learned in this paper.">
+    <circle cx="240" cy="175" r="160" class="f-none s-faint" stroke-width="1.8" stroke-dasharray="7 7"/>
+    <text x="240" y="44" text-anchor="middle" font-size="21" class="f-muted">Harness</text>
+    <circle cx="240" cy="175" r="112" class="f-gold-soft s-gold" stroke-width="2.5"/>
+    <text x="240" y="98" text-anchor="middle" font-size="21" font-weight="600" class="f-ink">Knowledge</text>
+    <text x="240" y="123" text-anchor="middle" font-size="21" font-weight="600" class="f-ink">repository</text>
+    <circle cx="240" cy="175" r="44" class="f-bg s-blue" stroke-width="1.8" stroke-dasharray="6 6"/>
+    <text x="240" y="181" text-anchor="middle" font-size="21" class="f-muted">Model</text>
+    <text x="240" y="252" text-anchor="middle" font-size="18" font-style="italic" class="f-gold">learned in this paper</text>
+    <text x="240" y="312" text-anchor="middle" font-size="17" class="f-muted">dashed: held fixed here</text>
+  </svg>
+</figure>
+
+<section class="col">
+  <p>Even so, the result points at something practical. When a new field arrives without expert examples or a stronger model to learn from, a system can get meaningfully better by writing, testing and keeping its own notes, without touching a single weight.</p>
+  <p class="note">The full paper, with method details and appendices, is on <a href="https://arxiv.org/abs/2611.04035">arXiv</a>.</p>
+</section>
+
+</article>
+</main>
+
+<!-- Reading settings -->
+<div class="dock">
+  <div class="prefs" id="prefs" hidden>
+    <h3>Theme</h3>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme-btn="auto">Device</button>
+      <button type="button" data-theme-btn="light">Light</button>
+      <button type="button" data-theme-btn="dark">Dark</button>
+    </div>
+    <h3>Text size</h3>
+    <div class="seg" role="group" aria-label="Text size">
+      <button type="button" id="smaller" aria-label="Smaller text">A−</button>
+      <button type="button" id="larger" aria-label="Larger text">A+</button>
+    </div>
+  </div>
+  <button type="button" class="round" id="prefs-btn" aria-expanded="false" aria-controls="prefs" aria-label="Reading settings">Aa</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function el(tag, attrs, parent){ var e=document.createElementNS(NS,tag); for(var k in attrs){ if(k==="text") e.textContent=attrs[k]; else e.setAttribute(k,attrs[k]); } if(parent) parent.appendChild(e); return e; }
+function ease(t){ return t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+function tween(ms, fn, done){
+  var h={dead:false,cancel:function(){ h.dead=true; }};
+  if(reduced || ms<=0){ fn(1); if(done) done(); return h; }
+  var t0=null;
+  function f(now){ if(h.dead) return; if(t0===null) t0=now; var t=Math.min(1,(now-t0)/ms); fn(ease(t)); if(t<1) requestAnimationFrame(f); else if(done) done(); }
+  requestAnimationFrame(f);
+  return h;
+}
+function $(s,r){ return (r||document).querySelector(s); }
+function $$(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+
+/* ---------- Reading settings ---------- */
+var root=document.documentElement;
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+var theme=load("rc-theme")||"auto";
+var scale=parseFloat(load("rc-scale"))||1;
+function applyTheme(){
+  if(theme==="auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme",theme);
+  $$("[data-theme-btn]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.dataset.themeBtn===theme)); });
+}
+function applyScale(){ root.style.setProperty("--scale", scale); $("#smaller").disabled = scale<=0.875; $("#larger").disabled = scale>=1.3; }
+applyTheme(); applyScale();
+$$("[data-theme-btn]").forEach(function(b){ b.addEventListener("click",function(){ theme=b.dataset.themeBtn; save("rc-theme",theme); applyTheme(); }); });
+$("#smaller").addEventListener("click",function(){ scale=Math.max(0.875, Math.round((scale-0.075)*1000)/1000); save("rc-scale",scale); applyScale(); });
+$("#larger").addEventListener("click",function(){ scale=Math.min(1.3, Math.round((scale+0.075)*1000)/1000); save("rc-scale",scale); applyScale(); });
+var prefs=$("#prefs"), pbtn=$("#prefs-btn");
+function setPrefs(open){ prefs.hidden=!open; pbtn.setAttribute("aria-expanded",String(open)); }
+pbtn.addEventListener("click",function(e){ e.stopPropagation(); setPrefs(prefs.hidden); });
+prefs.addEventListener("click",function(e){ e.stopPropagation(); });
+document.addEventListener("click",function(){ if(!prefs.hidden) setPrefs(false); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape" && !prefs.hidden){ setPrefs(false); pbtn.focus(); } });
+
+/* ---------- Generic stepper ---------- */
+function stepper(fig, n, render){
+  var i=0, prev=$(".prev",fig), next=$(".next",fig), count=$(".count",fig);
+  function update(from){
+    prev.disabled = i===0;
+    next.textContent = i===n-1 ? "Start over" : "Next";
+    count.textContent = "Step "+(i+1)+" of "+n;
+    render(i, from);
+  }
+  prev.addEventListener("click",function(){ if(i>0){ var f=i; i--; update(f); } });
+  next.addEventListener("click",function(){ var f=i; i = i===n-1 ? 0 : i+1; update(f); });
+  update(null);
+}
+
+/* ---------- Hero loops ---------- */
+(function(){
+  var g=$("#hero-loops"), cx=240, cy=115, radii=[48,76,104], ops=[.45,.72,1], offs=[0,28,56];
+  radii.forEach(function(r,i){
+    var a0=(-60+offs[i])*Math.PI/180, a1=a0+300*Math.PI/180;
+    var x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    var p=el("path",{d:"M"+x0.toFixed(2)+" "+y0.toFixed(2)+" A"+r+" "+r+" 0 1 1 "+x1.toFixed(2)+" "+y1.toFixed(2),"class":"f-none s-blue","stroke-width":2.4,"stroke-linecap":"round",opacity:ops[i]},g);
+    var tx=-Math.sin(a1), ty=Math.cos(a1), nx=Math.cos(a1), ny=Math.sin(a1);
+    var tip=[x1+tx*7,y1+ty*7], b1=[x1-tx*4+nx*5.5,y1-ty*4+ny*5.5], b2=[x1-tx*4-nx*5.5,y1-ty*4-ny*5.5];
+    var head=el("path",{d:"M"+tip.join(" ")+" L"+b1.join(" ")+" L"+b2.join(" ")+" Z","class":"f-blue",opacity:0},g);
+    var len=p.getTotalLength();
+    if(reduced){ head.setAttribute("opacity",ops[i]); return; }
+    p.style.strokeDasharray=len; p.style.strokeDashoffset=len;
+    setTimeout(function(){
+      tween(1100,function(t){ p.style.strokeDashoffset=len*(1-t); },function(){ head.setAttribute("opacity",ops[i]); });
+    }, 250+i*420);
+  });
+})();
+
+/* ---------- Trace ---------- */
+(function(){
+  var data={
+    before:[
+      {t:"Searches the files for the phrase “no-shop.”"},
+      {t:"Finds a clause headed “Exclusivity” and sets it aside, because the heading doesn’t say “No-Shop.”"},
+      {t:"Answers <b>Cascade and NovaMart, signed 20 May 2025.</b> The wrong deal.", c:"bad"}
+    ],
+    after:[
+      {t:"Searches for “no-shop,” “exclusivity” and “non-solicitation” from the very start."},
+      {t:"Reads each clause for what it does, not what it’s called."},
+      {t:"Rules out a hotel agreement, and a letter of intent that was never signed."},
+      {t:"Answers <b>Crestline and Lakewood, signed 16 June 2025.</b>", c:"good"}
+    ]
+  };
+  var list=$("#trace"), btns=$$("[data-trace]");
+  function show(k){
+    btns.forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.trace===k)); });
+    list.innerHTML="";
+    data[k].forEach(function(s,i){ var li=document.createElement("li"); li.innerHTML=s.t; if(s.c) li.className=s.c; li.style.animationDelay=(i*90)+"ms"; list.appendChild(li); });
+  }
+  btns.forEach(function(b){ b.addEventListener("click",function(){ show(b.dataset.trace); }); });
+  show("before");
+})();
+
+/* ---------- Two gaps ---------- */
+(function(){
+  var svg=$("#gaps");
+  var slots=["c","s","t","t","c","s","s","t","c"];
+  function shape(type,cx,cy,s,cls,parent,extra){
+    var a={"class":cls,"stroke-width":extra&&extra.sw||1.8};
+    if(extra&&extra.dash) a["stroke-dasharray"]=extra.dash;
+    if(type==="c"){ a.cx=cx; a.cy=cy; a.r=s*.46; return el("circle",a,parent); }
+    if(type==="s"){ var h=s*.4; a.x=cx-h; a.y=cy-h; a.width=2*h; a.height=2*h; a.rx=3; return el("rect",a,parent); }
+    var r=s*.52; a.points=[cx,cy-r, cx+r*.94,cy+r*.62, cx-r*.94,cy+r*.62].map(function(v){return v.toFixed(1);}).join(" ");
+    return el("polygon",a,parent);
+  }
+  function panel(ox, mode){
+    var g=el("g",{},svg);
+    for(var i=0;i<9;i++){
+      var col=i%3,row=Math.floor(i/3), x=ox+col*48, y=28+row*48, cx=x+20, cy=y+20;
+      el("rect",{x:x,y:y,width:40,height:40,rx:8,"class":"f-surface s-rule","stroke-width":1.4},g);
+      if(mode==="missing" && i===4){
+        shape(slots[i],cx,cy,34,"f-none s-red",g,{dash:"4 3",sw:1.8});
+        el("text",{x:cx,y:cy+6,"text-anchor":"middle","font-size":19,"font-weight":600,"class":"f-red",text:"?"},g);
+        continue;
+      }
+      if(mode==="wrong" && i===2){
+        shape(slots[i],cx,cy,34,"f-none s-faint",g,{dash:"4 3",sw:1.4});
+        shape("c",cx,cy,26,"f-red-soft s-red",g,{sw:2});
+        continue;
+      }
+      shape(slots[i],cx,cy,30,"f-blue-soft s-blue",g,{sw:1.8});
+    }
+  }
+  panel(14,"missing"); panel(190,"wrong");
+  var L=[[82,"Knowledge gap","doesn’t have","the facts"],[258,"Behavior gap","has the facts,","applies them wrong"]];
+  L.forEach(function(l){
+    el("text",{x:l[0],y:208,"text-anchor":"middle","font-size":22,"font-weight":600,"class":"f-ink",text:l[1]},svg);
+    el("text",{x:l[0],y:234,"text-anchor":"middle","font-size":18,"class":"f-muted",text:l[2]},svg);
+    el("text",{x:l[0],y:255,"text-anchor":"middle","font-size":18,"class":"f-muted",text:l[3]},svg);
+  });
+  el("line",{x1:170,y1:30,x2:170,y2:250,"class":"s-rule","stroke-width":1.4},svg);
+})();
+
+/* ---------- Anatomy ---------- */
+(function(){
+  var fig=$("#anatomy"), text=$("#anatomy-text");
+  var copy=[
+    "<b>Instructions</b> are standing guidance on how to approach tasks in this field, including which skill to reach for and when.",
+    "<b>Skills</b> are reusable, field-specific know-how. For example: how to tell whether a clause really is a no-shop clause, whatever its heading says.",
+    "<b>Memory</b> holds notes on past tasks: what happened, what went wrong, and reflections on what to do better next time."
+  ];
+  function pick(i){
+    $$("button[data-part]",fig).forEach(function(b){ b.setAttribute("aria-pressed",String(+b.dataset.part===i)); });
+    $$(".rows g",fig).forEach(function(g){
+      var on=+g.dataset.part===i;
+      $(".row-bg",g).setAttribute("class","row-bg s-gold "+(on?"f-gold":"f-surface"));
+      $(".row-t",g).setAttribute("class","row-t "+(on?"f-bg":"f-ink"));
+      $(".row-t",g).setAttribute("font-weight",on?"600":"400");
+    });
+    text.innerHTML=copy[i];
+  }
+  $$("[data-part]",fig).forEach(function(n){ n.addEventListener("click",function(){ pick(+n.dataset.part); }); });
+  pick(0);
+})();
+
+/* ---------- Bootstrap ---------- */
+(function(){
+  var fig=$("#boot"), text=$("#boot-text"), nodes=$$(".bn",fig);
+  var copy=[
+    "<b>Documents.</b> It starts with the field’s raw material. In the paper’s test, that’s a fictional law firm’s client folders and thousands of files.",
+    "<b>A map.</b> The model organizes the pile into a structure it can navigate, so later it knows where to look for what.",
+    "<b>Practice.</b> It makes up practice tasks from the documents and works through them, getting used to this material before facing real tasks.",
+    "<b>First notes.</b> What it learns becomes the first draft of the repository: instructions, skills and memories. This mostly closes the knowledge gap."
+  ];
+  stepper(fig,4,function(i){
+    nodes.forEach(function(nd){ nd.classList.toggle("dim", +nd.dataset.i!==i); });
+    text.innerHTML=copy[i];
+  });
+})();
+
+/* ---------- Loop ---------- */
+(function(){
+  var fig=$("#loop"), text=$("#loop-text"), dot=$("#loop-dot"), chev=$("#loop-chev"), cx=240, cy=200, R=120;
+  [-45,45,135,225].forEach(function(d){
+    var a=d*Math.PI/180, x=cx+R*Math.cos(a), y=cy+R*Math.sin(a), tx=-Math.sin(a), ty=Math.cos(a), nx=Math.cos(a), ny=Math.sin(a);
+    var p1=[x-tx*6+nx*7,y-ty*6+ny*7], p2=[x+tx*6,y+ty*6], p3=[x-tx*6-nx*7,y-ty*6-ny*7];
+    el("path",{d:"M"+p1.join(" ")+" L"+p2.join(" ")+" L"+p3.join(" "),"class":"f-none s-muted","stroke-width":2.2,"stroke-linecap":"round","stroke-linejoin":"round"},chev);
+  });
+  var angles=[-90,0,90,180], cur=-90;
+  var copy=[
+    "<b>Solve.</b> Several solvers attempt training tasks in parallel, each reading the current notes. Their answers are graded, and every step they took is recorded.",
+    "<b>Diagnose.</b> The learner reads the feedback and the solvers’ step-by-step traces, and works out why a task went wrong.",
+    "<b>Modify.</b> It edits an instruction or a skill, or records a memory, so the same mistake is less likely to happen again.",
+    "<b>Verify.</b> It reruns the tasks the edit was meant to fix, plus some that already passed. An edit that fixes one thing but breaks another is thrown out."
+  ];
+  var anim=null;
+  function place(a){ var r=a*Math.PI/180; dot.setAttribute("cx",(cx+R*Math.cos(r)).toFixed(2)); dot.setAttribute("cy",(cy+R*Math.sin(r)).toFixed(2)); }
+  stepper(fig,4,function(i,from){
+    $$(".lp",fig).forEach(function(g){
+      var on=+g.dataset.i===i;
+      $(".lp-bg",g).setAttribute("class","lp-bg "+(on?"f-blue-soft s-blue":"f-surface s-rule"));
+    });
+    text.innerHTML=copy[i];
+    var target=angles[i];
+    if(anim){ anim.cancel(); anim=null; }
+    if(from===null){ cur=target; place(cur); return; }
+    var forward = (from===3 && i===0) || i===from+1;
+    var start=cur, end=target;
+    if(forward){ while(end<=start) end+=360; } else { while(end>=start) end-=360; }
+    cur=((end%360)+360)%360; if(cur>180) cur-=360;
+    anim=tween(700,function(t){ place(start+(end-start)*t); dot.setAttribute("opacity", t<.8 ? 1 : ((1-t)/.2).toFixed(2)); });
+  });
+})();
+
+/* ---------- Verify widget ---------- */
+(function(){
+  var g=$("#vsq"), text=$("#verify-text"), sq=[];
+  var base=[0,0,1,1,1,1];
+  for(var i=0;i<6;i++){
+    var x=37+i*70+(i>=2?0:0), y=56;
+    var grp=el("g",{},g);
+    var r=el("rect",{x:x,y:y,width:56,height:56,rx:10,"stroke-width":1.8},grp);
+    var p=el("path",{"class":"f-none s-bg","stroke-width":3.2,"stroke-linecap":"round","stroke-linejoin":"round"},grp);
+    sq.push({r:r,p:p,x:x,y:y});
+  }
+  function paint(k,ok){
+    var s=sq[k];
+    s.r.setAttribute("class", ok ? "f-green s-green" : "f-red s-red");
+    s.p.setAttribute("d", ok ? "M"+(s.x+16)+" "+(s.y+29)+" l8 8 l16 -17" : "M"+(s.x+19)+" "+(s.y+19)+" l18 18 M"+(s.x+37)+" "+(s.y+19)+" l-18 18");
+  }
+  var timers=[];
+  function clear(){ timers.forEach(clearTimeout); timers=[]; }
+  function set(state){ state.forEach(function(v,k){ paint(k,!!v); }); }
+  function run(target,msg){
+    clear(); set(base); text.innerHTML="Rerunning the six tasks with the edit…";
+    target.forEach(function(v,k){ timers.push(setTimeout(function(){ paint(k,!!v); }, reduced?0:220+k*170)); });
+    timers.push(setTimeout(function(){ text.innerHTML=msg; }, reduced?0:220+6*170));
+  }
+  $$("[data-edit]").forEach(function(b){ b.addEventListener("click",function(){
+    var e=b.dataset.edit;
+    if(e==="a") run([1,1,1,1,1,1],"<b>Accepted.</b> Edit A fixed both failing tasks and every task that passed before still passes. It goes into the notes.");
+    else if(e==="b") run([1,1,1,0,1,1],"<b>Rejected.</b> Edit B fixed both failing tasks, but it broke one that used to pass. The learner throws it away.");
+    else { clear(); set(base); text.innerHTML="Two tasks were failing and four were passing. Each candidate edit is tested against all six."; }
+  }); });
+  set(base); text.innerHTML="Two tasks were failing and four were passing. Each candidate edit is tested against all six.";
+})();
+
+/* ---------- Parent / children ---------- */
+(function(){
+  var fig=$("#tree"), text=$("#tree-text"), links=$("#tree-links"), kidsG=$("#kids"), pileG=$("#pile"), fly=$("#flyers");
+  var kx=[66,182,298,414], kids=[], dots=[], marks=[], lines=[];
+  kx.forEach(function(x,j){
+    lines.push(el("line",{x1:240,y1:82,x2:x,y2:200,"class":"s-rule","stroke-width":1.8},links));
+    var pill=el("rect",{x:x-50,y:200,width:100,height:44,rx:22,"class":"f-surface s-rule","stroke-width":1.6},kidsG);
+    el("text",{x:x,y:228,"text-anchor":"middle","font-size":19,"class":"f-ink",text:"Child "+(j+1)},kidsG);
+    el("rect",{x:x-13,y:262,width:26,height:32,rx:4,"class":"f-gold-soft s-gold","stroke-width":1.8},kidsG);
+    el("path",{d:"M"+(x-7)+" 271h14M"+(x-7)+" 277h14M"+(x-7)+" 283h9","class":"s-gold","stroke-width":1.6,"stroke-linecap":"round"},kidsG);
+    var m=el("circle",{cx:x+13,cy:262,r:0,"class":"f-green s-bg","stroke-width":2},kidsG);
+    kids.push(pill); marks.push(m);
+  });
+  function pilePos(k){ return [70+(k%4)*12, 50+Math.floor(k/4)*13]; }
+  function kidPos(k){ var j=Math.floor(k/3), m=k%3; return [kx[j]-12+m*12, 184]; }
+  for(var k=0;k<12;k++){ var p=pilePos(k); dots.push(el("circle",{cx:p[0],cy:p[1],r:4.5,"class":"f-blue"},pileG)); }
+  var glow=$("#parent-glow"), thought=$("#thought"), ppill=$("#parent-pill");
+  var copy=[
+    "<b>The setup.</b> The parent learner holds the training tasks and the current notes.",
+    "<b>Split.</b> It divides the tasks into groups and hands one group to each child learner, along with a copy of the notes. Four are drawn here.",
+    "<b>Learn locally.</b> Each child runs the solve, diagnose, modify, verify loop on its own group, editing only its own copy.",
+    "<b>Merge.</b> The parent gathers the edited copies and the children’s learning traces, settles edits that contradict each other, and turns lessons that showed up in several groups into general rules.",
+    "<b>Reflect, then repeat.</b> The parent looks back on the round and decides what each learner should work on next. Then the cycle starts again."
+  ];
+  function setStatic(i){
+    dots.forEach(function(d,k){ var p = i>=1 ? kidPos(k) : pilePos(k); d.setAttribute("cx",p[0]); d.setAttribute("cy",p[1]); d.setAttribute("opacity", i>=2 ? 0 : 1); });
+    kids.forEach(function(p){ p.setAttribute("class","f-"+((i===1||i===2)?"blue-soft s-blue":"surface s-rule")); });
+    marks.forEach(function(m){ m.setAttribute("r", i>=2 && i<=4 ? 6 : 0); });
+    glow.setAttribute("opacity", i>=3 ? 1 : 0);
+    thought.setAttribute("opacity", i===4 ? 1 : 0);
+    lines.forEach(function(l){ l.setAttribute("class", i===4 ? "s-gold" : "s-rule"); l.setAttribute("stroke-dasharray", i===4 ? "6 6" : "none"); });
+    ppill.setAttribute("class", (i===1||i===2) ? "f-surface s-rule" : "f-blue-soft s-blue");
+    fly.innerHTML="";
+  }
+  var anim=null;
+  stepper(fig,5,function(i,from){
+    text.innerHTML=copy[i];
+    if(anim){ anim.cancel(); anim=null; }
+    var fwd = from!==null && i===from+1;
+    if(!fwd){ setStatic(i); return; }
+    if(i===1){
+      setStatic(0);
+      kids.forEach(function(p){ p.setAttribute("class","f-blue-soft s-blue"); });
+      ppill.setAttribute("class","f-surface s-rule");
+      anim=tween(900,function(t){ dots.forEach(function(d,k){ var a=pilePos(k), b=kidPos(k); var tt=Math.min(1,Math.max(0,(t*1.4)-(k%3)*.13)); d.setAttribute("cx",a[0]+(b[0]-a[0])*tt); d.setAttribute("cy",a[1]+(b[1]-a[1])*tt - Math.sin(tt*Math.PI)*24); }); },function(){ setStatic(1); });
+    } else if(i===2){
+      setStatic(1);
+      anim=tween(700,function(t){ dots.forEach(function(d){ d.setAttribute("opacity",1-t); }); marks.forEach(function(m,j){ var tt=Math.min(1,Math.max(0,t*1.5-j*.15)); m.setAttribute("r",(6*tt).toFixed(2)); }); },function(){ setStatic(2); });
+    } else if(i===3){
+      setStatic(2);
+      ppill.setAttribute("class","f-blue-soft s-blue");
+      kids.forEach(function(p){ p.setAttribute("class","f-surface s-rule"); });
+      var clones=kx.map(function(x){ return el("rect",{x:x-13,y:262,width:26,height:32,rx:4,"class":"f-gold s-gold","stroke-width":1.5,opacity:.9},fly); });
+      anim=tween(1000,function(t){ clones.forEach(function(c,j){ var x0=kx[j]-13, y0=262, x1=369, y1=38; c.setAttribute("x",x0+(x1-x0)*t); c.setAttribute("y",y0+(y1-y0)*t - Math.sin(t*Math.PI)*30); c.setAttribute("opacity",(.9*(1-t*.85)).toFixed(2)); }); },function(){ setStatic(3); });
+    } else { setStatic(i); }
+  });
+})();
+
+/* ---------- Dataset dots ---------- */
+(function(){
+  var svg=$("#dots");
+  for(var k=0;k<250;k++){
+    var col=k%25,row=Math.floor(k/25), x=24+col*18, y=20+row*17+(row>=6?16:0);
+    if(k<150) el("circle",{cx:x,cy:y,r:5.6,"class":"f-blue-soft s-blue","stroke-width":1.3},svg);
+    else el("circle",{cx:x,cy:y,r:5.2,"class":"f-none s-muted","stroke-width":1.5},svg);
+  }
+  el("circle",{cx:30,cy:236,r:6,"class":"f-blue-soft s-blue","stroke-width":1.3},svg);
+  el("text",{x:44,y:242,"font-size":19,"class":"f-ink",text:"150 to learn from"},svg);
+  el("circle",{cx:222,cy:236,r:5.6,"class":"f-none s-muted","stroke-width":1.5},svg);
+  el("text",{x:236,y:242,"font-size":19,"class":"f-ink",text:"100 held back for testing"},svg);
+})();
+
+/* ---------- Rubric ---------- */
+(function(){
+  var btns=$$(".crit"), share=$("#r-share"), bar=$("#r-bar"), all=$("#r-all");
+  function update(){
+    var n=btns.filter(function(b){ return b.getAttribute("aria-pressed")==="true"; }).length;
+    var pct=Math.round(n/btns.length*100);
+    share.textContent=pct+"%"; bar.style.width=pct+"%";
+    var ok=n===btns.length; all.textContent= ok ? "Yes, it passes" : "No";
+    all.className="v "+(ok?"yes":"no");
+  }
+  btns.forEach(function(b){ b.addEventListener("click",function(){ b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed")!=="true")); update(); }); });
+  update();
+})();
+
+/* ---------- Results ---------- */
+(function(){
+  var fig=$("#results"), grid=$("#grid"), bars=$$(".bar",fig), vals=$$(".val",fig), ghost=$("#ghost"), text=$("#results-text");
+  var base=250, k=220/60;
+  [0,20,40,60].forEach(function(v){
+    var y=base-v*k;
+    el("line",{x1:60,y1:y,x2:462,y2:y,"class":"s-rule","stroke-width":v===0?1.6:1},grid);
+    el("text",{x:52,y:y+5,"text-anchor":"end","font-size":15,"class":"f-muted",text:v+"%"},grid);
+  });
+  var data={
+    ds:{v:[30,43,55], note:"DeepSeek-V4.1-Flash: 30% with no learning, 43% with one learner, 55% with Recursa’s many learners."},
+    qw:{v:[35,null,46], note:"Qwen3.8-Flash: 35% with no learning and 46% with many learners. The single learner landed below 46%."}
+  };
+  var cur=[0,0,0], anim=null, shown=false;
+  function draw(v){
+    v.forEach(function(x,i){ var h=x*k; bars[i].setAttribute("height",Math.max(0,h).toFixed(2)); bars[i].setAttribute("y",(base-h).toFixed(2)); });
+  }
+  function show(m, animate){
+    $$("[data-model]",fig).forEach(function(b){ b.setAttribute("aria-pressed",String(b.dataset.model===m)); });
+    var tv=data[m].v, from=cur.slice(), to=tv.map(function(x){ return x===null?0:x; });
+    ghost.setAttribute("opacity", tv[1]===null ? 1 : 0);
+    ghost.setAttribute("height", (46*k).toFixed(2)); ghost.setAttribute("y",(base-46*k).toFixed(2));
+    text.textContent=data[m].note;
+    if(anim){ anim.cancel(); }
+    var live=[0,0,0];
+    anim=tween(animate?750:0,function(t){
+      var now=from.map(function(f,i){ return f+(to[i]-f)*t; }); live=now; cur=now;
+      draw(now);
+      now.forEach(function(x,i){
+        if(tv[i]===null){ vals[i].textContent="under 46%"; vals[i].setAttribute("y",(base-46*k-10).toFixed(2)); vals[i].setAttribute("font-size","17"); vals[i].setAttribute("class","val f-muted"); }
+        else { vals[i].textContent=(Math.round(x*10)/10).toFixed(0)+"%"; vals[i].setAttribute("y",(base-x*k-10).toFixed(2)); vals[i].setAttribute("font-size","22"); vals[i].setAttribute("class","val f-ink"); }
+      });
+    },function(){ cur=to.slice(); });
+  }
+  $$("[data-model]",fig).forEach(function(b){ b.addEventListener("click",function(){ shown=true; show(b.dataset.model,true); }); });
+  /* grow bars once when the chart scrolls into view */
+  function first(){ if(shown) return; shown=true; show("ds",true); }
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ first(); io.disconnect(); } }); },{threshold:.35});
+    io.observe(fig);
+  } else first();
+  draw([0,0,0]); text.textContent=data.ds.note;
+})();
+
+})();
+</script>
+</body>
+</html>
