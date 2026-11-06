@@ -60,3 +60,6 @@
 - The Agentic Scientist: Orchestrating Coding Agents for Automated Scientific (Co-)Discovery
   - https://arxiv.org/html/2610.18933v1
   - https://edangx100.github.io/interesting_papers/sakana-agentic-scientist
+- Recursa: Toward Recursively Self-Improving Foundation Model Systems
+  - https://arxiv.org/html/2611.04035v1
+  - https://edangx100.github.io/interesting_papers/recursa-self-improving-foundation-model-systems
