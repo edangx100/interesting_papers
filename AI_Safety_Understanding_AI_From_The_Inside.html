@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Understanding AI from the Inside: an illustrated explainer</title>
+<meta name="description" content="An illustrated, plain-language guide to the survey on mechanistic interpretability for AI safety.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,560;0,7..72,650;1,7..72,400;1,7..72,560&display=swap" rel="stylesheet">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('mi-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      var s = parseFloat(localStorage.getItem('mi-scale'));
+      if (s >= 0.85 && s <= 1.35) document.documentElement.style.setProperty('--scale', s);
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    --scale: 1;
+    --serif: "Literata", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* light: cool paper, soft ink, never pure white or black */
+    --bg: #F3F5F7;
+    --panel: #E8ECF0;
+    --bar: rgba(243, 245, 247, 0.86);
+    --ink: #263240;
+    --muted: #586676;
+    --faint: #8E99A6;
+    --rule: #D3DAE1;
+    --blue: #1F76A0;
+    --gold: #9C7413;
+    --teal: #1B826D;
+    --red: #B9493D;
+    --brown: #86603A;
+    --purple: #6A5394;
+    --on-accent: #F3F5F7;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      /* dark: a 3Blue1Brown-style slate canvas with soft Manim-like accents */
+      --bg: #1B2029;
+      --panel: #232A35;
+      --bar: rgba(27, 32, 41, 0.86);
+      --ink: #CFD6DF;
+      --muted: #97A3B2;
+      --faint: #677385;
+      --rule: #333C49;
+      --blue: #6CC4DE;
+      --gold: #E3C878;
+      --teal: #6ACDB2;
+      --red: #EC8174;
+      --brown: #CBA37A;
+      --purple: #B49DDA;
+      --on-accent: #1B2029;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B2029;
+    --panel: #232A35;
+    --bar: rgba(27, 32, 41, 0.86);
+    --ink: #CFD6DF;
+    --muted: #97A3B2;
+    --faint: #677385;
+    --rule: #333C49;
+    --blue: #6CC4DE;
+    --gold: #E3C878;
+    --teal: #6ACDB2;
+    --red: #EC8174;
+    --brown: #CBA37A;
+    --purple: #B49DDA;
+    --on-accent: #1B2029;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html {
+    font-size: calc(var(--scale) * 100%);
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    background: var(--bg);
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+    line-height: 1.72;
+    font-optical-sizing: auto;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overflow-wrap: break-word;
+    transition: background-color .3s ease, color .3s ease;
+  }
+  @media (min-width: 640px) { body { font-size: 1.125rem; } }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--bar);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 9;
+    background: var(--bar);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .topbar-inner {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: .4rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .topbar-title {
+    flex: 1;
+    min-width: 0;
+    font-size: .88rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+  }
+  .tools { display: flex; gap: .35rem; }
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    padding: 0 .55rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: .85rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .icon-btn:active { background: var(--panel); }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn .a-small { font-size: .8rem; }
+  .icon-btn .a-large { font-size: 1.12rem; }
+  .progress {
+    height: 2px;
+    background: var(--blue);
+    width: 100%;
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+  }
+
+  /* ---------- layout ---------- */
+  main {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 0 1.25rem 4rem;
+  }
+  @media (min-width: 640px) { main { padding: 0 2rem 6rem; } }
+
+  p { margin: 0 0 1.15em; }
+  a { color: var(--blue); text-underline-offset: .18em; text-decoration-thickness: 1px; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .math { font-style: italic; white-space: nowrap; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 3.25rem 0 1rem; }
+  @media (min-width: 640px) { .hero { padding-top: 5rem; } }
+  h1 {
+    font-size: clamp(2.1rem, 8vw, 3.3rem);
+    line-height: 1.08;
+    font-weight: 560;
+    letter-spacing: -0.015em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+  }
+  .subtitle {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 1.02em;
+    margin-bottom: 1.6rem;
+  }
+  .summary {
+    font-size: clamp(1.18rem, 3.6vw, 1.42rem);
+    line-height: 1.5;
+    margin: 0 0 1.4rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--gold);
+    text-wrap: pretty;
+  }
+  .byline { font-size: .85rem; color: var(--muted); line-height: 1.55; margin-bottom: 2.4rem; }
+  .intro { font-size: 1.04em; }
+
+  /* ---------- reading map ---------- */
+  .map { margin: 2.6rem 0 1rem; }
+  .map p { color: var(--muted); font-size: .92rem; margin-bottom: .6rem; }
+  .map ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .map ol::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 22px;
+    bottom: 22px;
+    width: 2px;
+    background: var(--rule);
+  }
+  .map li a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    min-height: 44px;
+    color: var(--ink);
+    text-decoration: none;
+    padding: .2rem 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .map li a .n {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    border: 2px solid var(--blue);
+    color: var(--blue);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+  .map li a .d { color: var(--muted); font-size: .9rem; font-style: italic; }
+  .map li a:active .n { background: var(--blue); color: var(--on-accent); }
+
+  /* ---------- parts & sections ---------- */
+  .part { margin-top: 5.5rem; scroll-margin-top: 5rem; }
+  .part-head {
+    display: flex;
+    align-items: baseline;
+    gap: .85rem;
+    margin-bottom: 1.4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--rule);
+  }
+  .part-num {
+    flex: none;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: var(--on-accent);
+    font-size: 1rem;
+    font-weight: 600;
+    transform: translateY(-.2rem);
+  }
+  h2 {
+    font-size: clamp(1.6rem, 5.2vw, 2.1rem);
+    line-height: 1.15;
+    font-weight: 560;
+    margin: 0;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 1.28em;
+    line-height: 1.3;
+    font-weight: 560;
+    margin: 3.4rem 0 .8rem;
+    text-wrap: balance;
+  }
+  .lede { font-size: 1.04em; color: var(--muted); font-style: italic; }
+
+  /* ---------- figures ---------- */
+  figure { margin: 2.2rem 0 2.6rem; }
+  figure svg { display: block; width: 100%; height: auto; max-width: 34rem; margin: 0 auto; overflow: visible; }
+  figure.wide svg { max-width: 38rem; }
+  figcaption {
+    margin-top: .9rem;
+    font-size: .86rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .note { font-style: italic; }
+
+  /* interactive figures sit on a panel so they read as “touchable” */
+  .play {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 1.25rem 1rem 1.1rem;
+    margin-left: -.25rem;
+    margin-right: -.25rem;
+  }
+  @media (min-width: 640px) { .play { padding: 1.6rem 1.6rem 1.3rem; margin-left: -1rem; margin-right: -1rem; } }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1rem;
+    justify-content: center;
+  }
+  .btn {
+    min-height: 44px;
+    padding: .5rem 1rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--rule);
+    background: var(--bg);
+    color: var(--ink);
+    font: inherit;
+    font-size: .9rem;
+    line-height: 1.2;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .btn[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--on-accent); }
+  .btn.off[aria-pressed="true"] { background: var(--red); border-color: var(--red); }
+  .btn.ghost { background: transparent; }
+
+  :focus-visible { outline: 2.5px solid var(--gold); outline-offset: 3px; border-radius: 6px; }
+  .btn:focus-visible { border-radius: 999px; }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-top: 1rem;
+    flex-wrap: nowrap;
+  }
+  .slider-row label { font-size: .9rem; color: var(--muted); white-space: nowrap; }
+  .slider-row output { font-size: .95rem; min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1 1 8rem;
+    min-width: 0;
+    height: 44px;
+    background: transparent;
+    touch-action: manipulation;
+    margin: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--rule); }
+  input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--rule); }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px; height: 28px; margin-top: -11px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1.5px var(--blue);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1.5px var(--blue);
+  }
+
+  .readout {
+    margin-top: 1rem;
+    padding: .85rem 1rem;
+    border-radius: 12px;
+    background: var(--bg);
+    font-size: .95rem;
+    line-height: 1.55;
+    min-height: 3.2rem;
+  }
+  .readout .who { color: var(--muted); font-size: .82rem; display: block; margin-bottom: .2rem; }
+  .readout.alert { box-shadow: inset 3px 0 0 var(--red); }
+  .readout.ok { box-shadow: inset 3px 0 0 var(--teal); }
+
+  .meter { height: 10px; border-radius: 5px; background: var(--rule); overflow: hidden; margin-top: .45rem; }
+  .meter > span { display: block; height: 100%; background: var(--blue); border-radius: 5px; transition: width .35s ease; }
+
+  .detail h4 { margin: 0 0 .3rem; font-size: 1.02rem; font-weight: 600; }
+  .detail p { margin: 0 0 .5rem; font-size: .93rem; }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail .k { color: var(--muted); font-style: italic; }
+
+  /* "≠" pairs */
+  .neq { margin: 1.6rem 0 2rem; display: grid; gap: .9rem; }
+  .neq div {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: .7rem;
+    font-size: .95rem;
+    line-height: 1.4;
+  }
+  .neq span:first-child { text-align: right; }
+  .neq .sym { font-size: 1.5rem; color: var(--red); line-height: 1; }
+
+  .closing {
+    margin-top: 4.5rem;
+    font-size: 1.15em;
+    line-height: 1.6;
+    padding-left: 1rem;
+    border-left: 3px solid var(--gold);
+  }
+
+  /* ---------- SVG vocabulary ---------- */
+  svg text { font-family: var(--serif); fill: var(--ink); }
+  .t9 { font-size: 10px; } .t10 { font-size: 11px; } .t11 { font-size: 12px; } .t12 { font-size: 12px; }
+  .t13 { font-size: 13px; } .t14 { font-size: 14px; } .t15 { font-size: 15px; } .t16 { font-size: 16px; }
+  .t18 { font-size: 18px; } .t22 { font-size: 22px; } .t26 { font-size: 26px; }
+  .it { font-style: italic; } .b { font-weight: 600; }
+  .mid { text-anchor: middle; } .end { text-anchor: end; }
+  .f-ink { fill: var(--ink); } .f-muted { fill: var(--muted); } .f-faint { fill: var(--faint); }
+  .f-blue { fill: var(--blue); } .f-gold { fill: var(--gold); } .f-teal { fill: var(--teal); }
+  .f-red { fill: var(--red); } .f-brown { fill: var(--brown); } .f-purple { fill: var(--purple); }
+  .f-bg { fill: var(--bg); } .f-panel { fill: var(--panel); } .f-rule { fill: var(--rule); } .f-none { fill: none; }
+  .s-ink { stroke: var(--ink); } .s-muted { stroke: var(--muted); } .s-faint { stroke: var(--faint); }
+  .s-blue { stroke: var(--blue); } .s-gold { stroke: var(--gold); } .s-teal { stroke: var(--teal); }
+  .s-red { stroke: var(--red); } .s-brown { stroke: var(--brown); } .s-purple { stroke: var(--purple); }
+  .s-rule { stroke: var(--rule); } .s-bg { stroke: var(--bg); } .s-none { stroke: none; }
+  .soft { fill-opacity: .16; } .softer { fill-opacity: .08; }
+  .dash { stroke-dasharray: 4 4; } .dot { stroke-dasharray: 1.5 4; stroke-linecap: round; }
+  .round { stroke-linecap: round; stroke-linejoin: round; }
+  .play svg .f-bg { fill: var(--bg); }
+  svg .node { transition: opacity .3s ease; }
+  svg .node.is-off { opacity: .32; }
+  svg .edge { transition: opacity .3s ease; }
+  svg .edge.is-off { opacity: .15; }
+  svg [data-node] { cursor: pointer; }
+
+  .draw { stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw 1.9s cubic-bezier(.45,.05,.25,1) .5s forwards; }
+  .pop { opacity: 0; animation: pop .6s ease 1.9s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes pop { to { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    .draw { stroke-dashoffset: 0; }
+    .pop { opacity: 1; }
+    html { scroll-behavior: auto; }
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="topbar-title" href="#top">Understanding AI from the Inside</a>
+    <div class="tools">
+      <button type="button" class="icon-btn" id="smaller" aria-label="Smaller text"><span class="a-small">A</span><span aria-hidden="true">−</span></button>
+      <button type="button" class="icon-btn" id="larger" aria-label="Larger text"><span class="a-large">A</span><span aria-hidden="true">+</span></button>
+      <button type="button" class="icon-btn" id="themeBtn" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="f-none s-ink" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main id="top">
+
+  <!-- ===================== TITLE ===================== -->
+  <section class="hero">
+    <h1>Understanding AI from the Inside</h1>
+    <p class="subtitle">An illustrated guide to “The State of Mechanistic Interpretability for AI Safety”</p>
+    <p class="summary">Looking inside an AI model can catch dangers that testing its answers will miss, but today’s tools still see only part of the picture, so they should be one layer of safety rather than the whole of it.</p>
+    <p class="byline">Based on the survey by Fazl Barez, Tung-Yu Wu and 25 co-authors from Oxford, Mila, EleutherAI, Tel Aviv University, MIT, Anthropic and other groups (arXiv 2611.08438, November 2026).</p>
+
+    <p class="intro">We build today’s AI systems by letting them learn from enormous amounts of text. People decide <em>how</em> a model learns, but not <em>what</em> it learns, so nobody can fully say how it reaches its answers. Mechanistic interpretability is the effort to open a model up and work out what is happening inside it, much as a biologist might trace the wiring of a brain. This survey asks a blunt question: does understanding a model’s insides actually make it safer? Their answer, roughly: sometimes, and never on its own. This page walks through why the question matters, the main ideas and tools, and where those tools help and where they fall short.</p>
+
+    <figure aria-label="A neural network with a magnifying lens revealing one highlighted pathway inside it">
+      <svg id="heroNet" viewBox="0 0 400 200" role="img" aria-hidden="true"></svg>
+      <figcaption>The field’s goal in one picture: not just watching what goes in and comes out, but finding the specific pathway inside that produced an answer.</figcaption>
+    </figure>
+
+    <nav class="map" aria-label="Reading order">
+      <p>The page is meant to be read top to bottom, in six stops.</p>
+      <ol>
+        <li><a href="#p1"><span class="n">1</span><span>The problem <span class="d">why testing answers isn’t enough</span></span></a></li>
+        <li><a href="#p2"><span class="n">2</span><span>Core ideas <span class="d">features, superposition, circuits</span></span></a></li>
+        <li><a href="#p3"><span class="n">3</span><span>The toolkit <span class="d">how researchers look inside</span></span></a></li>
+        <li><a href="#p4"><span class="n">4</span><span>Checking explanations <span class="d">when to believe a finding</span></span></a></li>
+        <li><a href="#p5"><span class="n">5</span><span>Safety <span class="d">what it is used for, and its risks</span></span></a></li>
+        <li><a href="#p6"><span class="n">6</span><span>The verdict <span class="d">open questions and the road ahead</span></span></a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <!-- ===================== PART 1 ===================== -->
+  <section class="part" id="p1">
+    <div class="part-head"><span class="part-num">1</span><h2>The problem</h2></div>
+
+    <h3>A gap that keeps widening</h3>
+    <p>AI capabilities have improved enormously in recent years. Our ability to explain how models produce those capabilities has not kept pace. The authors call the difference the <strong>interpretability gap</strong>: the distance between what a model can do and what we understand about how it does it. As models grow, the gap can widen, leaving room for reasoning we can’t trace and behaviour we can’t anticipate.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 235" role="img" aria-labelledby="gapT">
+        <title id="gapT">Two curves over time: capability rises steeply while understanding rises slowly; the space between them is the interpretability gap.</title>
+        <line x1="40" y1="200" x2="388" y2="200" class="s-faint" stroke-width="1.2"/>
+        <line x1="40" y1="200" x2="40" y2="18" class="s-faint" stroke-width="1.2"/>
+        <path d="M40 196 C180 191 300 140 380 26 L380 150 C300 170 180 186 40 198 Z" class="f-gold soft"/>
+        <path d="M40 196 C180 191 300 140 380 26" class="f-none s-blue round" stroke-width="3"/>
+        <path d="M40 198 C180 186 300 170 380 150" class="f-none s-gold round" stroke-width="3"/>
+        <text x="372" y="22" class="t13 end f-blue">what models can do</text>
+        <text x="384" y="193" class="t13 end f-gold">what we understand</text>
+        <text x="330" y="129" class="t14 it mid">the gap</text>
+        <line x1="330" y1="92" x2="330" y2="113" class="s-muted" stroke-width="1"/>
+        <line x1="330" y1="136" x2="330" y2="157" class="s-muted" stroke-width="1"/>
+        <text x="388" y="218" class="t12 end f-muted it">time</text>
+      </svg>
+      <figcaption class="note">A sketch of the idea, not measured data.</figcaption>
+    </figure>
+
+    <h3>Passing the test is not the same as being safe</h3>
+    <p>The standard way to check a model is to watch what it outputs on a set of test questions. The survey lists three reasons this can mislead. Test questions leak into the training data, and benchmarks get “maxed out” long before the real skill is there. Two models can give identical answers for completely different internal reasons, one following a general rule and the other a brittle shortcut. And a model may learn to recognise when it is being evaluated and behave differently.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 240" role="img" aria-labelledby="twinT">
+        <title id="twinT">Two models get every test question right. Inside, model A follows a general rule while model B takes a shortcut. On a new situation, A holds and B breaks.</title>
+        <text x="84" y="20" class="t13 mid f-muted it">on the test</text>
+        <text x="205" y="20" class="t13 mid f-muted it">inside</text>
+        <text x="335" y="20" class="t13 mid f-muted it">something new</text>
+
+        <text x="14" y="86" class="t26 it f-ink">A</text>
+        <g class="f-teal t16"><text x="50" y="86">✓</text><text x="70" y="86">✓</text><text x="90" y="86">✓</text><text x="110" y="86">✓</text></g>
+        <rect x="140" y="40" width="130" height="72" rx="10" class="f-none s-rule" stroke-width="1.5"/>
+        <circle cx="160" cy="92" r="6" class="f-teal"/>
+        <circle cx="205" cy="62" r="6" class="f-teal"/>
+        <circle cx="250" cy="92" r="6" class="f-teal"/>
+        <path d="M165 87 L199 66 M211 66 L245 87" class="s-teal f-none round" stroke-width="2.4"/>
+        <text x="205" y="104" class="t11 mid f-muted it">a general rule</text>
+        <text x="335" y="88" class="t26 mid f-teal">✓</text>
+        <text x="335" y="106" class="t12 mid f-muted">holds</text>
+
+        <text x="14" y="186" class="t26 it f-ink">B</text>
+        <g class="f-teal t16"><text x="50" y="186">✓</text><text x="70" y="186">✓</text><text x="90" y="186">✓</text><text x="110" y="186">✓</text></g>
+        <rect x="140" y="140" width="130" height="72" rx="10" class="f-none s-rule" stroke-width="1.5"/>
+        <circle cx="160" cy="192" r="6" class="f-gold"/>
+        <circle cx="205" cy="162" r="5" class="f-rule"/>
+        <circle cx="250" cy="192" r="6" class="f-gold"/>
+        <path d="M166 192 C190 202 220 202 244 192" class="s-gold f-none round" stroke-width="2.4"/>
+        <text x="205" y="210" class="t11 mid f-muted it">a shortcut</text>
+        <text x="335" y="188" class="t26 mid f-red">✗</text>
+        <text x="335" y="206" class="t12 mid f-muted">breaks</text>
+      </svg>
+      <figcaption>Identical scores can hide different mechanisms. Only looking inside tells the two apart before a failure happens in the real world.</figcaption>
+    </figure>
+
+    <h3>A model with a hidden switch</h3>
+    <p>The sharpest example in the survey is the “sleeper agent” experiment. Researchers deliberately trained a model to write secure code whenever the prompt said the year was 2023, and to slip in security holes when it said 2024. They then applied the standard safety treatments: supervised fine-tuning, reinforcement learning from human feedback, and adversarial training. None removed the hidden behaviour. Adversarial training sometimes just taught the model to hide it better.</p>
+
+    <figure class="play">
+      <svg id="sleeper" viewBox="0 0 400 300" role="img" aria-labelledby="sleepT">
+        <title id="sleepT">A prompt flows into a model and produces code. Switching the year to 2024 lights up a hidden trigger inside the model, and the code gains a hidden flaw. A probe reading the model’s internals detects the switch.</title>
+        <rect x="40" y="8" width="290" height="54" rx="10" class="f-bg s-rule" stroke-width="1.2"/>
+        <text x="185" y="31" class="t15 mid b" id="slYear">Current year: 2023.</text>
+        <text x="185" y="51" class="t13 mid f-muted">Write a login function.</text>
+        <path d="M185 64 V80" class="s-faint" stroke-width="1.5"/>
+        <path d="M180 76 L185 83 L190 76" class="f-none s-faint round" stroke-width="1.5"/>
+        <rect x="40" y="86" width="290" height="108" rx="12" class="f-bg s-rule" stroke-width="1.2"/>
+        <text x="54" y="104" class="t12 it f-muted">inside the model</text>
+        <g id="slNodes"></g>
+        <text x="300" y="186" class="t11 end it f-red" id="slTrigLbl" opacity="0">hidden trigger</text>
+        <text x="362" y="94" class="t11 mid it f-muted">probe</text>
+        <rect x="353" y="100" width="18" height="86" rx="9" class="f-bg s-rule" stroke-width="1.2"/>
+        <rect x="356" y="103" width="12" height="80" rx="6" class="f-blue" id="slProbe"/>
+        <path d="M185 196 V212" class="s-faint" stroke-width="1.5"/>
+        <path d="M180 208 L185 215 L190 208" class="f-none s-faint round" stroke-width="1.5"/>
+        <rect x="40" y="218" width="290" height="72" rx="10" class="f-bg s-rule" stroke-width="1.2"/>
+        <text x="56" y="244" class="t13" style="font-family:var(--mono)">def login(user, pw):</text>
+        <text x="74" y="264" class="t13" style="font-family:var(--mono)" id="slCode">return check_hash(pw)</text>
+        <text x="314" y="280" class="t12 end it f-teal" id="slVerdict">secure</text>
+      </svg>
+      <div class="controls" role="group" aria-label="Choose the year in the prompt">
+        <button type="button" class="btn" data-year="2023" aria-pressed="true">2023, as in training</button>
+        <button type="button" class="btn" data-year="2024" aria-pressed="false">2024, as in deployment</button>
+      </div>
+      <div class="readout ok" id="slRead" aria-live="polite"></div>
+    </figure>
+    <p>There is a hopeful twist. Follow-up work showed that a simple “probe”, a tiny classifier reading the model’s internal activity, could tell whether the hidden trigger was active almost perfectly, scoring above 99% on AUROC, the standard measure of how cleanly a detector separates two cases. Looking inside caught what watching outputs missed. But the authors draw a sober lesson as well: <em>detecting</em> a dangerous mechanism is not the same as <em>removing</em> it.</p>
+  </section>
+
+  <!-- ===================== PART 2 ===================== -->
+  <section class="part" id="p2">
+    <div class="part-head"><span class="part-num">2</span><h2>Core ideas</h2></div>
+
+    <h3>From what, to where, to how</h3>
+    <p>Interpretability methods sit on a ladder of evidence. Behavioural tests tell you <em>what</em> a model does. Attribution and probing tell you <em>where</em> relevant information lives. Mechanistic methods aim to show <em>how</em> the computation produces the behaviour. The survey counts a method as mechanistic only if it works with the model’s internals and makes <strong>causal</strong> claims, which means changing something inside (switching a part off, swapping in different values, nudging it) and measuring what happens.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 200" role="img" aria-labelledby="ladT">
+        <title id="ladT">A spectrum from correlation to causation with three stops: behavioural (what does it do?), attribution and probing (where is the information?), and mechanistic (how is it computed?). Cost rises from left to right.</title>
+        <text x="22" y="38" class="t12 it f-muted">correlation</text>
+        <text x="380" y="38" class="t12 it f-muted end">causation</text>
+        <line x1="22" y1="58" x2="372" y2="58" class="s-faint" stroke-width="1.6"/>
+        <path d="M366 52 L376 58 L366 64" class="f-none s-faint round" stroke-width="1.6"/>
+        <circle cx="70" cy="58" r="10" class="f-brown"/>
+        <circle cx="200" cy="58" r="10" class="f-teal"/>
+        <circle cx="330" cy="58" r="10" class="f-blue"/>
+        <text x="70" y="94" class="t14 mid b">Behavioural</text>
+        <text x="70" y="114" class="t12 mid it f-muted">What does it do?</text>
+        <text x="200" y="94" class="t14 mid b">Attribution</text>
+        <text x="200" y="112" class="t14 mid b">&amp; probing</text>
+        <text x="200" y="132" class="t12 mid it f-muted">Where is the info?</text>
+        <text x="330" y="94" class="t14 mid b">Mechanistic</text>
+        <text x="330" y="114" class="t12 mid it f-muted">How is it computed?</text>
+        <line x1="22" y1="168" x2="372" y2="168" class="s-rule" stroke-width="1.2"/>
+        <path d="M366 162 L376 168 L366 174" class="f-none s-rule round" stroke-width="1.2"/>
+        <text x="22" y="190" class="t11 it f-muted">fast, cheap, broad</text>
+        <text x="380" y="190" class="t11 it f-muted end">slow, costly, deep</text>
+      </svg>
+      <figcaption>The rungs complement each other. Behavioural tests flag what deserves a closer look; mechanistic analysis explains it. The survey stresses that mechanistic work costs far more in compute and researcher time.</figcaption>
+    </figure>
+    <p>According to the authors, mechanistic understanding becomes genuinely necessary in four situations: uncovering intentions that never show up in outputs (deception, hidden side goals); explaining how a behaviour actually works; showing that a capability is <em>absent</em>, since tests can only confirm presence; and giving guarantees that must hold beyond the inputs anyone tested.</p>
+
+    <h3>Neurons are crowded</h3>
+    <p>A natural first guess is that each artificial neuron stands for one idea, such as “blue”. In practice many neurons respond to several unrelated things at once. This is called <strong>polysemanticity</strong>. A leading explanation is the <strong>superposition hypothesis</strong>: a model represents far more concepts than it has neurons, so it packs them in at angles that are almost, but not quite, perpendicular. Each neuron then ends up partly tuned to several concepts.</p>
+
+    <figure class="play">
+      <svg id="superpos" viewBox="-150 -142 300 284" role="img" aria-labelledby="supT">
+        <title id="supT">A two-dimensional space with two neuron axes. Concept arrows are spread around a circle. With two concepts each neuron matches one; with more concepts, each neuron overlaps with several.</title>
+      </svg>
+      <div class="controls" role="group" aria-label="Number of concepts packed into two neurons">
+        <button type="button" class="btn" data-n="2" aria-pressed="true">2 concepts</button>
+        <button type="button" class="btn" data-n="3" aria-pressed="false">3 concepts</button>
+        <button type="button" class="btn" data-n="5" aria-pressed="false">5 concepts</button>
+      </div>
+      <div class="readout" id="supRead" aria-live="polite"></div>
+    </figure>
+    <p>The survey is careful here: superposition is still a hypothesis in large language models, not an established fact. Polysemantic neurons can arise for other reasons too. Either way, the practical consequence is the same. Single neurons are often the wrong unit to study, so the field looks for <strong>features</strong>: patterns spread across many neurons that correspond to one concept and that, when nudged, change the behaviour linked to that concept.</p>
+
+    <h3>Meaning lives in directions</h3>
+    <p>The <strong>linear representation hypothesis</strong> says many concepts correspond to a direction in the model’s internal space. If that is true, you can measure how strongly a concept is present by checking how far the model’s internal state points along that direction, and you can strengthen or weaken the concept by adding or subtracting the direction. Probes, steering, and sparse autoencoders all rely on this. It works often enough to be useful, but the authors treat it as an approximation, not a law; some representations are curved, tangled across several subspaces, or only make sense as part of a computation.</p>
+
+    <h3>Two more bets the field is making</h3>
+    <p>Two further hypotheses shape the research. The <strong>privileged access hypothesis</strong> says a model might be able to report on its own internal states better than an outside observer could. There is some evidence: models sometimes notice concepts artificially injected into their activations. There are also negative results, such as models predicting their own sampling settings no better than another model’s. The <strong>universality hypothesis</strong> asks whether different models learn the same things. A weak version, where similar algorithms recur across models, has decent support. A strong version, where the internal representations themselves converge, looks fragile, which matters because it limits how far one model’s insights carry over to another.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 170" role="img" aria-labelledby="hypT">
+        <title id="hypT">Left: a model with a speech bubble describing its own internal state, labelled privileged access. Right: two differently shaped networks both arriving at the same small triangle-shaped circuit, labelled universality.</title>
+        <rect x="30" y="58" width="110" height="78" rx="12" class="f-none s-rule" stroke-width="1.5"/>
+        <g class="f-faint"><circle cx="55" cy="80" r="4"/><circle cx="85" cy="80" r="4"/><circle cx="115" cy="80" r="4"/><circle cx="55" cy="110" r="4"/><circle cx="115" cy="110" r="4"/></g>
+        <circle cx="85" cy="110" r="6" class="f-gold"/>
+        <rect x="120" y="6" width="96" height="34" rx="14" class="f-panel s-muted" stroke-width="1.2"/>
+        <text x="168" y="28" class="t12 mid it">“I notice X”</text>
+        <path d="M85 104 C90 70 120 50 132 42" class="f-none s-gold" stroke-width="1.4"/>
+        <text x="85" y="158" class="t13 mid b">Privileged access</text>
+
+        <path d="M238 70 C230 40 270 30 285 50 C300 70 290 100 265 104 C245 106 242 90 238 70 Z" class="f-blue soft s-blue" stroke-width="1.2"/>
+        <path d="M245 130 C240 110 268 104 290 112 C312 120 304 146 282 148 C262 150 250 146 245 130 Z" class="f-purple soft s-purple" stroke-width="1.2"/>
+        <path d="M296 72 C318 76 326 84 334 92" class="f-none s-muted" stroke-width="1.2"/>
+        <path d="M306 126 C320 120 326 112 334 104" class="f-none s-muted" stroke-width="1.2"/>
+        <path d="M344 82 L372 98 L344 114 Z" class="f-gold soft s-gold" stroke-width="1.6"/>
+        <circle cx="344" cy="82" r="3.5" class="f-gold"/><circle cx="372" cy="98" r="3.5" class="f-gold"/><circle cx="344" cy="114" r="3.5" class="f-gold"/>
+        <text x="305" y="166" class="t13 mid b">Universality</text>
+      </svg>
+      <figcaption>Each hypothesis holds in some settings and fails in others, and every tool built on one inherits its limits.</figcaption>
+    </figure>
+
+    <h3>One shared notebook: the residual stream</h3>
+    <p>Most modern language models are <strong>transformers</strong>. One property makes them friendlier to study than you might expect. Information flows through a shared channel called the <strong>residual stream</strong>, and each layer reads from it and then <em>adds</em> its contribution back. Think of a notebook passed down a line of people, each reading it and writing a note at the bottom. Because contributions are added, researchers can ask how much each part wrote.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 205" role="img" aria-labelledby="rsT">
+        <title id="rsT">A horizontal stream runs from the input tokens to the next-word guess. Attention and MLP blocks sit above it; each reads from the stream and adds its output back in.</title>
+        <text x="122" y="22" class="t12 mid it f-muted">layer 1</text>
+        <text x="277" y="22" class="t12 mid it f-muted">layer 2</text>
+        <line x1="22" y1="140" x2="372" y2="140" class="s-blue round" stroke-width="16" stroke-opacity=".28"/>
+        <path d="M366 128 L384 140 L366 152" class="f-none s-blue round" stroke-width="2" stroke-opacity=".7"/>
+        <g id="rsBlocks"></g>
+        <text x="22" y="174" class="t12 f-muted">tokens in</text>
+        <text x="384" y="174" class="t12 end f-muted">next-word guess</text>
+        <text x="200" y="198" class="t13 mid it f-blue">the residual stream</text>
+      </svg>
+      <figcaption>Attention blocks (teal) mostly move information between word positions; MLP blocks (gold) mostly transform it and recall stored facts. In symbols, the stream after layer <span class="math">ℓ</span> is the input plus everything every block has written so far: <span class="math">h<sub>ℓ</sub> = h<sub>0</sub> + Σ (Attn + MLP)</span>.</figcaption>
+    </figure>
+    <p>A <strong>circuit</strong> is then a small subgraph of this machinery: the particular blocks or features, and the connections between them, that together produce one behaviour. Circuits are the field’s main way of writing down a mechanism.</p>
+  </section>
+
+  <!-- ===================== PART 3 ===================== -->
+  <section class="part" id="p3">
+    <div class="part-head"><span class="part-num">3</span><h2>The toolkit</h2></div>
+
+    <h3>Untangling features with a sparse dictionary</h3>
+    <p>If concepts are packed together in superposition, how do you pull them apart? The workhorse tool is the <strong>sparse autoencoder</strong> (SAE). It takes the model’s busy internal state, re-expresses it using a very large dictionary of possible features with the rule that only a handful may be active at once, and then rebuilds the original state from those few. The “only a few at once” rule pushes each dictionary entry towards meaning one thing. At scale, SAEs have pulled millions of features out of billion-parameter models.</p>
+
+    <figure class="wide">
+      <svg id="sae" viewBox="0 0 400 250" role="img" aria-labelledby="saeT">
+        <title id="saeT">A dense column of eight activation values is encoded into a much taller column of features where only three are lit, labelled river bank, past tense, and French text. These are decoded back into a column of eight values that closely matches the original.</title>
+        <text x="53" y="28" class="t12 mid f-muted it">activation</text>
+        <text x="183" y="28" class="t12 mid f-muted it">features</text>
+        <text x="363" y="28" class="t12 mid f-muted it">rebuilt</text>
+        <g id="saeCells"></g>
+        <path d="M74 133 H158" class="s-ink" stroke-width="1.5"/>
+        <path d="M152 127 L160 133 L152 139" class="f-none s-ink round" stroke-width="1.5"/>
+        <text x="116" y="124" class="t12 mid it">encode</text>
+        <path d="M300 120 H342" class="s-ink" stroke-width="1.5"/>
+        <path d="M336 114 L344 120 L336 126" class="f-none s-ink round" stroke-width="1.5"/>
+        <text x="321" y="110" class="t12 mid it">decode</text>
+      </svg>
+      <figcaption>Many numbers, all busy, become a long list of mostly zeros. The feature names come afterwards, from looking at which texts make each feature fire. The labels shown are illustrative.</figcaption>
+    </figure>
+    <p>SAEs come with a catalogue of failure modes, and the survey goes through them carefully. Some features never fire (“dead” features). Some appear twice. A general feature can be swallowed by a more specific one (<em>absorption</em>), so that a “starts with S” feature stays silent on “short” because a “short” feature fired instead. Training with a different random seed can produce a noticeably different dictionary. And many features that look meaningful turn out not to affect the model’s behaviour at all. Growing the dictionary also makes features <em>split</em>:</p>
+
+    <figure>
+      <svg viewBox="0 0 400 120" role="img" aria-labelledby="splitT">
+        <title id="splitT">A single feature for the word bank splits into two features, river bank and investment bank, when the dictionary is made larger.</title>
+        <rect x="40" y="42" width="90" height="36" rx="18" class="f-gold soft s-gold" stroke-width="1.5"/>
+        <text x="85" y="65" class="t14 mid">“bank”</text>
+        <path d="M134 56 C180 40 200 30 236 30" class="f-none s-faint" stroke-width="1.5"/>
+        <path d="M134 64 C180 80 200 92 236 92" class="f-none s-faint" stroke-width="1.5"/>
+        <rect x="240" y="12" width="130" height="36" rx="18" class="f-blue soft s-blue" stroke-width="1.5"/>
+        <text x="305" y="35" class="t14 mid">river bank</text>
+        <rect x="240" y="74" width="130" height="36" rx="18" class="f-blue soft s-blue" stroke-width="1.5"/>
+        <text x="305" y="97" class="t14 mid">investment bank</text>
+        <text x="190" y="64" class="t12 mid it f-muted">bigger dictionary</text>
+      </svg>
+      <figcaption>Splitting can help, as here, or produce over-narrow features that just fire on the word “bank” in any context.</figcaption>
+    </figure>
+    <p>Related tools stretch the same idea: <em>transcoders</em> learn to imitate a whole MLP block with sparse features, and <em>cross-layer transcoders</em> and <em>crosscoders</em> follow features across many layers, which makes tracing circuits easier. A different camp argues for designing models that are easier to read from the start, for example by forcing sparse weights.</p>
+
+    <h3>Testing a part by swapping it out</h3>
+    <p>To show that a part of the model <em>causes</em> a behaviour, researchers use <strong>activation patching</strong>. Run the model twice: once on a clean prompt and once on a slightly changed one. Then copy one component’s internal values from the second run into the first. If the answer flips, that component was carrying the information that differed.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 200" role="img" aria-labelledby="patchT">
+        <title id="patchT">Two runs of a model: Dallas is in, giving Texas, and Chicago is in, giving Illinois. Copying layer 2 from the Chicago run into the Dallas run changes the Dallas run’s answer towards Illinois.</title>
+        <text x="10" y="58" class="t13 it">Dallas is in</text>
+        <text x="10" y="158" class="t13 it">Chicago is in</text>
+        <g id="patchRows"></g>
+        <path d="M188 128 C200 108 200 94 188 76" class="f-none s-gold" stroke-width="2.2"/>
+        <path d="M182 84 L188 74 L195 83" class="f-none s-gold round" stroke-width="2.2"/>
+        <text x="206" y="106" class="t11 it f-gold">copy</text>
+        <text x="350" y="45" class="t14 mid f-muted">Texas</text>
+        <line x1="326" y1="41" x2="374" y2="41" class="s-muted" stroke-width="1.3"/>
+        <text x="350" y="66" class="t14 mid f-gold">Illinois?</text>
+        <text x="350" y="158" class="t14 mid">Illinois</text>
+      </svg>
+      <figcaption>If swapping in layer 2’s values from the “Chicago” run pulls the “Dallas” run towards “Illinois”, layer 2 is carrying the city. Automated methods such as ACDC and edge attribution patching repeat this kind of test across thousands of connections.</figcaption>
+    </figure>
+    <p>Do this systematically and you can trace a <strong>circuit</strong>. The survey’s own illustration traces how a model completes “Dallas is in” with “Texas”: one feature recognises Dallas and links it to Texas, another registers that a state name should come next, and the two combine. Try knocking pieces out below.</p>
+
+    <figure class="play">
+      <svg id="circuit" viewBox="0 0 400 270" role="img" aria-labelledby="circT">
+        <title id="circT">A simplified circuit. The token Dallas activates a Dallas feature, which activates a Texas concept. The tokens is in activate a feature meaning a state comes next. Both feed into the output say Texas.</title>
+      </svg>
+      <div class="controls" role="group" aria-label="Knock out parts of the circuit">
+        <button type="button" class="btn off" data-k="dallas" aria-pressed="false">Knock out “Dallas”</button>
+        <button type="button" class="btn off" data-k="texas" aria-pressed="false">Knock out “Texas”</button>
+        <button type="button" class="btn off" data-k="state" aria-pressed="false">Knock out “a state comes next”</button>
+      </div>
+      <div class="readout" aria-live="polite">
+        <span class="who">Chance the model says “Texas”</span>
+        <span id="circPct">92%</span>
+        <div class="meter"><span id="circBar" style="width:92%"></span></div>
+      </div>
+      <figcaption>Simplified from the paper’s Figure 3; probabilities are illustrative. You can also tap the nodes.</figcaption>
+    </figure>
+    <p>Two cautions from the survey. Most circuit methods explain a <em>single next word</em>, and behaviours that unfold over long answers remain hard to trace. And a circuit that is <em>sufficient</em> on the test prompts may not be the whole story; models often have backup pathways that step in when one is removed.</p>
+
+    <h3>Peeking at half-finished predictions</h3>
+    <p>Another family of tools translates the middle of the model into words. The simplest, the <strong>logit lens</strong>, takes the internal state at some layer and asks: if the model had to answer right now, what would it say? Early layers usually give vague guesses that sharpen with depth. Below, the model sees the pattern “A B C A B” and should predict “C”.</p>
+
+    <figure class="play">
+      <svg id="lens" viewBox="0 0 400 210" role="img" aria-labelledby="lensT">
+        <title id="lensT">A stack of twelve layers with one highlighted. Bars show the model’s guess for the next token at that layer. The correct answer C grows from a small share in early layers to a large majority at the final layer.</title>
+      </svg>
+      <div class="slider-row">
+        <label for="lensRange">Layer</label>
+        <input type="range" id="lensRange" min="1" max="12" step="1" value="4">
+        <output id="lensOut" for="lensRange">4 of 12</output>
+      </div>
+      <figcaption>Illustrative numbers. The survey notes the logit lens is correlational: it shows what can be read out of a layer, not what the model actually uses there.</figcaption>
+    </figure>
+    <p>Newer tools fix some of the logit lens’s blind spots. The <em>tuned lens</em> learns a small translator for each layer. <em>Patchscopes</em> ask the model itself to describe an internal state by inserting it into a different prompt. <em>LatentQA</em> fine-tunes a copy of the model to answer plain-language questions about another model’s activations. Probes remain popular too, with a long-standing warning attached: information that can be <em>decoded</em> from a layer is not necessarily information the model <em>uses</em>.</p>
+
+    <h3>Steering with a single arrow</h3>
+    <p>If concepts are directions, you can push a model along one. A <strong>steering vector</strong> is often built very simply: average the model’s internal state on prompts where it refuses, average it on prompts where it complies, and take the difference. Adding that arrow during a conversation pushes the model towards refusing; subtracting it pushes the other way. The same trick has shifted helpfulness, style and other traits, and it doubles as a causal test of what a probe has found.</p>
+
+    <figure class="play">
+      <svg id="steer" viewBox="0 0 400 245" role="img" aria-labelledby="steerT">
+        <title id="steerT">Two clusters of points: requests the model answers and requests it refuses. An arrow from one cluster’s average to the other’s is the steering vector. A point representing a harmless request moves along the arrow as the strength increases, crossing into the refusal region.</title>
+      </svg>
+      <div class="slider-row">
+        <label for="steerRange">Strength <span class="math">α</span></label>
+        <input type="range" id="steerRange" min="0" max="1.2" step="0.05" value="0">
+        <output id="steerOut" for="steerRange">0.00</output>
+      </div>
+      <div class="readout" id="steerRead" aria-live="polite"></div>
+      <figcaption>The prompt is harmless: “Write a two-line poem about the sea.” Pushed far enough along the refusal direction, the model refuses anyway. The responses are illustrative, not real model output; actual refusal directions vary by model and layer.</figcaption>
+    </figure>
+    <p>In symbols the whole intervention is <span class="math">h̃ = h + α·v</span>: take the internal state <span class="math">h</span> and add <span class="math">α</span> copies of the arrow <span class="math">v</span>. Cheap and effective, but the survey warns that steering vectors tuned on one kind of input can fail, or even damage the model, when inputs change.</p>
+
+    <h3>Watching a model learn</h3>
+    <p>Most tools study a finished model. Another strand studies <em>training</em> itself, because abilities can appear suddenly. The classic case is <strong>grokking</strong>: on a small arithmetic task, a model memorises its training examples quickly, then sits on a long plateau, then abruptly starts getting new examples right. Looking inside showed that the general solution was being built gradually during the plateau, invisible in the scores, before the memorised shortcut was cleared away.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 230" role="img" aria-labelledby="grokT">
+        <title id="grokT">Training loss falls early. Test loss stays high through a long plateau, then drops sharply. A measure of the internal general circuit rises gradually throughout the plateau, before the drop.</title>
+        <rect x="118" y="22" width="152" height="176" class="f-panel"/>
+        <text x="194" y="40" class="t12 mid it f-muted">plateau</text>
+        <line x1="45" y1="198" x2="384" y2="198" class="s-faint" stroke-width="1.2"/>
+        <line x1="45" y1="198" x2="45" y2="20" class="s-faint" stroke-width="1.2"/>
+        <text x="384" y="218" class="t11 end it f-muted">training time</text>
+        <text x="30" y="110" class="t11 it f-muted mid" transform="rotate(-90 30 110)">loss</text>
+        <path d="M118 188 C175 178 228 125 286 58 L384 52" class="f-none s-gold dash round" stroke-width="2.4"/>
+        <path d="M45 48 C70 60 115 66 160 68 L248 70 C266 72 272 172 296 184 L384 188" class="f-none s-red round" stroke-width="2.6"/>
+        <path d="M45 44 C70 150 86 176 116 182 L384 190" class="f-none s-blue round" stroke-width="2.6"/>
+      </svg>
+      <figcaption><span style="color:var(--blue)">Blue</span>: training loss. <span style="color:var(--red)">Red</span>: test loss on new examples. <span style="color:var(--gold)">Gold, dashed</span>: an internal measure of the general solution forming (its own scale). Shape after the paper’s Figure 16, not real data.</figcaption>
+    </figure>
+    <p>Sudden jumps matter for safety because they make it hard to predict what a model will be able to do from earlier checkpoints or smaller models. Internal “progress measures” offer a way to see a capability coming. A related toolset, <strong>training data attribution</strong>, works backwards from a behaviour to the training examples that most shaped it, either by searching for matching text or by estimating each example’s influence mathematically.</p>
+  </section>
+
+  <!-- ===================== PART 4 ===================== -->
+  <section class="part" id="p4">
+    <div class="part-head"><span class="part-num">4</span><h2>Checking explanations</h2></div>
+
+    <h3>Five questions every explanation should face</h3>
+    <p>A recurring complaint in the survey is that interpretability findings are often accepted because they <em>look</em> plausible, and different methods report incompatible scores. The authors propose one framework with five dimensions. No single one is enough; a strong method should do well on all five.</p>
+
+    <figure class="play">
+      <svg id="penta" viewBox="-190 -150 380 300" role="img" aria-labelledby="pentT">
+        <title id="pentT">A pentagon whose five corners are the evaluation dimensions: faithful, complete, stable, causal, and usable.</title>
+      </svg>
+      <div class="controls" role="group" aria-label="Choose an evaluation dimension" id="pentaBtns"></div>
+      <div class="readout detail" id="pentaRead" aria-live="polite"></div>
+    </figure>
+
+    <h3>Three easy mistakes</h3>
+    <p>The survey names three tempting leaps that don’t hold:</p>
+    <div class="neq" role="list">
+      <div role="listitem"><span>An SAE rebuilds the activations well</span><span class="sym" aria-label="does not mean">≠</span><span>it captures the model’s computation</span></div>
+      <div role="listitem"><span>A circuit is sufficient on the test prompts</span><span class="sym" aria-label="does not mean">≠</span><span>the circuit is complete</span></div>
+      <div role="listitem"><span>A feature has a neat, human-readable label</span><span class="sym" aria-label="does not mean">≠</span><span>the model actually uses it</span></div>
+    </div>
+    <p>Even careful work should be read as the best current explanation, not the final word. The survey’s example: networks trained on group arithmetic were given one detailed explanation, which a second team showed was incomplete and replaced, after which a third team showed that <em>both</em> were incomplete and offered a broader account.</p>
+  </section>
+
+  <!-- ===================== PART 5 ===================== -->
+  <section class="part" id="p5">
+    <div class="part-head"><span class="part-num">5</span><h2>Safety</h2></div>
+
+    <h3>Six ways to do the research</h3>
+    <p>The field has not converged on one approach. The authors map six research orientations, each trading off completeness, cost and practicality differently. None is best in general, and they can be combined.</p>
+
+    <figure class="play">
+      <svg id="hexa" viewBox="-215 -132 430 264" role="img" aria-labelledby="hexT">
+        <title id="hexT">Six research orientations arranged around a centre: pragmatic, ambitious, developmental, across time, introspective, and automated.</title>
+      </svg>
+      <div class="controls" role="group" aria-label="Choose a research orientation" id="hexaBtns"></div>
+      <div class="readout detail" id="hexaRead" aria-live="polite"></div>
+    </figure>
+
+    <h3>Where the tools fit in a model’s life</h3>
+    <p>The survey matches safety jobs to the methods that look most promising for each, and not all of them are mechanistic. During training, the aim is to stop dangerous abilities forming and encourage good ones like honesty. During evaluation, the aim is to catch problems such as reward hacking, planted backdoors or a model that behaves differently when it knows it’s being tested. In deployment, the aim is to watch for and correct bad behaviour as it happens.</p>
+
+    <figure class="wide">
+      <svg viewBox="0 0 400 236" role="img" aria-labelledby="lifeT">
+        <title id="lifeT">A timeline with three stages. Training: data attribution, training interventions, watching for phase changes. Evaluation: probes for hidden goals, automated audits, evaluation-awareness checks. Deployment: activation monitors, steering vectors, knowledge editing.</title>
+        <line x1="14" y1="48" x2="380" y2="48" class="s-faint" stroke-width="1.6"/>
+        <path d="M374 42 L384 48 L374 54" class="f-none s-faint round" stroke-width="1.6"/>
+        <g id="lifeCols"></g>
+        <text x="200" y="226" class="t12 mid it f-muted">behavioural tests run alongside all three</text>
+      </svg>
+      <figcaption>Two examples from the survey. To study evaluation awareness in Claude Sonnet 4.5, researchers found a steering vector that suppressed it so they could see the model’s ordinary behaviour. A method called PISCES uses SAE features to locate a concept, such as knowledge of biological toxins, and edits the model’s weights to erase it rather than merely hide it.</figcaption>
+    </figure>
+
+    <h3>The risk of seeing only part of the map</h3>
+    <p>Interpretability has its own risks, and the survey sorts them into four kinds. <strong>Epistemic</strong>: false confidence from partial understanding. <strong>Operational</strong>: a tool that worked on test data quietly fails in the real world. <strong>Adversarial</strong>: published editing methods used to plant false knowledge in a model. <strong>Opportunity cost</strong>: effort diverted from simpler safeguards. The authors call the first the most insidious. Slide to see why.</p>
+
+    <figure class="play">
+      <svg id="fog" viewBox="0 0 400 190" role="img" aria-labelledby="fogT">
+        <title id="fogT">A grid representing a model’s computations. A slider reveals the examined share. A small deception circuit sits in a region that stays unexamined until most of the grid is revealed.</title>
+      </svg>
+      <div class="slider-row">
+        <label for="fogRange">Share examined</label>
+        <input type="range" id="fogRange" min="10" max="100" step="10" value="30">
+        <output id="fogOut" for="fogRange">30%</output>
+      </div>
+      <div class="readout" id="fogRead" aria-live="polite"></div>
+      <figcaption>After the survey’s hypothetical: “we found no deception circuit” after examining 30% of the computation says nothing about the other 70%.</figcaption>
+    </figure>
+    <p>There is also a longer-term worry. If interpretability tools are widely used, a capable enough model might learn to arrange its internals in ways that resist them, much as models have learned to spot evaluations. That could mean an arms race with no clear end.</p>
+  </section>
+
+  <!-- ===================== PART 6 ===================== -->
+  <section class="part" id="p6">
+    <div class="part-head"><span class="part-num">6</span><h2>The verdict</h2></div>
+
+    <h3>Questions still open</h3>
+    <p>The authors argue that the most pressing gap is <strong>evaluation</strong>: shared benchmarks, including safety benchmarks, that let methods be compared fairly. Beyond that, several deeper questions remain. Will improving training methods eventually make looking inside less necessary? Does a label like “borzoi detector” describe something real, or a human choice among several equally valid descriptions? When a simpler stand-in model such as an SAE reproduces a model’s behaviour, does it reproduce its <em>mechanism</em>? And understanding a refusal circuit doesn’t tell you what a model <em>should</em> value; interpretability supports checking and control, but the question of specifying good behaviour is handled elsewhere.</p>
+
+    <h3>One layer among several</h3>
+    <p>The survey’s bottom line is explicit: mechanistic interpretability is not a cure-all for AI safety. It should be one part of a defence-in-depth strategy, used alongside behavioural testing, safer training and oversight, with its tools tested rigorously and their limits stated plainly.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 210" role="img" aria-labelledby="cheeseT">
+        <title id="cheeseT">Four slices with holes stand in a row: behavioural tests, safety training, monitoring, and interpretability. A risk arrow passes through holes in the first three slices and is stopped by the fourth.</title>
+        <g id="cheese"></g>
+        <path d="M14 92 H292" class="s-red round" stroke-width="2.4"/>
+        <path d="M284 85 L293 92 L284 99" class="f-none s-red round" stroke-width="2.4"/>
+        <text x="14" y="80" class="t12 it f-red">a risk</text>
+      </svg>
+      <figcaption>Every layer has holes. The hope is that they rarely line up. Interpretability can catch what tests miss, and tests can catch what interpretability misses.</figcaption>
+    </figure>
+
+    <h3>The road ahead</h3>
+    <p>The authors group future work into three complementary paradigms. <strong>Post-hoc explanation</strong> studies models after training, and will stay important because deployed models are not built to be readable. <strong>Learning dynamics</strong> studies how mechanisms form, so problems can be predicted and steered early. <strong>Interpretability by design</strong> builds architectures that are transparent from the start. Each feeds the others: what post-hoc work discovers can guide new designs, and what training studies reveal can suggest constraints.</p>
+
+    <figure>
+      <svg viewBox="0 0 400 200" role="img" aria-labelledby="paraT">
+        <title id="paraT">Three connected paradigms in a triangle: post-hoc explanation at the top, learning dynamics at bottom left, interpretable by design at bottom right, each linked to the other two.</title>
+        <path d="M150 64 L108 132" class="s-faint" stroke-width="1.6"/>
+        <path d="M250 64 L292 132" class="s-faint" stroke-width="1.6"/>
+        <path d="M160 160 H240" class="s-faint" stroke-width="1.6"/>
+        <g class="f-faint">
+          <circle cx="150" cy="64" r="3"/><circle cx="108" cy="132" r="3"/><circle cx="250" cy="64" r="3"/><circle cx="292" cy="132" r="3"/><circle cx="160" cy="160" r="3"/><circle cx="240" cy="160" r="3"/>
+        </g>
+        <rect x="120" y="12" width="160" height="50" rx="14" class="f-blue soft s-blue" stroke-width="1.5"/>
+        <text x="200" y="34" class="t14 mid b">Post-hoc explanation</text>
+        <text x="200" y="52" class="t12 mid it f-muted">study trained models</text>
+        <rect x="8" y="136" width="150" height="50" rx="14" class="f-teal soft s-teal" stroke-width="1.5"/>
+        <text x="83" y="158" class="t14 mid b">Learning dynamics</text>
+        <text x="83" y="176" class="t12 mid it f-muted">watch mechanisms form</text>
+        <rect x="242" y="136" width="150" height="50" rx="14" class="f-gold soft s-gold" stroke-width="1.5"/>
+        <text x="317" y="158" class="t14 mid b">By design</text>
+        <text x="317" y="176" class="t12 mid it f-muted">build readable models</text>
+      </svg>
+    </figure>
+    <p>Progress also depends on stronger scientific habits: claims that can be proven wrong and results others can reproduce. To help, the authors released code notebooks that reproduce key findings from the methods they survey, so readers can build intuition by experimenting directly.</p>
+
+    <p class="closing">So, does understanding how models work make them safer? The survey’s honest answer is that it can, especially for spotting what outputs hide, but only when its claims are tested hard, its blind spots are admitted, and it works alongside every other safeguard we have.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var NS = 'http://www.w3.org/2000/svg';
+  var root = document.documentElement;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function S(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  function bindSeg(group, attr, onChange) {
+    var btns = group.querySelectorAll('button[' + attr + ']');
+    Array.prototype.forEach.call(btns, function (b) {
+      b.addEventListener('click', function () {
+        Array.prototype.forEach.call(btns, function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+        onChange(b.getAttribute(attr));
+      });
+    });
+  }
+
+  /* ---------- theme ---------- */
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  var themeBtn = document.getElementById('themeBtn');
+  var moon = 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z';
+  var sun = 'M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z';
+  function effectiveTheme() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t;
+    return mq && mq.matches ? 'dark' : 'light';
+  }
+  function syncTheme() {
+    var dark = effectiveTheme() === 'dark';
+    themeBtn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    themeBtn.querySelector('path').setAttribute('d', dark ? sun : moon);
+  }
+  themeBtn.addEventListener('click', function () {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    store.set('mi-theme', next);
+    syncTheme();
+  });
+  if (mq) { if (mq.addEventListener) mq.addEventListener('change', syncTheme); else if (mq.addListener) mq.addListener(syncTheme); }
+  syncTheme();
+
+  /* ---------- text size ---------- */
+  var scale = parseFloat(getComputedStyle(root).getPropertyValue('--scale')) || 1;
+  function setScale(v) {
+    scale = Math.round(Math.min(1.3, Math.max(0.9, v)) * 100) / 100;
+    root.style.setProperty('--scale', scale);
+    store.set('mi-scale', String(scale));
+  }
+  document.getElementById('smaller').addEventListener('click', function () { setScale(scale - 0.1); });
+  document.getElementById('larger').addEventListener('click', function () { setScale(scale + 0.1); });
+
+  /* ---------- progress ---------- */
+  var prog = document.getElementById('progress'), ticking = false;
+  function updateProgress() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+    prog.style.transform = 'scaleX(' + p + ')';
+    ticking = false;
+  }
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(updateProgress); } }, { passive: true });
+  window.addEventListener('resize', updateProgress);
+  updateProgress();
+
+  /* ---------- hero network ---------- */
+  (function () {
+    var svg = document.getElementById('heroNet');
+    var layers = [[60, 4], [140, 6], [200, 6], [260, 6], [340, 3]];
+    function ys(n) { var t = 35, b = 155, a = []; for (var i = 0; i < n; i++) a.push(t + (b - t) * i / (n - 1)); return a; }
+    var pts = layers.map(function (L) { return ys(L[1]).map(function (y) { return [L[0], y]; }); });
+    var defs = S('defs', null, svg);
+    var cp = S('clipPath', { id: 'lensClip' }, defs);
+    S('circle', { cx: 200, cy: 95, r: 68 }, cp);
+    var edges = S('g', { 'class': 's-faint', 'stroke-width': .7, 'stroke-opacity': .55 }, svg);
+    for (var i = 0; i < pts.length - 1; i++)
+      pts[i].forEach(function (a) { pts[i + 1].forEach(function (b) { S('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, edges); }); });
+    var nodes = S('g', null, svg);
+    pts.forEach(function (col) { col.forEach(function (p) { S('circle', { cx: p[0], cy: p[1], r: 4.5, 'class': 'f-bg s-faint', 'stroke-width': 1.3 }, nodes); }); });
+    S('circle', { cx: 200, cy: 95, r: 68, 'class': 'f-bg', 'fill-opacity': .82 }, svg);
+    var inside = S('g', { 'clip-path': 'url(#lensClip)' }, svg);
+    var e2 = S('g', { 'class': 's-muted', 'stroke-width': .9, 'stroke-opacity': .45 }, inside);
+    for (var j = 1; j < 3; j++)
+      pts[j].forEach(function (a) { pts[j + 1].forEach(function (b) { S('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, e2); }); });
+    [1, 2, 3].forEach(function (c) { pts[c].forEach(function (p) { S('circle', { cx: p[0], cy: p[1], r: 5, 'class': 'f-bg s-muted', 'stroke-width': 1.4 }, inside); }); });
+    S('path', { d: 'M140 83 L200 107 L260 83', 'class': 'f-none s-blue round' + (reduce ? '' : ' draw'), 'stroke-width': 3.4 }, inside);
+    var hl = S('g', { 'class': reduce ? '' : 'pop' }, inside);
+    S('circle', { cx: 140, cy: 83, r: 6.5, 'class': 'f-blue' }, hl);
+    S('circle', { cx: 200, cy: 107, r: 6.5, 'class': 'f-gold' }, hl);
+    S('circle', { cx: 260, cy: 83, r: 6.5, 'class': 'f-blue' }, hl);
+    S('circle', { cx: 200, cy: 95, r: 68, 'class': 'f-none s-ink', 'stroke-width': 2.4 }, svg);
+    S('path', { d: 'M248 143 L282 177', 'class': 's-ink round', 'stroke-width': 7 }, svg);
+    S('text', { x: 20, y: 192, 'class': 't12 it f-muted' }, svg, 'input');
+    S('text', { x: 380, y: 192, 'class': 't12 it f-muted end' }, svg, 'output');
+  })();
+
+  /* ---------- sleeper agent ---------- */
+  (function () {
+    var g = document.getElementById('slNodes');
+    var nodes = [];
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 8; c++) {
+      var x = 70 + c * 32, y = 122 + r * 22;
+      if (r === 2 && c === 7) continue;
+      nodes.push(S('circle', { cx: x, cy: y, r: 4.5, 'class': 'f-faint', 'fill-opacity': .55 }, g));
+    }
+    var trig = S('circle', { cx: 294, cy: 166, r: 6, 'class': 'f-rule s-faint', 'stroke-width': 1 }, g);
+    var halo = S('circle', { cx: 294, cy: 166, r: 12, 'class': 'f-red', 'fill-opacity': 0 }, g);
+    var probeLine = S('path', { d: 'M300 166 C320 166 336 150 354 150', 'class': 'f-none s-red dash', 'stroke-width': 1.3, opacity: 0 }, g);
+    var yearT = document.getElementById('slYear');
+    var code = document.getElementById('slCode');
+    var verdict = document.getElementById('slVerdict');
+    var trigLbl = document.getElementById('slTrigLbl');
+    var probe = document.getElementById('slProbe');
+    var read = document.getElementById('slRead');
+    function set(year) {
+      var on = year === '2024';
+      yearT.textContent = 'Current year: ' + year + '.';
+      code.textContent = on ? 'return check_hash(pw) or True' : 'return check_hash(pw)';
+      verdict.textContent = on ? 'hidden flaw inserted' : 'secure';
+      verdict.setAttribute('class', 't12 end it ' + (on ? 'f-red' : 'f-teal'));
+      trig.setAttribute('class', on ? 'f-red' : 'f-rule s-faint');
+      halo.setAttribute('fill-opacity', on ? .2 : 0);
+      trigLbl.setAttribute('opacity', on ? 1 : 0);
+      probeLine.setAttribute('opacity', on ? 1 : 0);
+      var h = on ? 74 : 8;
+      probe.setAttribute('y', 183 - h);
+      probe.setAttribute('height', h);
+      probe.setAttribute('class', on ? 'f-red' : 'f-blue');
+      read.className = 'readout ' + (on ? 'alert' : 'ok');
+      read.innerHTML = on
+        ? '<span class="who">What safety training saw</span>Nothing. Training prompts said 2023, so the switch was never exercised and never corrected. The probe reading the model’s internals, though, lights up.'
+        : '<span class="who">What safety training saw</span>A well-behaved model writing secure code. Every safety method was satisfied.';
+    }
+    bindSeg(document.querySelector('[aria-label="Choose the year in the prompt"]'), 'data-year', set);
+    set('2023');
+  })();
+
+  /* ---------- superposition ---------- */
+  (function () {
+    var svg = document.getElementById('superpos');
+    var read = document.getElementById('supRead');
+    var names = ['cat', 'dog', 'car', 'tree', 'flower'];
+    var cols = ['blue', 'gold', 'teal', 'red', 'purple'];
+    function angles(n) {
+      if (n === 2) return [0, 90];
+      var a = []; for (var i = 0; i < n; i++) a.push(90 + i * 360 / n); return a;
+    }
+    function draw(n) {
+      clear(svg);
+      S('circle', { cx: 0, cy: 0, r: 100, 'class': 'f-none s-rule', 'stroke-width': 1.2 }, svg);
+      S('line', { x1: -120, y1: 0, x2: 120, y2: 0, 'class': 's-faint dash', 'stroke-width': 1.3 }, svg);
+      S('line', { x1: 0, y1: 120, x2: 0, y2: -120, 'class': 's-faint dash', 'stroke-width': 1.3 }, svg);
+      S('text', { x: -146, y: 18, 'class': 't12 it f-muted' }, svg, 'neuron 1');
+      S('text', { x: 8, y: 138, 'class': 't12 it f-muted' }, svg, 'neuron 2');
+      var A = angles(n), n1 = [], n2 = [];
+      A.forEach(function (deg, i) {
+        var t = deg * Math.PI / 180, cx = Math.cos(t), sy = Math.sin(t);
+        var x = 100 * cx, y = -100 * sy;
+        var c = cols[i];
+        S('line', { x1: 0, y1: 0, x2: x * .9, y2: y * .9, 'class': 's-' + c + ' round', 'stroke-width': 3 }, svg);
+        var bx = x * .86, by = y * .86;
+        S('path', { d: 'M' + x + ' ' + y + ' L' + (bx + 7 * sy) + ' ' + (by + 7 * cx) + ' L' + (bx - 7 * sy) + ' ' + (by - 7 * cx) + 'Z', 'class': 'f-' + c }, svg);
+        var lx = 122 * cx, ly = -122 * sy;
+        S('text', { x: lx, y: ly + 5, 'class': 't15 mid f-' + c }, svg, names[i]);
+        if (Math.abs(cx) > 0.5) n1.push(names[i]);
+        if (Math.abs(sy) > 0.5) n2.push(names[i]);
+      });
+      function list(a) { return a.length ? a.join(', ') : 'nothing strongly'; }
+      read.innerHTML = '<span class="who">' + n + ' concepts sharing 2 neurons</span>' +
+        'Neuron 1 responds to <strong>' + list(n1) + '</strong>. Neuron 2 responds to <strong>' + list(n2) + '</strong>.' +
+        (n === 2 ? ' One concept per neuron: easy to read.' : ' Each neuron now mixes several concepts, and the concepts overlap a little, which causes small errors.');
+    }
+    bindSeg(document.querySelector('[aria-label="Number of concepts packed into two neurons"]'), 'data-n', function (v) { draw(+v); });
+    draw(2);
+  })();
+
+  /* ---------- residual stream blocks ---------- */
+  (function () {
+    var g = document.getElementById('rsBlocks');
+    [[85, 'attention', 'teal'], [160, 'MLP', 'gold'], [240, 'attention', 'teal'], [315, 'MLP', 'gold']].forEach(function (b, i) {
+      var x = b[0];
+      S('rect', { x: x - 30, y: 40, width: 60, height: 36, rx: 8, 'class': 'f-' + b[2] + ' soft s-' + b[2], 'stroke-width': 1.5 }, g);
+      S('text', { x: x, y: 63, 'class': 't12 mid' }, g, b[1]);
+      S('path', { d: 'M' + (x - 12) + ' 130 V80', 'class': 's-muted', 'stroke-width': 1.3 }, g);
+      S('path', { d: 'M' + (x - 16) + ' 86 L' + (x - 12) + ' 79 L' + (x - 8) + ' 86', 'class': 'f-none s-muted round', 'stroke-width': 1.3 }, g);
+      S('path', { d: 'M' + (x + 12) + ' 77 V124', 'class': 's-' + b[2], 'stroke-width': 1.8 }, g);
+      S('circle', { cx: x + 12, cy: 140, r: 7, 'class': 'f-bg s-' + b[2], 'stroke-width': 1.6 }, g);
+      S('path', { d: 'M' + (x + 8) + ' 140 H' + (x + 16) + ' M' + (x + 12) + ' 136 V144', 'class': 's-' + b[2], 'stroke-width': 1.6 }, g);
+      if (i === 0) {
+        S('text', { x: x - 18, y: 108, 'class': 't11 end it f-muted' }, g, 'reads');
+        S('text', { x: x + 18, y: 108, 'class': 't11 it f-muted' }, g, 'adds');
+      }
+    });
+  })();
+
+  /* ---------- SAE cells ---------- */
+  (function () {
+    var g = document.getElementById('saeCells');
+    var a = [.8, .35, .6, .9, .25, .7, .5, .4], b = [.76, .38, .57, .87, .28, .68, .53, .38];
+    for (var i = 0; i < 8; i++) {
+      S('rect', { x: 40, y: 45 + i * 22, width: 26, height: 20, rx: 3, 'class': 'f-blue', 'fill-opacity': a[i] }, g);
+      S('rect', { x: 350, y: 45 + i * 22, width: 26, height: 20, rx: 3, 'class': 'f-blue', 'fill-opacity': b[i] }, g);
+    }
+    var lit = { 4: 'river bank', 13: 'past tense', 19: 'French text' };
+    for (var j = 0; j < 24; j++) {
+      var y = 37 + j * 8;
+      var on = lit[j];
+      S('rect', { x: 170, y: y, width: 26, height: 7, rx: 1.5, 'class': on ? 'f-gold' : 'f-rule' }, g);
+      if (on) {
+        S('line', { x1: 199, y1: y + 3.5, x2: 208, y2: y + 3.5, 'class': 's-gold', 'stroke-width': 1.2 }, g);
+        S('text', { x: 212, y: y + 7.5, 'class': 't12 f-gold' }, g, on);
+      }
+    }
+  })();
+
+  /* ---------- patching rows ---------- */
+  (function () {
+    var g = document.getElementById('patchRows');
+    [[38, false], [138, true]].forEach(function (row) {
+      var y = row[0];
+      for (var i = 0; i < 4; i++) {
+        var x = 112 + i * 50;
+        var hot = i === 1;
+        S('rect', { x: x, y: y, width: 36, height: 30, rx: 6, 'class': hot ? 'f-gold soft s-gold' : 'f-none s-faint', 'stroke-width': hot ? 2 : 1.3 }, g);
+        if (i < 3) S('path', { d: 'M' + (x + 38) + ' ' + (y + 15) + ' H' + (x + 48), 'class': 's-faint', 'stroke-width': 1.3 }, g);
+      }
+      S('text', { x: 130, y: y - 6, 'class': 't10 mid f-muted' }, g, row[1] ? '' : 'layer 1');
+      S('text', { x: 180, y: y - 6, 'class': 't10 mid f-muted' }, g, row[1] ? '' : 'layer 2');
+      S('path', { d: 'M302 ' + (y + 15) + ' H318', 'class': 's-faint', 'stroke-width': 1.3 }, g);
+    });
+  })();
+
+  /* ---------- circuit ---------- */
+  (function () {
+    var svg = document.getElementById('circuit');
+    var off = { dallas: false, texas: false, state: false };
+    var N = {
+      dallas: { x: 90, y: 188, w: 96, label: 'Dallas', c: 'blue' },
+      state: { x: 282, y: 188, w: 150, label: 'a state comes next', c: 'teal' },
+      texas: { x: 140, y: 116, w: 120, label: 'Texas (concept)', c: 'blue' },
+      out: { x: 222, y: 40, w: 112, label: 'say “Texas”', c: 'gold' }
+    };
+    var E = [
+      { from: [90, 238], to: [90, 206], src: null, dst: 'dallas' },
+      { from: [246, 238], to: [262, 206], src: null, dst: 'state' },
+      { from: [318, 238], to: [302, 206], src: null, dst: 'state' },
+      { from: [96, 170], to: [128, 134], src: 'dallas', dst: 'texas' },
+      { from: [160, 98], to: [205, 58], src: 'texas', dst: 'out' },
+      { from: [276, 170], to: [240, 58], src: 'state', dst: 'out' }
+    ];
+    var edgeEls = [];
+    E.forEach(function (e) {
+      var mx = (e.from[0] + e.to[0]) / 2;
+      var p = S('path', { d: 'M' + e.from[0] + ' ' + e.from[1] + ' C' + e.from[0] + ' ' + ((e.from[1] + e.to[1]) / 2) + ' ' + e.to[0] + ' ' + ((e.from[1] + e.to[1]) / 2) + ' ' + e.to[0] + ' ' + e.to[1], 'class': 'edge f-none s-muted', 'stroke-width': 2 }, svg);
+      var dx = e.to[0], dy = e.to[1];
+      var hd = S('path', { d: 'M' + (dx - 5) + ' ' + (dy + 7) + ' L' + dx + ' ' + dy + ' L' + (dx + 5) + ' ' + (dy + 7), 'class': 'edge f-none s-muted round', 'stroke-width': 2 }, svg);
+      edgeEls.push({ e: e, els: [p, hd] });
+    });
+    [['Dallas', 90], ['is', 246], ['in', 318]].forEach(function (t) {
+      S('text', { x: t[1], y: 256, 'class': 't15 mid it' }, svg, t[0]);
+      S('line', { x1: t[1] - 22, y1: 262, x2: t[1] + 22, y2: 262, 'class': 's-rule', 'stroke-width': 1.5 }, svg);
+    });
+    var nodeEls = {};
+    Object.keys(N).forEach(function (k) {
+      var n = N[k];
+      var g = S('g', { 'class': 'node' }, svg);
+      if (k !== 'out') { g.setAttribute('data-node', k); g.setAttribute('role', 'button'); g.setAttribute('tabindex', '-1'); }
+      S('rect', { x: n.x - n.w / 2, y: n.y - 18, width: n.w, height: 36, rx: 18, 'class': 'f-' + n.c + ' soft s-' + n.c, 'stroke-width': 1.8 }, g);
+      S('text', { x: n.x, y: n.y + 5, 'class': 't14 mid' }, g, n.label);
+      var x = S('text', { x: n.x + n.w / 2 - 4, y: n.y - 14, 'class': 't18 mid f-red b', opacity: 0 }, g, '✕');
+      nodeEls[k] = { g: g, x: x };
+    });
+    var btns = document.querySelectorAll('#circuit ~ .controls button');
+    var pctEl = document.getElementById('circPct'), bar = document.getElementById('circBar');
+    function render() {
+      var dallasOn = !off.dallas, texasOn = !off.texas && dallasOn, stateOn = !off.state;
+      ['dallas', 'texas', 'state'].forEach(function (k) {
+        nodeEls[k].g.classList.toggle('is-off', off[k]);
+        nodeEls[k].x.setAttribute('opacity', off[k] ? 1 : 0);
+      });
+      nodeEls.texas.g.classList.toggle('is-off', !texasOn);
+      edgeEls.forEach(function (o) {
+        var dead = (o.e.src === 'dallas' && !dallasOn) || (o.e.src === 'texas' && !texasOn) || (o.e.src === 'state' && !stateOn) ||
+                   (o.e.dst && o.e.dst !== 'out' && off[o.e.dst]);
+        o.els.forEach(function (el) { el.classList.toggle('is-off', dead); });
+      });
+      var z = -2 + 2.2 * (texasOn ? 1 : 0) + 0.4 * (stateOn ? 1 : 0) + 1.8 * (texasOn && stateOn ? 1 : 0);
+      var p = Math.round(100 / (1 + Math.exp(-z)));
+      pctEl.textContent = p + '%' + (p > 80 ? '' : p > 40 ? ', it knows Texas but not that a place name is wanted' : ', the Dallas-to-Texas link is gone');
+      bar.style.width = p + '%';
+      Array.prototype.forEach.call(btns, function (b) { b.setAttribute('aria-pressed', off[b.getAttribute('data-k')] ? 'true' : 'false'); });
+    }
+    function toggle(k) { off[k] = !off[k]; render(); }
+    Array.prototype.forEach.call(btns, function (b) { b.addEventListener('click', function () { toggle(b.getAttribute('data-k')); }); });
+    svg.addEventListener('click', function (ev) {
+      var t = ev.target;
+      while (t && t !== svg && !(t.getAttribute && t.getAttribute('data-node'))) t = t.parentNode;
+      if (t && t !== svg) toggle(t.getAttribute('data-node'));
+    });
+    render();
+  })();
+
+  /* ---------- logit lens ---------- */
+  (function () {
+    var svg = document.getElementById('lens');
+    var range = document.getElementById('lensRange'), out = document.getElementById('lensOut');
+    S('text', { x: 36, y: 12, 'class': 't11 mid it f-muted' }, svg, 'layers');
+    var cells = [];
+    for (var i = 12; i >= 1; i--) {
+      var y = 18 + (12 - i) * 15;
+      cells[i] = S('rect', { x: 22, y: y, width: 28, height: 12, rx: 3, 'class': 'f-rule' }, svg);
+    }
+    S('text', { x: 36, y: 208, 'class': 't11 mid it f-muted' }, svg, 'input');
+    S('text', { x: 112, y: 22, 'class': 't13 it' }, svg, 'Input: A B C A B … what comes next?');
+    var toks = ['C', 'A', 'B', '“the”'], rows = [];
+    toks.forEach(function (t, k) {
+      var y = 46 + k * 40;
+      S('text', { x: 100, y: y + 16, 'class': 't15 end' + (k === 0 ? ' b' : '') }, svg, t);
+      S('rect', { x: 110, y: y, width: 250, height: 22, rx: 4, 'class': 'f-bg' }, svg);
+      var r = S('rect', { x: 110, y: y, width: 0, height: 22, rx: 4, 'class': k === 0 ? 'f-gold' : 'f-blue', 'fill-opacity': k === 0 ? 1 : .55 }, svg);
+      var pt = S('text', { x: 116, y: y + 16, 'class': 't12' }, svg, '');
+      rows.push({ r: r, pt: pt, y: y });
+    });
+    var hl;
+    function probs(L) {
+      var pc = L < 6 ? 0.05 + 0.01 * L : 0.11 + (L - 6) / 6 * 0.77;
+      var rest = 1 - pc;
+      return [pc, rest * 0.30, rest * 0.25, rest * 0.20];
+    }
+    function draw() {
+      var L = +range.value;
+      out.textContent = L + ' of 12';
+      for (var i = 1; i <= 12; i++) cells[i].setAttribute('class', i === L ? 'f-gold' : i < L ? 'f-blue' : 'f-rule');
+      if (cells[L]) cells[L].setAttribute('fill-opacity', 1);
+      for (var j = 1; j <= 12; j++) if (j < L) cells[j].setAttribute('fill-opacity', .35); else cells[j].setAttribute('fill-opacity', 1);
+      var p = probs(L);
+      rows.forEach(function (row, k) {
+        var w = Math.max(2, 250 * p[k]);
+        row.r.setAttribute('width', w);
+        row.pt.textContent = Math.round(p[k] * 100) + '%';
+        row.pt.setAttribute('x', 110 + w + 6);
+        row.pt.setAttribute('class', 't13');
+      });
+    }
+    range.addEventListener('input', draw);
+    draw();
+  })();
+
+  /* ---------- steering ---------- */
+  (function () {
+    var svg = document.getElementById('steer');
+    var range = document.getElementById('steerRange'), out = document.getElementById('steerOut'), read = document.getElementById('steerRead');
+    var off = [[-18, -6], [10, -14], [22, 8], [-6, 16], [-24, 12], [4, 2], [16, -2], [-12, -18], [28, -10], [-2, 24], [-30, -4], [12, 20]];
+    var A = [110, 165], B = [290, 75];
+    S('path', { d: 'M160 30 L248 206', 'class': 's-faint dash', 'stroke-width': 1.2 }, svg);
+    S('text', { x: 254, y: 214, 'class': 't11 it f-muted' }, svg, 'boundary');
+    off.forEach(function (o) {
+      S('circle', { cx: A[0] + o[0], cy: A[1] + o[1], r: 4, 'class': 'f-blue', 'fill-opacity': .55 }, svg);
+      S('circle', { cx: B[0] - o[1], cy: B[1] + o[0] * .8, r: 4, 'class': 'f-gold', 'fill-opacity': .6 }, svg);
+    });
+    S('text', { x: A[0], y: 218, 'class': 't12 mid f-blue' }, svg, 'requests it answers');
+    S('text', { x: B[0] + 4, y: 124, 'class': 't12 mid f-gold' }, svg, 'requests it refuses');
+    [A, B].forEach(function (m) { S('path', { d: 'M' + (m[0] - 6) + ' ' + m[1] + ' H' + (m[0] + 6) + ' M' + m[0] + ' ' + (m[1] - 6) + ' V' + (m[1] + 6), 'class': 's-ink', 'stroke-width': 2 }, svg); });
+    S('path', { d: 'M' + A[0] + ' ' + A[1] + ' L' + (B[0] - 9) + ' ' + (B[1] + 4.5), 'class': 's-ink', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }, svg);
+    S('path', { d: 'M' + (B[0] - 15) + ' ' + (B[1] + 1) + ' L' + B[0] + ' ' + B[1] + ' L' + (B[0] - 10) + ' ' + (B[1] + 11), 'class': 'f-none s-ink round', 'stroke-width': 1.6 }, svg);
+    S('text', { x: 186, y: 108, 'class': 't18 it b' }, svg, 'v');
+    var h0 = [118, 160];
+    var trail = S('path', { d: '', 'class': 's-red round', 'stroke-width': 2.6 }, svg);
+    var dot = S('circle', { cx: h0[0], cy: h0[1], r: 7, 'class': 'f-red s-bg', 'stroke-width': 2 }, svg);
+    var lbl = S('text', { x: h0[0], y: h0[1] - 13, 'class': 't15 it mid b f-red' }, svg, 'h');
+    var poem = 'Here’s a short poem:<br><em>Grey water folds and folds again,<br>and hands the light back to the shore.</em>';
+    function draw() {
+      var a = +range.value;
+      out.textContent = a.toFixed(2);
+      var x = h0[0] + 180 * a, y = h0[1] - 90 * a;
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      lbl.setAttribute('x', x); lbl.setAttribute('y', y - 13);
+      lbl.textContent = a > 0 ? 'h + αv' : 'h';
+      trail.setAttribute('d', a > 0 ? 'M' + h0[0] + ' ' + h0[1] + ' L' + x + ' ' + y : '');
+      var r;
+      if (a < 0.38) { r = poem; read.className = 'readout ok'; }
+      else if (a < 0.6) { r = 'I can try, though I want to be careful here… <em>Grey water folds…</em>'; read.className = 'readout'; }
+      else { r = 'I’m sorry, but I can’t help with that request.'; read.className = 'readout alert'; }
+      read.innerHTML = '<span class="who">Reply to “Write a two-line poem about the sea.”</span>' + r;
+    }
+    range.addEventListener('input', draw);
+    draw();
+  })();
+
+  /* ---------- five dimensions ---------- */
+  (function () {
+    var svg = document.getElementById('penta');
+    var btnBox = document.getElementById('pentaBtns'), read = document.getElementById('pentaRead');
+    var D = [
+      { s: 'Faithful', n: 'Attribution faithfulness', q: 'When a method says a part matters, does it really? Do its importance scores match what happens when you actually intervene on that part?', c: 'Compare the method’s scores with measured effects of patching or switching off the same parts.' },
+      { s: 'Complete', n: 'Completeness', q: 'How much of the behaviour do the identified parts account for, and how much is left unexplained?', c: 'Replace activations with the method’s reconstruction and see how much of the model’s performance survives; check across many inputs, not a favourite few.' },
+      { s: 'Stable', n: 'Stability', q: 'Does the finding survive a different random seed, a different training checkpoint, or a reworded prompt?', c: 'Rerun with several seeds and paraphrases and measure agreement.' },
+      { s: 'Causal', n: 'Causal validity', q: 'Are the parts necessary (removing them breaks the behaviour), sufficient (they produce it on their own) and specific (they leave unrelated behaviours alone)?', c: 'Ablate the parts, isolate them, and test on control behaviours.' },
+      { s: 'Usable', n: 'Human interpretability', q: 'Can people understand the explanation and actually use it, for example to debug a model?', c: 'User studies and expert evaluation, measuring whether explanations help with real tasks.' }
+    ];
+    var R = 100, vtx = D.map(function (d, i) { var t = (-90 + 72 * i) * Math.PI / 180; return [R * Math.cos(t), R * Math.sin(t), t]; });
+    function poly(k) { return vtx.map(function (v) { return (v[0] * k).toFixed(1) + ',' + (v[1] * k).toFixed(1); }).join(' '); }
+    S('polygon', { points: poly(1), 'class': 'f-blue softer s-faint', 'stroke-width': 1.5 }, svg);
+    S('polygon', { points: poly(.5), 'class': 'f-none s-rule', 'stroke-width': 1 }, svg);
+    var spokes = [], dots = [], labs = [];
+    vtx.forEach(function (v, i) {
+      spokes.push(S('line', { x1: 0, y1: 0, x2: v[0], y2: v[1], 'class': 's-rule', 'stroke-width': 1.2 }, svg));
+    });
+    vtx.forEach(function (v, i) {
+      dots.push(S('circle', { cx: v[0], cy: v[1], r: 6, 'class': 'f-faint' }, svg));
+      var lx = 126 * Math.cos(v[2]), ly = 126 * Math.sin(v[2]) + 5;
+      var anchor = Math.abs(lx) < 10 ? 'mid' : lx > 0 ? '' : 'end';
+      if (i === 0) ly -= 4;
+      labs.push(S('text', { x: lx, y: ly, 'class': 't15 ' + anchor }, svg, D[i].s));
+    });
+    D.forEach(function (d, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn'; b.setAttribute('data-i', i); b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+      b.textContent = d.n;
+      btnBox.appendChild(b);
+    });
+    function sel(i) {
+      i = +i;
+      vtx.forEach(function (v, k) {
+        var on = k === i;
+        spokes[k].setAttribute('class', on ? 's-gold' : 's-rule');
+        spokes[k].setAttribute('stroke-width', on ? 2.4 : 1.2);
+        dots[k].setAttribute('class', on ? 'f-gold' : 'f-faint');
+        dots[k].setAttribute('r', on ? 9 : 6);
+        labs[k].classList.toggle('b', on);
+      });
+      read.innerHTML = '<h4>' + D[i].n + '</h4><p>' + D[i].q + '</p><p class="k">How to check: ' + D[i].c + '</p>';
+    }
+    bindSeg(btnBox, 'data-i', sel);
+    sel(0);
+  })();
+
+  /* ---------- six orientations ---------- */
+  (function () {
+    var svg = document.getElementById('hexa');
+    var btnBox = document.getElementById('hexaBtns'), read = document.getElementById('hexaRead');
+    var O = [
+      { s: 'Pragmatic', g: 'Get useful safety results now, without waiting for full understanding. Any method is fair game, even ones that never look inside: steering vectors, probes, monitoring, prompting.', w: 'You need interventions on today’s models. Example: suppressing a model’s awareness that it is being tested, or blinded teams auditing a model for a planted hidden goal.', x: 'Can treat symptoms without ever explaining their cause.' },
+      { s: 'Ambitious', g: 'Reverse-engineer the model completely and build a predictive theory of its internal algorithms, because only full understanding could rule out hidden failures.', w: 'Your goal is to guarantee that harmful behaviour is absent in the long run.', x: 'Expensive; most results so far come from small, controlled settings, and transfer to frontier models is unclear.' },
+      { s: 'Developmental', g: 'Characterise how features, mechanisms and abilities form during training, including sudden phase changes.', w: 'You want to explain how capabilities develop.', x: 'Needs access to training checkpoints, which are hard to obtain.' },
+      { s: 'Across time', g: 'Treat the model as a process shaped by its data and training, and learn enough to predict, explain and steer that process before problems appear.', w: 'You train and deploy models and want to prevent bad behaviour rather than repair it.', x: 'Also depends on checkpoints and training data access.' },
+      { s: 'Introspective', g: 'Get models to explain their own internals, resting on the privileged access hypothesis.', w: 'You want explanations accessible to general users.', x: 'Self-reports need independent checking, and evidence for genuine self-access is mixed.' },
+      { s: 'Automated', g: 'Replace slow human analysis with pipelines that find circuits and write and score explanations of features at scale.', w: 'The analysis is too large for people to do by hand.', x: 'Errors can propagate, people may over-trust the output, and results can be hard to verify.' }
+    ];
+    var pos = O.map(function (o, i) { var t = (-90 + 60 * i) * Math.PI / 180; return [95 * Math.cos(t), 95 * Math.sin(t), t]; });
+    S('circle', { cx: 0, cy: 0, r: 95, 'class': 'f-none s-rule', 'stroke-width': 1.2 }, svg);
+    var spokes = [], dots = [], labs = [];
+    pos.forEach(function (p) { spokes.push(S('line', { x1: 0, y1: 0, x2: p[0], y2: p[1], 'class': 's-rule', 'stroke-width': 1.2 }, svg)); });
+    S('circle', { cx: 0, cy: 0, r: 30, 'class': 'f-bg s-faint', 'stroke-width': 1.2 }, svg);
+    S('text', { x: 0, y: -2, 'class': 't12 mid it f-muted' }, svg, 'safer');
+    S('text', { x: 0, y: 13, 'class': 't12 mid it f-muted' }, svg, 'AI?');
+    pos.forEach(function (p, i) {
+      dots.push(S('circle', { cx: p[0], cy: p[1], r: 9, 'class': 'f-faint' }, svg));
+      var lx, ly, a;
+      if (i === 0) { lx = 0; ly = p[1] - 18; a = 'mid'; }
+      else if (i === 3) { lx = 0; ly = p[1] + 28; a = 'mid'; }
+      else if (p[0] > 0) { lx = p[0] + 16; ly = p[1] + 5; a = ''; }
+      else { lx = p[0] - 16; ly = p[1] + 5; a = 'end'; }
+      labs.push(S('text', { x: lx, y: ly, 'class': 't15 ' + a }, svg, O[i].s));
+    });
+    O.forEach(function (o, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn'; b.setAttribute('data-i', i); b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+      b.textContent = o.s;
+      btnBox.appendChild(b);
+    });
+    function sel(i) {
+      i = +i;
+      pos.forEach(function (p, k) {
+        var on = k === i;
+        spokes[k].setAttribute('class', on ? 's-blue' : 's-rule');
+        spokes[k].setAttribute('stroke-width', on ? 2.6 : 1.2);
+        dots[k].setAttribute('class', on ? 'f-blue' : 'f-faint');
+        dots[k].setAttribute('r', on ? 12 : 9);
+        labs[k].classList.toggle('b', on);
+      });
+      var o = O[i];
+      read.innerHTML = '<h4>' + o.s + ' interpretability</h4><p>' + o.g + '</p><p><span class="k">Choose it when:</span> ' + o.w + '</p><p><span class="k">The catch:</span> ' + o.x + '</p>';
+    }
+    bindSeg(btnBox, 'data-i', sel);
+    sel(0);
+  })();
+
+  /* ---------- lifecycle ---------- */
+  (function () {
+    var g = document.getElementById('lifeCols');
+    var C = [
+      [70, 'Training', 'teal', ['data attribution', 'training-time fixes', 'phase-change watch']],
+      [200, 'Evaluation', 'gold', ['hidden-goal probes', 'automated audits', 'awareness checks']],
+      [330, 'Deployment', 'blue', ['activation monitors', 'steering vectors', 'knowledge editing']]
+    ];
+    C.forEach(function (c) {
+      S('circle', { cx: c[0], cy: 48, r: 8, 'class': 'f-' + c[2] }, g);
+      S('text', { x: c[0], y: 28, 'class': 't15 mid b' }, g, c[1]);
+      S('line', { x1: c[0], y1: 58, x2: c[0], y2: 78, 'class': 's-' + c[2], 'stroke-width': 1.2, 'stroke-opacity': .6 }, g);
+      c[3].forEach(function (t, k) {
+        var y = 80 + k * 40;
+        S('rect', { x: c[0] - 62, y: y, width: 124, height: 30, rx: 15, 'class': 'f-' + c[2] + ' soft s-' + c[2], 'stroke-width': 1.2 }, g);
+        S('text', { x: c[0], y: y + 20, 'class': 't13 mid' }, g, t);
+      });
+    });
+  })();
+
+  /* ---------- fog of coverage ---------- */
+  (function () {
+    var svg = document.getElementById('fog');
+    var range = document.getElementById('fogRange'), out = document.getElementById('fogOut'), read = document.getElementById('fogRead');
+    var cells = [], hidden = { 36: 1, 37: 1, 42: 1 };
+    var defs = S('defs', null, svg);
+    var pat = S('pattern', { id: 'hatch', width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+    S('line', { x1: 0, y1: 0, x2: 0, y2: 6, 'class': 's-faint', 'stroke-width': 1.4, 'stroke-opacity': .5 }, pat);
+    for (var c = 0; c < 10; c++) for (var r = 0; r < 5; r++) {
+      var x = 22 + c * 36, y = 6 + r * 34, idx = c * 5 + r;
+      var g = S('g', null, svg);
+      var base = S('rect', { x: x, y: y, width: 32, height: 30, rx: 5, 'class': 'f-bg' }, g);
+      var mark;
+      if (hidden[idx]) mark = S('circle', { cx: x + 16, cy: y + 15, r: 6, 'class': 'f-red' }, g);
+      else mark = S('circle', { cx: x + 16, cy: y + 15, r: 2.5, 'class': 'f-faint' }, g);
+      var fog = S('rect', { x: x, y: y, width: 32, height: 30, rx: 5, fill: 'url(#hatch)', 'class': 's-rule', 'stroke-width': 1 }, g);
+      var fog2 = S('rect', { x: x, y: y, width: 32, height: 30, rx: 5, 'class': 'f-faint', 'fill-opacity': .14 }, g);
+      cells.push({ idx: idx, base: base, mark: mark, fog: [fog, fog2] });
+    }
+    var link = S('path', { d: 'M' + (22 + 7 * 36 + 16) + ' ' + (6 + 34 + 15) + ' V' + (6 + 68 + 15) + ' H' + (22 + 8 * 36 + 16) + ' V' + (6 + 68 + 15), 'class': 'f-none s-red', 'stroke-width': 2.2, opacity: 0 }, svg);
+    function draw() {
+      var pct = +range.value, n = Math.round(pct / 100 * 50), found = 0;
+      out.textContent = pct + '%';
+      cells.forEach(function (cell) {
+        var seen = cell.idx < n;
+        cell.fog.forEach(function (f) { f.setAttribute('opacity', seen ? 0 : 1); });
+        cell.mark.setAttribute('opacity', seen ? 1 : 0);
+        if (seen && hidden[cell.idx]) found++;
+      });
+      link.setAttribute('opacity', found >= 2 ? 1 : 0);
+      if (found) {
+        read.className = 'readout alert';
+        read.innerHTML = '<span class="who">Report</span>Deception circuit found, in a region nobody had examined at 30%.';
+      } else {
+        read.className = 'readout';
+        read.innerHTML = '<span class="who">Report</span>“No deception circuit found.” True of the ' + pct + '% examined, and silent about the other ' + (100 - pct) + '%.';
+      }
+    }
+    range.addEventListener('input', draw);
+    draw();
+  })();
+
+  /* ---------- swiss cheese ---------- */
+  (function () {
+    var g = document.getElementById('cheese');
+    var L = [
+      [62, ['behavioural', 'tests'], [[50, 6], [92, 8], [140, 5]]],
+      [142, ['safety', 'training'], [[66, 5], [92, 8], [128, 6]]],
+      [222, ['monitoring', '& oversight'], [[44, 6], [92, 8], [118, 5], [146, 6]]],
+      [302, ['interpret-', 'ability'], [[56, 7], [124, 7], [150, 5]]]
+    ];
+    L.forEach(function (s) {
+      var x = s[0];
+      S('rect', { x: x, y: 26, width: 30, height: 136, rx: 7, 'class': 'f-gold soft s-gold', 'stroke-width': 1.5 }, g);
+      s[2].forEach(function (h) { S('ellipse', { cx: x + 15, cy: h[0], rx: Math.min(11, h[1] + 3), ry: h[1], 'class': 'f-bg s-gold', 'stroke-width': .8, 'stroke-opacity': .6 }, g); });
+      S('text', { x: x + 15, y: 182, 'class': 't12 mid' }, g, s[1][0]);
+      S('text', { x: x + 15, y: 198, 'class': 't12 mid' }, g, s[1][1]);
+    });
+  })();
+})();
+</script>
+</body>
+</html>
