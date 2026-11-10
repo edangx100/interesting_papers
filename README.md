@@ -63,3 +63,6 @@
 - Recursa: Toward Recursively Self-Improving Foundation Model Systems
   - https://arxiv.org/html/2611.04035v1
   - https://edangx100.github.io/interesting_papers/recursa-self-improving-foundation-model-systems
+- Understanding AI from the Inside: The State of Mechanistic Interpretability for AI Safety
+  - https://www.alphaxiv.org/pdf/2611.08438
+  - https://edangx100.github.io/interesting_papers/AI_Safety_Understanding_AI_From_The_Inside
