@@ -66,3 +66,6 @@
 - Understanding AI from the Inside: The State of Mechanistic Interpretability for AI Safety
   - https://www.alphaxiv.org/pdf/2611.08438
   - https://edangx100.github.io/interesting_papers/AI_Safety_Understanding_AI_From_The_Inside
+- What affects chain-of-thought monitorability across the model lifecycle?
+  - https://alignment.openai.com/cot-monitorability-model-lifecycle
+  -  https://edangx100.github.io/interesting_papers/cot-monitorability-model-lifecycle
