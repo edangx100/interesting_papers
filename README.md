@@ -72,3 +72,6 @@
 - Can LLM Agents Organize Their Own Memory?
   - https://arxiv.org/html/2611.11929
   - https://edangx100.github.io/interesting_papers/agents-organise-memory
+- An Approach to Technical AGI Safety and Security
+  - https://deepmindsafetyresearch.medium.com/an-approach-to-technical-agi-safety-and-security-25928819fbc6
+  - https://edangx100.github.io/interesting_papers/approach-to-technical-agi-safety-and-security
