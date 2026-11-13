@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keeping AGI from causing severe harm: an explainer</title>
+<meta name="description" content="A visual explainer of Google DeepMind’s paper “An Approach to Technical AGI Safety and Security.”">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F1; --surface:#F6F7F7; --sunk:#E3E8EA; --ink:#2B3137; --soft:#56606A; --faint:#8C959D; --line:#D0D7DB;
+  --blue:#3477A0; --rose:#AE514B; --gold:#9A7712; --lav:#6A61A5; --green:#3D8458; --brown:#8A6A4C;
+  --fs:1;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --ui:"Atkinson Hyperlegible", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1E242A; --surface:#252C33; --sunk:#1A1F24; --ink:#D9DEE2; --soft:#A7B0B8; --faint:#77818A; --line:#38414A;
+    --blue:#6CB2D6; --rose:#DE8980; --gold:#DDBE5C; --lav:#A79DDD; --green:#76BE8C; --brown:#C7A17D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1E242A; --surface:#252C33; --sunk:#1A1F24; --ink:#D9DEE2; --soft:#A7B0B8; --faint:#77818A; --line:#38414A;
+  --blue:#6CB2D6; --rose:#DE8980; --gold:#DDBE5C; --lav:#A79DDD; --green:#76BE8C; --brown:#C7A17D;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+*,*::before,*::after{box-sizing:border-box}
+html,body{overflow-x:clip}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--serif); font-size:calc(1.125rem * var(--fs)); line-height:1.72;
+  font-optical-sizing:auto; -webkit-font-smoothing:antialiased;
+  padding:0 max(1.25rem, env(safe-area-inset-right,0px)) 0 max(1.25rem, env(safe-area-inset-left,0px));
+}
+.col{max-width:35rem;margin:0 auto}
+p{margin:0 0 1.15em}
+strong{font-weight:600}
+a{color:var(--blue);text-underline-offset:.18em;text-decoration-thickness:1px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;letter-spacing:-.01em}
+h1{font-size:calc(2.35rem * var(--fs));margin:.4em 0 .45em;max-width:16ch}
+h2{font-size:calc(1.6rem * var(--fs));margin:3.2em 0 .7em}
+h3{font-size:calc(1.18rem * var(--fs));margin:2em 0 .5em}
+
+.bar{display:flex;justify-content:flex-end;gap:.4rem;padding-top:1rem;max-width:35rem;margin:0 auto}
+button{font:inherit;font-family:var(--ui);color:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
+.tool{min-height:44px;min-width:44px;padding:0 .8rem;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--soft);font-size:.9rem}
+.tool:active{background:var(--sunk)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+.summary{font-size:calc(1.32rem * var(--fs));line-height:1.5;color:var(--ink);margin:0 0 1.4rem;max-width:32ch}
+.byline{font-family:var(--ui);font-size:.88rem;color:var(--soft);margin:0 0 2.4rem}
+.intro{color:var(--soft)}
+
+.fig{
+  width:min(46rem, 100vw);
+  margin:2.4rem 0 2.6rem calc(50% - min(23rem, 50vw));
+  background:var(--surface);border-radius:18px;padding:1.4rem 1.4rem 1.25rem;
+}
+@media (max-width:600px){ .fig{border-radius:0;padding:1.15rem .9rem 1.1rem} }
+.fig svg{display:block;width:100%;height:auto;max-width:40rem;margin:0 auto;overflow:visible}
+.cap{font-family:var(--ui);font-size:.92rem;line-height:1.55;color:var(--soft);max-width:38rem;margin:.9rem auto 0}
+.cap b{color:var(--ink);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;gap:.45rem;justify-content:center;margin:0 auto 1rem;max-width:40rem}
+.chip{min-height:44px;padding:.35rem .95rem;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--soft);font-size:.93rem;line-height:1.2}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip:active{transform:scale(.97)}
+.act{min-height:44px;padding:.35rem 1.1rem;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:.95rem}
+.act:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem}
+.panel{font-family:var(--ui);font-size:.95rem;line-height:1.6;max-width:38rem;margin:1rem auto 0;padding:1rem 1.1rem;border-radius:12px;background:var(--bg);color:var(--ink);min-height:7.5rem}
+.panel h4{margin:0 0 .35rem;font-size:1.02rem}
+.panel p{margin:0 0 .45rem}
+.panel p:last-child{margin-bottom:0}
+.panel .k{color:var(--soft)}
+.badge{display:inline-block;font-size:.8rem;font-weight:400;padding:.1rem .55rem;border-radius:6px;background:var(--sunk);color:var(--soft);margin-left:.5rem;vertical-align:2px}
+.slider{display:flex;align-items:center;gap:.8rem;max-width:30rem;margin:1rem auto 0;font-family:var(--ui);font-size:.9rem;color:var(--soft)}
+input[type=range]{flex:1;height:44px;accent-color:var(--green);background:transparent}
+
+.t{font-family:var(--ui);font-size:15px;fill:var(--soft)}
+.ts{font-family:var(--ui);font-size:13px;fill:var(--faint)}
+.tb{font-family:var(--ui);font-size:16px;font-weight:700;fill:var(--ink)}
+.ax{stroke:var(--line);stroke-width:1.6;fill:none}
+.layer{opacity:0;transition:opacity .45s ease}
+.layer.on{opacity:1}
+.fade{transition:opacity .4s ease}
+
+.hero .d{stroke-dasharray:1;stroke-dashoffset:1}
+.hero .pop{opacity:0}
+.hero.play .d1{animation:draw .9s ease-out .35s forwards}
+.hero.play .pop1{animation:pop .35s ease-out 1.2s forwards}
+.hero.play .d2{animation:draw .7s ease-out 1.6s forwards}
+.hero.play .d3{animation:draw .8s ease-out 2.35s forwards}
+.hero.play .pop2{animation:pop .35s ease-out 3.15s forwards}
+.hero.play .pop3{animation:pop .6s ease-out 3.6s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pop{from{opacity:0}to{opacity:1}}
+
+.note{border-left:3px solid var(--gold);padding:.2rem 0 .2rem 1rem;margin:1.6rem 0;color:var(--soft)}
+.takeaway{font-size:calc(1.28rem * var(--fs));line-height:1.55;margin:1rem 0 1.4rem}
+.links{font-family:var(--ui);font-size:.95rem;padding:0;list-style:none;margin:0 0 4rem}
+.links li{margin:.55rem 0}
+.links span{color:var(--soft)}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+  .hero .d{stroke-dashoffset:0}
+  .hero .pop{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-person" viewBox="-25 -25 50 50">
+      <circle cx="0" cy="-9" r="9" fill="currentColor"/>
+      <path d="M-17 22 Q-17 3 0 3 Q17 3 17 22 Z" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-ai" viewBox="-25 -25 50 50">
+      <rect x="-19" y="-19" width="38" height="38" rx="9" fill="currentColor"/>
+      <circle cx="-7" cy="-3" r="3.2" fill="var(--surface)"/>
+      <circle cx="7" cy="-3" r="3.2" fill="var(--surface)"/>
+      <path d="M-7 8 H7" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-world" viewBox="-25 -25 50 50">
+      <circle r="20" fill="none" stroke="currentColor" stroke-width="2.4"/>
+      <ellipse rx="9" ry="20" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M-20 0 H20" stroke="currentColor" stroke-width="1.8"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="bar" role="toolbar" aria-label="Reading settings">
+  <button class="tool" id="smaller" aria-label="Smaller text">A−</button>
+  <button class="tool" id="larger" aria-label="Larger text">A+</button>
+  <button class="tool" id="theme">Dim</button>
+</div>
+
+<main class="col">
+
+<h1>Keeping AGI from causing severe harm</h1>
+<p class="summary">Keep dangerous AI abilities away from bad actors, and build two walls against an AI that turns on us: train it to be good, then guard against it anyway.</p>
+<p class="byline">A visual guide to Google DeepMind’s 2025 paper <em>An Approach to Technical AGI Safety and Security</em> by Rohin Shah and colleagues.</p>
+
+<p class="intro">AI may soon match the best human experts at most desk work. That could bring enormous benefits, and also some risks big enough to seriously harm humanity. Those risks can’t be handled the usual way, by waiting for an accident and fixing what broke, because one accident could be one too many. So a team at Google DeepMind wrote their plan down in advance: what could go wrong, which problems to tackle now, and how they would know if their defenses are good enough. This page walks through that plan.</p>
+
+<figure class="fig">
+  <svg class="hero" id="hero" viewBox="0 0 480 300" role="img" aria-label="Two lanes. A person who wants harm is stopped by a barrier that blocks access. An AI that wants harm passes a first wall, training, if something slips through, and is stopped by a second wall, guarding. The world on the right stays safe.">
+    <use href="#i-person" x="35" y="60" width="50" height="50" style="color:var(--rose)"/>
+    <text class="t" x="60" y="132" text-anchor="middle">A person</text>
+    <text class="t" x="60" y="150" text-anchor="middle">who wants harm</text>
+    <use href="#i-ai" x="35" y="190" width="50" height="50" style="color:var(--blue)"/>
+    <text class="t" x="60" y="262" text-anchor="middle">An AI</text>
+    <text class="t" x="60" y="280" text-anchor="middle">that wants harm</text>
+
+    <rect x="232" y="48" width="10" height="74" rx="4" fill="var(--green)"/>
+    <text class="tb" x="237" y="38" text-anchor="middle" style="fill:var(--green)">Block access</text>
+
+    <rect x="168" y="178" width="10" height="74" rx="4" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-dasharray="7 5"/>
+    <text class="t" x="173" y="274" text-anchor="middle" style="fill:var(--green)">Wall 1:</text>
+    <text class="t" x="173" y="292" text-anchor="middle" style="fill:var(--green)">train it well</text>
+    <rect x="296" y="178" width="10" height="74" rx="4" fill="var(--green)"/>
+    <text class="t" x="301" y="274" text-anchor="middle" style="fill:var(--green)">Wall 2:</text>
+    <text class="t" x="301" y="292" text-anchor="middle" style="fill:var(--green)">guard it anyway</text>
+
+    <path class="d d1" pathLength="1" d="M92 85 H218" stroke="var(--rose)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path class="pop pop1" d="M212 77 L224 85 L212 93" stroke="var(--rose)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g class="pop pop1"><path d="M252 74 l10 -8 M254 85 h13 M252 96 l10 8" stroke="var(--rose)" stroke-width="2.4" stroke-linecap="round"/></g>
+
+    <path class="d d2" pathLength="1" d="M92 215 H158" stroke="var(--blue)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path class="d d3" pathLength="1" d="M186 215 H284" stroke="var(--blue)" stroke-width="2" fill="none" stroke-linecap="round" opacity=".75"/>
+    <text class="ts pop pop2" x="236" y="170" text-anchor="middle">if anything slips past</text>
+    <path class="pop pop2" d="M278 208 L287 215 L278 222" stroke="var(--blue)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <g class="pop pop2"><path d="M316 204 l10 -8 M318 215 h13 M316 226 l10 8" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round"/></g>
+
+    <use href="#i-world" x="378" y="108" width="84" height="84" style="color:var(--soft)"/>
+    <text class="t" x="420" y="214" text-anchor="middle">The world</text>
+    <g class="pop pop3"><circle cx="420" cy="150" r="52" fill="none" stroke="var(--green)" stroke-width="2" opacity=".55"/><text class="ts" x="420" y="232" text-anchor="middle" style="fill:var(--green)">stays safe</text></g>
+  </svg>
+  <figcaption class="cap"><b>The plan in one picture.</b> Misuse and misalignment are the two dangers the paper tackles head on. Each gets its own kind of defense.</figcaption>
+  <div class="row"><button class="act" id="replay">Replay</button></div>
+</figure>
+
+<h2>Why not wait and see?</h2>
+<p>For most technologies, the sensible approach is what the paper calls <em>observe and mitigate</em>: release things in stages, watch what goes wrong, and fix it. Airplanes, medicines and cars mostly got safer this way.</p>
+<p>That only works when mistakes are survivable. The paper focuses on <strong>severe harm</strong>: incidents serious enough to significantly harm humanity. For those, you have to prepare before you have clear evidence the danger is real. The authors call this the <em>evidence dilemma</em>. Prepare too early and you may waste effort on the wrong problem. Prepare too late and there may be no second chance.</p>
+
+<figure class="fig">
+  <div class="controls" role="group" aria-label="Kind of risk" id="seg-ev">
+    <button class="chip" data-v="every" aria-pressed="true">Everyday risk</button>
+    <button class="chip" data-v="severe" aria-pressed="false">Severe risk</button>
+  </div>
+  <svg viewBox="0 0 480 270" role="img" aria-label="Chart comparing everyday risks, where incidents lead to fixes and harm steps down, with severe risks, where preparation must happen before evidence arrives.">
+    <path class="ax" d="M40 228 H458 M40 228 V30"/>
+    <text class="ts" x="458" y="250" text-anchor="end">time</text>
+    <g class="layer on" id="ev-every">
+      <text class="ts" x="46" y="26">how much harm happens</text>
+      <path d="M40 62 H112 V98 H192 V132 H272 V162 H352 V188 H456" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="112" cy="62" r="7" fill="var(--rose)"/><circle cx="192" cy="98" r="7" fill="var(--rose)"/>
+      <circle cx="272" cy="132" r="7" fill="var(--rose)"/><circle cx="352" cy="162" r="7" fill="var(--rose)"/>
+      <text class="t" x="124" y="56">incident</text>
+      <text class="t" x="128" y="88" style="fill:var(--green)">then a fix</text>
+      <text class="t" x="456" y="178" text-anchor="end" style="fill:var(--gold)">safer every round</text>
+    </g>
+    <g class="layer" id="ev-severe">
+      <text class="ts" x="46" y="26">how much harm is possible</text>
+      <rect x="150" y="34" width="170" height="194" fill="var(--green)" opacity=".12"/>
+      <text class="t" x="235" y="214" text-anchor="middle" style="fill:var(--green)">prepare here</text>
+      <path d="M40 72 H456" stroke="var(--rose)" stroke-width="2" stroke-dasharray="6 5"/>
+      <text class="t" x="44" y="62" style="fill:var(--rose)">severe harm: no second try</text>
+      <path d="M40 210 C200 205 300 165 456 46" fill="none" stroke="var(--gold)" stroke-width="3"/>
+      <path d="M372 104 V228" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <text class="ts" x="366" y="196" text-anchor="end">clear evidence</text>
+      <text class="ts" x="366" y="212" text-anchor="end">arrives</text>
+      <circle cx="421" cy="72" r="7" fill="var(--rose)"/>
+    </g>
+  </svg>
+  <figcaption class="cap" id="cap-ev"></figcaption>
+</figure>
+
+<p>The paper’s way through the dilemma is to sort risks into two piles. Risks whose underlying abilities are already in sight get research and safeguards now. Risks that depend on abilities nobody can foresee yet are deliberately deferred until there is more evidence, on the bet that they will become visible before they become real.</p>
+
+<h2>Four bets about the future</h2>
+<p>Every plan rests on guesses about how the world will unfold, and the paper is unusually upfront about its own. It assumes AI keeps being built roughly the way it is today, with huge neural networks trained on lots of data and computing power. Then it makes four further bets, and each one shapes the plan.</p>
+
+<figure class="fig">
+  <div class="controls" role="group" aria-label="Assumption" id="seg-as">
+    <button class="chip" data-v="ceiling" aria-pressed="true">No human ceiling</button>
+    <button class="chip" data-v="time" aria-pressed="false">Uncertain timing</button>
+    <button class="chip" data-v="accel" aria-pressed="false">Speed-up</button>
+    <button class="chip" data-v="cont" aria-pressed="false">No sudden leaps</button>
+  </div>
+  <svg viewBox="0 0 480 270" role="img" aria-label="Sketches of AI capability over time illustrating each assumption.">
+    <path class="ax" d="M40 230 H458 M40 230 V28"/>
+    <text class="ts" x="458" y="252" text-anchor="end">time</text>
+    <text class="ts" x="46" y="24">capability</text>
+    <g class="layer on" id="as-ceiling">
+      <path d="M40 122 H456" stroke="var(--brown)" stroke-width="2" stroke-dasharray="6 5"/>
+      <text class="t" x="46" y="114" style="fill:var(--brown)">best human experts</text>
+      <path d="M40 216 C170 206 250 150 456 40" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <text class="t" x="452" y="156" text-anchor="end" style="fill:var(--blue)">no reason to stop here</text>
+    </g>
+    <g class="layer" id="as-time">
+      <path d="M40 230 C110 230 140 118 205 112 C285 104 340 200 456 216 L456 230 Z" fill="var(--gold)" opacity=".22"/>
+      <path d="M40 230 C110 230 140 118 205 112 C285 104 340 200 456 216" fill="none" stroke="var(--gold)" stroke-width="2.4"/>
+      <path d="M144 230 V60" stroke="var(--rose)" stroke-width="2" stroke-dasharray="4 4"/>
+      <text class="tb" x="150" y="72" style="fill:var(--rose)">2030</text>
+      <text class="t" x="150" y="92">plausible</text>
+      <text class="t" x="276" y="74">when powerful AI arrives:</text>
+      <text class="t" x="276" y="92">a wide spread of guesses</text>
+    </g>
+    <g class="layer" id="as-accel">
+      <path d="M40 220 C250 215 340 180 456 32" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <path d="M206 100 A44 44 0 1 1 228 138" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+      <path d="M240 139 L228 138 L233 127" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="ts" x="250" y="92" text-anchor="middle" style="fill:var(--green)">AI improves</text>
+      <text class="ts" x="250" y="108" text-anchor="middle" style="fill:var(--green)">AI research</text>
+      <text class="t" x="420" y="40" text-anchor="end" style="fill:var(--blue)">progress feeds itself</text>
+    </g>
+    <g class="layer" id="as-cont">
+      <path d="M40 212 H250 V62 H456" fill="none" stroke="var(--rose)" stroke-width="2" stroke-dasharray="6 5" opacity=".75"/>
+      <path d="M242 128 l16 16 M258 128 l-16 16" stroke="var(--rose)" stroke-width="2.6" stroke-linecap="round"/>
+      <text class="t" x="262" y="52" style="fill:var(--rose)">one giant jump: not expected</text>
+      <path d="M40 212 C180 196 300 130 456 70" fill="none" stroke="var(--green)" stroke-width="3"/>
+      <text class="t" x="452" y="140" text-anchor="end" style="fill:var(--green)">steady, even if fast</text>
+    </g>
+  </svg>
+  <div class="panel" id="as-panel" aria-live="polite"></div>
+</figure>
+
+<h2>Four ways things go wrong</h2>
+<p>Rather than listing scary scenarios one by one, the paper groups harms by <em>who, if anyone, is acting in bad faith</em>. That matters because the defense depends on it. Stopping a malicious person looks very different from stopping a malicious AI, and both differ from preventing an honest accident.</p>
+
+<figure class="fig">
+  <div class="controls" role="group" aria-label="Risk area" id="seg-risk">
+    <button class="chip" data-v="misuse" aria-pressed="true">Misuse</button>
+    <button class="chip" data-v="misalign" aria-pressed="false">Misalignment</button>
+    <button class="chip" data-v="mistake" aria-pressed="false">Mistakes</button>
+    <button class="chip" data-v="struct" aria-pressed="false">Structural</button>
+  </div>
+  <svg viewBox="0 0 480 220" role="img" aria-label="Diagram of a user, an AI system and the world, highlighting where the source of harm lies for each risk area.">
+    <g class="layer on" id="rk-misuse">
+      <use href="#i-person" x="40" y="80" width="60" height="60" style="color:var(--rose)"/>
+      <circle cx="70" cy="110" r="42" fill="none" stroke="var(--rose)" stroke-width="2" stroke-dasharray="5 5"/>
+      <text class="tb" x="70" y="52" text-anchor="middle" style="fill:var(--rose)">bad intent</text>
+      <use href="#i-ai" x="210" y="80" width="60" height="60" style="color:var(--faint)"/>
+      <path d="M118 110 H196 M188 103 L197 110 L188 117" fill="none" stroke="var(--rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M282 110 H360 M352 103 L361 110 L352 117" fill="none" stroke="var(--rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <use href="#i-world" x="375" y="75" width="70" height="70" style="color:var(--soft)"/>
+      <text class="t" x="70" y="178" text-anchor="middle">user</text><text class="t" x="240" y="178" text-anchor="middle">AI</text><text class="t" x="410" y="178" text-anchor="middle">world</text>
+    </g>
+    <g class="layer" id="rk-misalign">
+      <use href="#i-person" x="40" y="80" width="60" height="60" style="color:var(--faint)"/>
+      <use href="#i-ai" x="210" y="80" width="60" height="60" style="color:var(--blue)"/>
+      <circle cx="240" cy="110" r="42" fill="none" stroke="var(--blue)" stroke-width="2" stroke-dasharray="5 5"/>
+      <text class="tb" x="240" y="52" text-anchor="middle" style="fill:var(--blue)">bad intent</text>
+      <path d="M118 110 H196 M188 103 L197 110 L188 117" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M282 110 H360 M352 103 L361 110 L352 117" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <use href="#i-world" x="375" y="75" width="70" height="70" style="color:var(--soft)"/>
+      <text class="t" x="70" y="178" text-anchor="middle">user</text><text class="t" x="240" y="178" text-anchor="middle">AI</text><text class="t" x="410" y="178" text-anchor="middle">world</text>
+    </g>
+    <g class="layer" id="rk-mistake">
+      <use href="#i-person" x="40" y="80" width="60" height="60" style="color:var(--faint)"/>
+      <use href="#i-ai" x="210" y="80" width="60" height="60" style="color:var(--faint)"/>
+      <text class="tb" x="240" y="52" text-anchor="middle" style="fill:var(--gold)">didn’t know</text>
+      <path d="M118 110 H196 M188 103 L197 110 L188 117" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M282 110 H360 M352 103 L361 110 L352 117" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <use href="#i-world" x="375" y="75" width="70" height="70" style="color:var(--soft)"/>
+      <path d="M432 58 L451 92 H413 Z" fill="var(--gold)"/>
+      <text x="432" y="88" text-anchor="middle" style="font:700 17px var(--ui);fill:var(--surface)">!</text>
+      <text class="ts" x="432" y="48" text-anchor="middle" style="fill:var(--gold)">hidden hazard</text>
+      <text class="t" x="70" y="178" text-anchor="middle">user</text><text class="t" x="240" y="178" text-anchor="middle">AI</text><text class="t" x="410" y="178" text-anchor="middle">world</text>
+    </g>
+    <g class="layer" id="rk-struct">
+      <g stroke="var(--lav)" stroke-width="1.8" fill="none" opacity=".75">
+        <path d="M78 58 C150 60 200 150 362 112"/>
+        <path d="M78 160 C160 160 220 60 362 104"/>
+        <path d="M170 110 C230 110 270 140 362 118"/>
+        <path d="M250 44 C300 50 320 80 364 98"/>
+        <path d="M262 176 C310 170 330 140 366 124"/>
+      </g>
+      <use href="#i-person" x="44" y="38" width="40" height="40" style="color:var(--lav)"/>
+      <use href="#i-person" x="44" y="140" width="40" height="40" style="color:var(--lav)"/>
+      <use href="#i-person" x="140" y="90" width="40" height="40" style="color:var(--lav)"/>
+      <use href="#i-ai" x="216" y="24" width="40" height="40" style="color:var(--lav)"/>
+      <use href="#i-ai" x="228" y="156" width="40" height="40" style="color:var(--lav)"/>
+      <use href="#i-world" x="375" y="75" width="70" height="70" style="color:var(--soft)"/>
+      <text class="tb" x="200" y="214" text-anchor="middle" style="fill:var(--lav)">no single culprit</text>
+    </g>
+  </svg>
+  <div class="panel" id="risk-panel" aria-live="polite"></div>
+</figure>
+
+<p>These areas overlap. A misaligned AI might recruit a human criminal to help it copy itself out of the lab, which mixes misuse and misalignment. Still, the grouping tells you which toolbox to open. The paper sets mistakes and structural risks aside and spends its effort on <strong>misuse</strong> and <strong>misalignment</strong>, the two cases with an adversary in the loop.</p>
+
+<h2>Misuse: keep dangerous abilities out of bad hands</h2>
+<p>The goal is simple to state: make sure a bad actor can’t get enough access to a dangerous ability to cause severe harm. There are two ways in. An attacker can try to use the AI through its normal app, or try to steal the model itself. Each route meets its own layers of defense, so no single layer has to be perfect.</p>
+
+<figure class="fig">
+  <div class="controls" role="group" aria-label="Defense layer" id="seg-mis">
+    <button class="chip" data-v="access" aria-pressed="true">Access limits</button>
+    <button class="chip" data-v="monitor" aria-pressed="false">Monitoring</button>
+    <button class="chip" data-v="refuse" aria-pressed="false">Refusal training</button>
+    <button class="chip" data-v="secure" aria-pressed="false">Weight security</button>
+    <button class="chip" data-v="society" aria-pressed="false">Society’s defenses</button>
+  </div>
+  <svg viewBox="0 0 480 280" role="img" aria-label="Two attack routes. Using the app passes access limits, monitoring and refusal training before reaching the dangerous ability. Stealing the model meets weight security. Society’s defenses sit between the ability and the world." id="mis-svg">
+    <use href="#i-person" x="12" y="54" width="44" height="44" style="color:var(--rose)"/>
+    <text class="ts" x="4" y="114">use the app</text>
+    <use href="#i-person" x="12" y="180" width="44" height="44" style="color:var(--rose)"/>
+    <text class="ts" x="4" y="240">steal the model</text>
+    <path d="M62 76 H292" stroke="var(--rose)" stroke-width="2" stroke-dasharray="5 5"/>
+    <path d="M62 202 H292" stroke="var(--rose)" stroke-width="2" stroke-dasharray="5 5"/>
+
+    <g class="gate fade" data-g="access"><rect x="98" y="40" width="12" height="72" rx="4" fill="var(--green)"/><text class="t" x="104" y="30" text-anchor="middle">access</text></g>
+    <g class="gate fade" data-g="monitor"><rect x="160" y="40" width="12" height="72" rx="4" fill="var(--green)"/><text class="t" x="166" y="30" text-anchor="middle">monitor</text></g>
+    <g class="gate fade" data-g="refuse"><rect x="222" y="40" width="12" height="72" rx="4" fill="var(--green)"/><text class="t" x="228" y="30" text-anchor="middle">refuse</text></g>
+    <g class="gate fade" data-g="secure"><rect x="150" y="162" width="32" height="80" rx="6" fill="var(--surface)" stroke="var(--green)" stroke-width="3"/><circle cx="166" cy="196" r="6" fill="var(--green)"/><path d="M166 200 v12" stroke="var(--green)" stroke-width="3"/><text class="t" x="166" y="264" text-anchor="middle">security</text></g>
+
+    <rect x="296" y="56" width="78" height="166" rx="12" fill="var(--rose)" opacity=".14"/>
+    <rect x="296" y="56" width="78" height="166" rx="12" fill="none" stroke="var(--rose)" stroke-width="2"/>
+    <text class="tb" x="335" y="136" text-anchor="middle" style="fill:var(--rose);font-size:14px">dangerous</text>
+    <text class="tb" x="335" y="156" text-anchor="middle" style="fill:var(--rose);font-size:14px">ability</text>
+    <path d="M378 139 H420" stroke="var(--rose)" stroke-width="2" stroke-dasharray="5 5"/>
+    <g class="gate fade" data-g="society"><rect x="398" y="96" width="10" height="86" rx="4" fill="var(--green)"/><text class="t" x="403" y="86" text-anchor="middle">society</text></g>
+    <use href="#i-world" x="422" y="117" width="46" height="46" style="color:var(--soft)"/>
+  </svg>
+  <div class="panel" id="mis-panel" aria-live="polite"></div>
+</figure>
+
+<h3>Only add the locks when they’re needed</h3>
+<p>Heavy safeguards make an AI less useful, so the paper doesn’t apply them blindly. First it asks whether a model even has a dangerous ability, using <strong>dangerous capability evaluations</strong>: a suite of tasks that stand in for real harm. Each danger gets a threshold score. Below it, the argument is simply that the model can’t do the harmful thing. As models approach it, safeguards get prepared ahead of time. This is how Google DeepMind’s Frontier Safety Framework works in practice.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 262" role="img" aria-label="Bar chart of dangerous capability scores for successive models, compared against an early warning line and a danger threshold." id="thr-svg">
+    <path class="ax" d="M44 222 H458"/>
+    <path d="M44 122 H458" stroke="var(--gold)" stroke-width="1.8" stroke-dasharray="3 4"/>
+    <text class="ts" x="48" y="116" style="fill:var(--gold)">early warning</text>
+    <path d="M44 92 H458" stroke="var(--rose)" stroke-width="2" stroke-dasharray="6 5"/>
+    <text class="ts" x="48" y="86" style="fill:var(--rose)">danger threshold</text>
+    <g id="thr-bars"></g>
+  </svg>
+  <div class="panel" id="thr-panel" aria-live="polite"></div>
+  <div class="row"><button class="act" id="thr-next">Test the first model</button><button class="act" id="thr-reset">Start over</button></div>
+  <figcaption class="cap"><b>A sketch, not real scores.</b> Each bar is one new model’s result on a dangerous-capability test.</figcaption>
+</figure>
+
+<p>Once safeguards are on, the team tries to break them. A <strong>red team</strong> attacks the system with extra advantages, such as full knowledge of how the defenses work, to make up for real attackers who may put in far more effort. Ideally the red team is separate from the people who built the safeguards, so they don’t share blind spots. Anything it gets through is a reason to strengthen the defenses.</p>
+
+<h2>Misalignment, wall one: train a good AI</h2>
+<p>Misalignment means the AI itself knowingly works against what its developers intended. The paper uses a broad sense of “knowingly”, covering everything from deliberate deception to a model that training led to honestly believe a harmful action is good. The first line of defense follows the standard machine learning playbook: get a good signal about which behavior is right, train on it, and make sure the training holds up in new situations.</p>
+
+<h3>Checking work you can’t check yourself</h3>
+<p>The hardest part is the signal. Once an AI is more capable than the person grading it, how do you tell a good answer from a subtly bad one? Imagine trying to grade a move by AlphaGo. The paper’s answer is <strong>amplified oversight</strong>: use AI to help humans judge AI. One version is a debate between two copies of the same model, where one copy earns reward for exposing the other’s flaws.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 300" role="img" aria-label="Debate illustration with two AI copies and a human judge." id="deb-svg">
+    <use href="#i-ai" x="38" y="62" width="56" height="56" style="color:var(--blue)"/>
+    <text class="t" x="66" y="138" text-anchor="middle">AI copy A</text>
+    <use href="#i-ai" x="386" y="62" width="56" height="56" style="color:var(--blue)"/>
+    <text class="t" x="414" y="138" text-anchor="middle">AI copy B</text>
+    <use href="#i-person" x="212" y="218" width="56" height="56" style="color:var(--soft)"/>
+    <text class="t" x="240" y="292" text-anchor="middle">human judge</text>
+
+    <g data-from="0" class="fade">
+      <rect x="130" y="34" width="220" height="124" rx="10" fill="var(--bg)" stroke="var(--line)" stroke-width="1.5"/>
+      <text class="ts" x="144" y="56">A’s answer</text>
+      <rect x="144" y="70" width="180" height="8" rx="4" fill="var(--faint)" opacity=".55"/>
+      <rect x="144" y="88" width="160" height="8" rx="4" fill="var(--faint)" opacity=".55"/>
+      <rect x="144" y="106" width="186" height="8" rx="4" fill="var(--faint)" opacity=".55"/>
+      <rect id="flaw" x="144" y="124" width="150" height="8" rx="4" fill="var(--faint)" opacity=".55"/>
+      <rect x="144" y="142" width="120" height="8" rx="4" fill="var(--faint)" opacity=".55"/>
+    </g>
+    <g data-from="1" data-to="1" class="fade">
+      <path d="M228 214 L200 162 M252 214 L280 162" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <rect x="290" y="190" width="132" height="34" rx="10" fill="var(--bg)" stroke="var(--line)"/>
+      <text class="t" x="356" y="212" text-anchor="middle">Looks right…</text>
+    </g>
+    <g data-from="2" class="fade">
+      <path d="M390 104 C360 128 330 128 304 128" stroke="var(--rose)" stroke-width="2.4" fill="none"/>
+      <path d="M313 121 L303 128 L313 135" stroke="var(--rose)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g data-from="2" data-to="2" class="fade">
+      <rect x="296" y="170" width="178" height="46" rx="10" fill="var(--bg)" stroke="var(--rose)"/>
+      <text class="ts" x="385" y="189" text-anchor="middle" style="fill:var(--rose)">“This step quietly</text>
+      <text class="ts" x="385" y="206" text-anchor="middle" style="fill:var(--rose)">assumes something false.”</text>
+    </g>
+    <g data-from="3" class="fade">
+      <path d="M240 212 L226 136" stroke="var(--green)" stroke-width="2" stroke-dasharray="4 4"/>
+      <text class="tb" x="66" y="44" text-anchor="middle" style="fill:var(--rose)">− penalty</text>
+      <text class="tb" x="414" y="44" text-anchor="middle" style="fill:var(--green)">+ reward</text>
+      <rect x="280" y="190" width="168" height="34" rx="10" fill="var(--bg)" stroke="var(--green)"/>
+      <text class="t" x="364" y="212" text-anchor="middle" style="fill:var(--green)">That one I can check</text>
+    </g>
+  </svg>
+  <div class="panel" id="deb-panel" aria-live="polite"></div>
+  <div class="row"><button class="act" id="deb-back">Back</button><button class="act" id="deb-next">Next</button></div>
+</figure>
+
+<p>The trick is that a question too hard to judge directly gets broken into smaller questions a person can judge. The goal is an oversight signal as good as a human would give if they understood every reason behind the AI’s output and had unlimited time to think. The paper is honest that people may be biased even on simple questions; if so, those biases would need to be modeled and corrected.</p>
+<p>With a good signal in hand, the AI is trained on it, today mostly with reinforcement learning. The paper suggests richer feedback could help, such as written critiques instead of a single thumbs up or down.</p>
+
+<h3>Good in practice, not just in training</h3>
+<p>A model can behave perfectly on every situation it was trained on and still go wrong on new ones. <strong>Robust training</strong> widens the set of situations the model learns from, focusing on the ones most likely to cause failures. The techniques include active learning (asking for feedback where the model is least sure), automated adversarial training (searching for inputs that trip it up), and continuing to train after deployment.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 290" role="img" aria-label="Field of situations. A circle shows the situations covered by training; points outside are untested, and some of them are places where the model would misbehave." id="rob-svg" style="overflow:hidden">
+    <circle id="rob-region" cx="170" cy="150" r="60" fill="var(--green)" opacity=".13"/>
+    <circle id="rob-ring" cx="170" cy="150" r="60" fill="none" stroke="var(--green)" stroke-width="2"/>
+    <text class="ts" x="170" y="154" text-anchor="middle" style="fill:var(--green)">training</text>
+    <g id="rob-pts"></g>
+  </svg>
+  <div class="slider"><span>Narrow</span><input type="range" id="rob-range" min="0" max="100" value="10" aria-label="How widely training covers situations"><span>Wide</span></div>
+  <figcaption class="cap">Drag the slider to widen training. Filled dots are covered situations; × marks untested spots where the model would misbehave. <span id="rob-count"></span></figcaption>
+</figure>
+
+<h2>Misalignment, wall two: guard it anyway</h2>
+<p>Training might still leave holes. So the second line of defense, often called <em>AI control</em>, assumes the worst: suppose the model is misaligned despite everything. Can we still stop it from causing severe harm?</p>
+<p>The paper borrows heavily from computer security and treats the AI like an <strong>untrusted insider</strong>, the way a bank treats an employee who might be a spy. That means giving it only the access each task needs, running it in sandboxes, logging what it does, and watching for unusual activity. AI systems usually do narrower jobs than human employees, which makes it easier to restrict them precisely.</p>
+
+<h3>Watching at machine scale</h3>
+<p>The most promising guard is <strong>monitoring</strong>, because it gets better as AI gets better. AI monitors can read every action at a scale no human team could, while still bringing judgment. The paper proposes a layered setup: a cheap monitor checks everything, and only suspicious or unclear cases move up to stronger, costlier reviewers, ending with amplified oversight and humans. Monitors that know when they’re unsure are what make those escalation decisions work.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 290" role="img" aria-label="Actions flow through three checkpoints. Most are cleared by the cheap check, a few go to a stronger check, and very few reach deep review, where real problems are caught." id="mon-svg">
+    <text class="ts" x="40" y="62" text-anchor="middle">AI actions</text>
+    <rect x="146" y="72" width="10" height="64" rx="4" fill="var(--green)"/>
+    <text class="t" x="151" y="38" text-anchor="middle">cheap check</text>
+    <text class="ts" x="151" y="56" text-anchor="middle">every action</text>
+    <rect x="276" y="72" width="10" height="64" rx="4" fill="var(--green)"/>
+    <text class="t" x="281" y="38" text-anchor="middle">stronger check</text>
+    <text class="ts" x="281" y="56" text-anchor="middle">a few</text>
+    <rect x="406" y="72" width="10" height="64" rx="4" fill="var(--green)"/>
+    <text class="t" x="411" y="38" text-anchor="middle">deep review</text>
+    <text class="ts" x="411" y="56" text-anchor="middle">very few</text>
+    <path d="M40 104 H460" stroke="var(--line)" stroke-width="1.4"/>
+    <text class="t" x="151" y="276" text-anchor="middle" id="mon-c1">cleared 0</text>
+    <text class="t" x="281" y="276" text-anchor="middle" id="mon-c2">cleared 0</text>
+    <text class="t" x="411" y="276" text-anchor="middle" id="mon-c3" style="fill:var(--rose)">caught 0</text>
+    <g id="mon-dots"></g>
+  </svg>
+  <div class="row"><button class="act" id="mon-run">Send 80 actions</button></div>
+  <figcaption class="cap"><b>A sketch of the idea.</b> Expensive attention goes only where it’s needed, so oversight can keep up with enormous numbers of actions.</figcaption>
+</figure>
+
+<p class="note">One subtle warning from the paper: it can be useful to monitor a model while it’s being trained, but using the monitor as a training signal is risky. Punishing the AI every time the monitor catches something may teach it to <em>hide</em> the bad behavior rather than stop it.</p>
+
+<h2>Tools that make both walls stronger</h2>
+<p>The paper names three research areas that don’t defend on their own but make the other defenses work better.</p>
+<p><strong>Interpretability</strong> means understanding what is actually happening inside a model, not just what it outputs. If it worked, it could catch a model that only pretends to be aligned to pass tests, check whether an AI’s explanation matches its real reasoning, and give overseers extra information. The paper is candid that this research is still young and needs basic science.</p>
+<p><strong>Uncertainty</strong> means models that know what they don’t know. It tells robust training which situations to learn from next, and tells monitors when to escalate.</p>
+<p><strong>Safer design patterns</strong> are design choices that buy safety at some cost. Examples include training the AI to tell users what it’s doing, to check in before important actions that can’t be undone, and to pause if a user reacts unexpectedly badly; limiting how hard training searches for clever strategies, which also limits clever cheating; and having the AI explain its reasoning in ways humans can follow. The paper wants these tradeoffs measured, and research aimed at making them cheaper.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 290" role="img" aria-label="Tradeoff curve between usefulness and safety. Research moves the whole curve outward." id="par-svg">
+    <path class="ax" d="M50 250 H458 M50 250 V24"/>
+    <text class="ts" x="456" y="272" text-anchor="end">more useful</text>
+    <text class="ts" x="56" y="22">safer</text>
+    <path id="par-fill" fill="var(--blue)" opacity=".1"/>
+    <path id="par-old" fill="none" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="4 5" opacity="0" class="fade"/>
+    <path id="par-line" fill="none" stroke="var(--blue)" stroke-width="3"/>
+    <g id="par-pts"></g>
+  </svg>
+  <div class="row"><button class="act" id="par-go">Do the research</button></div>
+  <figcaption class="cap" id="cap-par"><b>Today, safety costs usefulness.</b> Every design sits somewhere on this curve, from more cautious to more capable.</figcaption>
+</figure>
+
+<h2>How do you show it’s safe?</h2>
+<p>Defenses only matter if you can tell whether they work. For misalignment, the paper uses two kinds of test. In <strong>alignment stress tests</strong>, a red team tries to prove that some assumption in the plan is false; when it succeeds, it often produces a working example of the failure for others to study. In <strong>control evaluations</strong>, the red team deliberately prompts or retrains the model to try to cause a stand-in for harm, and measures whether the guards stop it.</p>
+<p>The results feed into a <strong>safety case</strong>: a structured argument, backed by evidence, that a system is safe enough. The paper describes four kinds, from the one we can make today to one that is still far off.</p>
+
+<figure class="fig">
+  <div class="controls" role="group" aria-label="Kind of safety case" id="seg-sc">
+    <button class="chip" data-v="0" aria-pressed="true">It can’t</button>
+    <button class="chip" data-v="1" aria-pressed="false">We’d catch it</button>
+    <button class="chip" data-v="2" aria-pressed="false">It wants the right thing</button>
+    <button class="chip" data-v="3" aria-pressed="false">We understand it</button>
+  </div>
+  <svg viewBox="0 0 480 172" role="img" aria-label="Four kinds of safety case with how ready each one is today." id="sc-svg">
+    <g class="sc" data-i="0" transform="translate(60 0)">
+      <rect x="-20" y="40" width="40" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M-12 40 V30 a12 12 0 0 1 24 0 V40" fill="none" stroke="currentColor" stroke-width="3"/>
+      <text class="t" x="0" y="106" text-anchor="middle">Inability</text>
+    </g>
+    <g class="sc" data-i="1" transform="translate(180 0)">
+      <path d="M-26 54 Q0 24 26 54 Q0 84 -26 54 Z" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cy="54" r="8" fill="currentColor"/>
+      <text class="t" x="0" y="106" text-anchor="middle">Supervision</text>
+    </g>
+    <g class="sc" data-i="2" transform="translate(300 0)">
+      <circle cy="54" r="24" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cy="54" r="13" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cy="54" r="4" fill="currentColor"/>
+      <text class="t" x="0" y="106" text-anchor="middle">Incentives</text>
+    </g>
+    <g class="sc" data-i="3" transform="translate(420 0)">
+      <circle cx="-5" cy="49" r="17" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M8 62 L22 76" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+      <text class="t" x="0" y="106" text-anchor="middle">Understanding</text>
+    </g>
+    <g id="sc-dots"></g>
+    <text class="ts" x="240" y="164" text-anchor="middle">dots: a rough read of the paper on how ready each is today</text>
+  </svg>
+  <div class="panel" id="sc-panel" aria-live="polite"></div>
+</figure>
+
+<h2>What the plan leaves out</h2>
+<p>The authors are clear that this is half the picture. Technical safety needs <strong>governance</strong> alongside it, and they call governance equally if not more important. The simplest example is misuse: if one developer locks down a dangerous ability and another doesn’t, the attacker just goes next door.</p>
+
+<figure class="fig">
+  <svg viewBox="0 0 480 220" role="img" aria-label="An attacker is blocked by a careful developer and goes to a careless one instead." id="gov-svg">
+    <use href="#i-person" x="30" y="85" width="50" height="50" style="color:var(--rose)"/>
+    <rect x="300" y="36" width="150" height="58" rx="10" fill="var(--bg)" stroke="var(--green)" stroke-width="2"/>
+    <text class="t" x="375" y="62" text-anchor="middle">careful</text>
+    <text class="t" x="375" y="80" text-anchor="middle">developer</text>
+    <rect x="290" y="38" width="8" height="54" rx="3" fill="var(--green)"/>
+    <rect x="300" y="128" width="150" height="58" rx="10" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
+    <text class="t" x="375" y="154" text-anchor="middle">careless</text>
+    <text class="t" x="375" y="172" text-anchor="middle">developer</text>
+    <path id="gov-a" d="M88 104 L280 68" stroke="var(--rose)" stroke-width="2.6" fill="none" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <path id="gov-x" d="M266 48 l12 12 M278 48 l-12 12" stroke="var(--rose)" stroke-width="2.6" stroke-linecap="round" opacity="0" class="fade"/>
+    <path id="gov-b" d="M88 116 L294 156" stroke="var(--rose)" stroke-width="2.6" fill="none" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <path id="gov-bh" d="M283 147 L295 156 L281 160" stroke="var(--rose)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0" class="fade"/>
+  </svg>
+  <div class="row"><button class="act" id="gov-go">Watch the attacker</button></div>
+  <figcaption class="cap"><b>Why one lab can’t do it alone.</b> Safeguards only work if every frontier developer has them, which is why the paper calls for shared standards that prevent a race to the bottom.</figcaption>
+</figure>
+
+<p>The paper also sets aside structural risks, which need their own approaches and often new norms or institutions. It focuses on methods that fit today’s way of building AI, so they can be switched on quickly, and treats longer-term bets like formal verification as worthwhile but outside its scope. Some possibilities are deliberately deferred: an AI whose goals drift as it learns on the fly, and true superintelligence, which would likely bring abilities no one can plan for yet.</p>
+<p>One idea about that far future stands out. If AI eventually does most safety research, the best hope is <em>bootstrapping</em>, where each aligned generation helps align the next. Only the first wall, a genuinely aligned model, makes that possible. A merely guarded model might stop short of causing harm while still not trying its best to make its successor safe.</p>
+
+<h2>The takeaway</h2>
+<p class="takeaway">Don’t wait for a catastrophe to learn from. Keep dangerous abilities away from bad actors, train AI to want the right things, and guard against it anyway in case training failed.</p>
+<p>The authors stress that this is a research agenda, not a finished solution, and that key pieces, from amplified oversight to interpretability, are still open problems. Its value is the complete map: what can go wrong, which defenses address which danger, and how you would argue the defenses are enough.</p>
+
+<ul class="links">
+  <li><a href="https://arxiv.org/abs/2504.01849">Read the full paper on arXiv</a> <span>(over 100 pages)</span></li>
+  <li><a href="https://deepmindsafetyresearch.medium.com/an-approach-to-technical-agi-safety-and-security-25928819fbc6">The authors’ summary on Medium</a></li>
+  <li><a href="https://deepmind.google/discover/blog/taking-a-responsible-path-to-agi/">Google DeepMind’s announcement post</a></li>
+</ul>
+
+</main>
+
+<script>
+(function(){
+  var $ = function(s, r){ return (r || document).querySelector(s); };
+  var $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var NS = 'http://www.w3.org/2000/svg';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var store = {
+    get: function(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set: function(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  };
+  function el(tag, attrs, parent){
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function seg(id, cb){
+    var btns = $$('button', document.getElementById(id));
+    btns.forEach(function(b){
+      b.addEventListener('click', function(){
+        btns.forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        cb(b.dataset.v);
+      });
+    });
+    cb(btns[0].dataset.v);
+  }
+  function show(prefix, ids, v){
+    ids.forEach(function(i){ var n = document.getElementById(prefix + i); if (n) n.classList.toggle('on', i === v); });
+  }
+
+  /* reading settings */
+  var root = document.documentElement;
+  var fs = parseFloat(store.get('agi-ex-fs')) || 1;
+  function applyFs(){ root.style.setProperty('--fs', fs); store.set('agi-ex-fs', fs); }
+  applyFs();
+  $('#smaller').addEventListener('click', function(){ fs = Math.max(.85, +(fs - .07).toFixed(2)); applyFs(); });
+  $('#larger').addEventListener('click', function(){ fs = Math.min(1.4, +(fs + .07).toFixed(2)); applyFs(); });
+  var themeBtn = $('#theme');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  function currentDark(){ var t = root.getAttribute('data-theme'); return t ? t === 'dark' : mq.matches; }
+  function syncThemeBtn(){ themeBtn.textContent = currentDark() ? 'Light' : 'Dim'; }
+  var savedTheme = store.get('agi-ex-theme');
+  if (savedTheme === 'dark' || savedTheme === 'light') root.setAttribute('data-theme', savedTheme);
+  syncThemeBtn();
+  if (mq.addEventListener) mq.addEventListener('change', syncThemeBtn);
+  themeBtn.addEventListener('click', function(){
+    var next = currentDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next); store.set('agi-ex-theme', next); syncThemeBtn();
+  });
+
+  /* hero */
+  var hero = $('#hero');
+  function playHero(){ hero.classList.remove('play'); void hero.getBoundingClientRect(); hero.classList.add('play'); }
+  playHero();
+  $('#replay').addEventListener('click', playHero);
+
+  /* evidence dilemma */
+  var evCap = {
+    every: '<b>Everyday risk:</b> each incident teaches you what to fix, and harm shrinks over time.',
+    severe: '<b>Severe risk:</b> the first incident may be the last, so safeguards have to be built before clear evidence arrives. That’s the evidence dilemma.'
+  };
+  seg('seg-ev', function(v){ show('ev-', ['every', 'severe'], v); $('#cap-ev').innerHTML = evCap[v]; });
+
+  /* assumptions */
+  var AS = {
+    ceiling: ['No human ceiling', 'Nothing in today’s methods seems to stop AI at human level. In chess, the best engines already rate about 3643, against 2882 for the best human ever.', 'People alone won’t be able to check the work of systems more capable than them, so AI has to help with oversight.'],
+    time: ['Uncertain timing', 'Nobody knows when highly capable AI will arrive, but the authors find it plausible by 2030. Their reference point is “Exceptional AGI”: matching the top 1% of skilled adults on a wide range of non-physical tasks.', 'Safety measures must be “anytime”: ready to switch on quickly and built for today’s training methods, not some future approach.'],
+    accel: ['Speed-up', 'Once AI can do AI research, it could build better AI, which does better research, in a self-reinforcing loop.', 'There may be very little calendar time to notice and react to problems, so AI will need to take on more of the safety work too.'],
+    cont: ['No sudden leaps', 'Progress may be fast, but capability shouldn’t leap enormously from a small increase in effort or computing power.', 'Problems should show up a step before they become dangerous, so the plan can be tested and adjusted along the way instead of solving everything in advance.']
+  };
+  seg('seg-as', function(v){
+    show('as-', Object.keys(AS), v);
+    var a = AS[v];
+    $('#as-panel').innerHTML = '<h4>' + a[0] + '</h4><p><span class="k">The bet:</span> ' + a[1] + '</p><p><span class="k">So the plan:</span> ' + a[2] + '</p>';
+  });
+
+  /* risk areas */
+  var RK = {
+    misuse: ['Misuse', 'var(--rose)', 'Main focus', 'A person deliberately uses the AI to cause harm, against what the developer wants.', 'An AI helps a hacker attack critical infrastructure.', 'The user is the adversary.', ''],
+    misalign: ['Misalignment', 'var(--blue)', 'Main focus', 'The AI knowingly causes harm its developer didn’t intend. This covers deception and scheming.', 'An AI gives confident answers that survive human checking, while it knows they’re wrong.', 'The AI is the adversary.', ''],
+    mistake: ['Mistakes', 'var(--gold)', 'Set aside', 'The AI causes harm without realizing its actions would lead there.', 'An AI running a power grid doesn’t know a line needs maintenance, overloads it, and causes a blackout.', 'The real world is complex.', 'Ordinary safety engineering, like testing and staged rollout, handles this well, as it does for human error.'],
+    struct: ['Structural risks', 'var(--lav)', 'Set aside', 'Harm from many people, organizations or AIs interacting, where fixing any single one wouldn’t have prevented it.', 'People hand more and more decisions to AI, a little at a time, until no one is really steering.', 'Incentives, competition and culture.', 'Each needs its own approach, often new norms or institutions.']
+  };
+  seg('seg-risk', function(v){
+    show('rk-', Object.keys(RK), v);
+    var r = RK[v];
+    $('#risk-panel').innerHTML = '<h4 style="color:' + r[1] + '">' + r[0] + '<span class="badge">' + r[2] + '</span></h4><p>' + r[3] + '</p><p><span class="k">Example:</span> ' + r[4] + '</p><p><span class="k">Root of the problem:</span> ' + r[5] + '</p>' + (r[6] ? '<p><span class="k">Why it’s set aside:</span> ' + r[6] + '</p>' : '');
+  });
+
+  /* misuse gates */
+  var MG = {
+    access: ['Access limits', 'Models with dangerous abilities can be offered only to vetted users and uses. People who keep tripping the safety alarms can lose access.'],
+    monitor: ['Monitoring', 'Classifiers, signals from inside the model, or human reviewers spot attempts to reach a dangerous ability, and the system responds before harm is done.'],
+    refuse: ['Refusal training', 'The model is trained to turn down harmful requests and to resist jailbreaks. Removing the ability entirely, called unlearning, would be better, but no one can reliably do it yet.'],
+    secure: ['Weight security', 'A stolen copy of the model comes with none of the other safeguards. So very few people should be able to touch the model’s weights on their own, and everyday work goes through hardened tools.'],
+    society: ['Society’s defenses', 'AI can also make the world harder to attack, for example by helping find and patch weaknesses in critical software before attackers exploit them.']
+  };
+  seg('seg-mis', function(v){
+    $$('#mis-svg .gate').forEach(function(g){ g.style.opacity = g.dataset.g === v ? 1 : .38; });
+    $('#mis-panel').innerHTML = '<h4 style="color:var(--green)">' + MG[v][0] + '</h4><p>' + MG[v][1] + '</p>';
+  });
+
+  /* threshold stepper */
+  var scores = [.27, .42, .6, .78, .9];
+  var thrText = [
+    'Press the button to test the first model.',
+    '<b>Model 1</b> is far below the line. The safety argument is <b>inability</b>: it simply can’t do the dangerous task. No extra safeguards needed.',
+    '<b>Model 2</b> is stronger but still below the warning line. Inability still holds.',
+    '<b>Model 3</b> crossed the early-warning line. It isn’t dangerous yet, but the next model might be, so safeguards get prepared now.',
+    '<b>Model 4</b> is over the danger threshold. Safeguards switch on, and a red team that knows how they work tries to break them. The safety argument now rests on that <b>red teaming</b>.',
+    '<b>Model 5</b> is further over. The red team keeps attacking, every hole it finds gets fixed, and the safety case has to be made again.'
+  ];
+  var thrN = 0, bars = $('#thr-bars'), rects = [];
+  for (var i = 0; i < 5; i++){
+    var x = 74 + i * 78;
+    var col = scores[i] >= .7 ? 'var(--rose)' : scores[i] >= .55 ? 'var(--gold)' : 'var(--blue)';
+    var r = el('rect', {x: x, y: 222, width: 46, height: 0, rx: 6, fill: col, opacity: .85}, bars);
+    rects.push(r);
+    var t = el('text', {x: x + 23, y: 244, 'text-anchor': 'middle', class: 'ts'}, bars);
+    t.textContent = 'model ' + (i + 1);
+  }
+  var thrAnim = null;
+  function drawThr(){
+    cancelAnimationFrame(thrAnim);
+    var t0 = performance.now(), dur = reduce ? 1 : 520;
+    var from = rects.map(function(r){ return +r.getAttribute('height'); });
+    (function tick(now){
+      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      rects.forEach(function(r, j){
+        var target = j < thrN ? scores[j] * 186 : 0;
+        var h = from[j] + (target - from[j]) * e;
+        r.setAttribute('height', h); r.setAttribute('y', 222 - h);
+      });
+      if (p < 1) thrAnim = requestAnimationFrame(tick);
+    })(t0);
+    $('#thr-panel').innerHTML = '<p>' + thrText[thrN] + '</p>';
+    var nb = $('#thr-next');
+    nb.textContent = thrN === 0 ? 'Test the first model' : 'Test the next model';
+    nb.disabled = thrN >= 5;
+  }
+  $('#thr-next').addEventListener('click', function(){ if (thrN < 5){ thrN++; drawThr(); } });
+  $('#thr-reset').addEventListener('click', function(){ thrN = 0; drawThr(); });
+  drawThr();
+
+  /* debate stepper */
+  var debText = [
+    '<b>Step 1.</b> AI copy A gives a long, expert answer to a question too hard for a person to check directly.',
+    '<b>Step 2.</b> The human judge reads it. It looks convincing, and a subtle flaw would slip right past.',
+    '<b>Step 3.</b> AI copy B, rewarded for finding flaws, points to the exact step that’s wrong and explains why.',
+    '<b>Step 4.</b> Now the judge only has to check one small claim, which is easy. A is penalized and B rewarded. A hard question became an easy one.'
+  ];
+  var deb = 0;
+  function drawDeb(){
+    $$('#deb-svg [data-from]').forEach(function(g){
+      var f = +g.dataset.from, to = g.dataset.to === undefined ? 99 : +g.dataset.to;
+      g.style.opacity = (deb >= f && deb <= to) ? 1 : 0;
+    });
+    var flaw = $('#flaw');
+    flaw.setAttribute('fill', deb >= 2 ? 'var(--rose)' : 'var(--faint)');
+    flaw.setAttribute('opacity', deb >= 2 ? 1 : .55);
+    $('#deb-panel').innerHTML = '<p>' + debText[deb] + '</p>';
+    $('#deb-back').disabled = deb === 0;
+    $('#deb-next').disabled = deb === 3;
+  }
+  $('#deb-back').addEventListener('click', function(){ if (deb > 0){ deb--; drawDeb(); } });
+  $('#deb-next').addEventListener('click', function(){ if (deb < 3){ deb++; drawDeb(); } });
+  drawDeb();
+
+  /* seeded random */
+  function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  /* robust training */
+  var R = rng(7), pts = [], guard = 0;
+  while (pts.length < 44 && guard++ < 5000){
+    var px = 30 + R() * 420, py = 26 + R() * 238;
+    if (Math.hypot(px - 170, py - 150) < 26) continue;
+    if (pts.some(function(p){ return Math.hypot(p.x - px, p.y - py) < 24; })) continue;
+    pts.push({x: px, y: py, bad: R() < .3});
+  }
+  var ptsG = $('#rob-pts');
+  pts.forEach(function(p){
+    p.c = el('circle', {cx: p.x, cy: p.y, r: 6, 'stroke-width': 2}, ptsG);
+    p.m = el('path', {d: 'M' + (p.x - 5) + ' ' + (p.y - 5) + ' l10 10 M' + (p.x + 5) + ' ' + (p.y - 5) + ' l-10 10', stroke: 'var(--rose)', 'stroke-width': 2.4, 'stroke-linecap': 'round'}, ptsG);
+  });
+  function drawRob(){
+    var v = +$('#rob-range').value, rad = 34 + v * 2.9, cov = 0, risky = 0;
+    $('#rob-region').setAttribute('r', rad); $('#rob-ring').setAttribute('r', rad);
+    pts.forEach(function(p){
+      var inside = Math.hypot(p.x - 170, p.y - 150) <= rad;
+      if (inside) cov++; else if (p.bad) risky++;
+      p.c.setAttribute('fill', inside ? 'var(--green)' : 'none');
+      p.c.setAttribute('stroke', inside ? 'var(--green)' : 'var(--gold)');
+      p.c.style.opacity = (!inside && p.bad) ? 0 : 1;
+      p.m.style.opacity = (!inside && p.bad) ? 1 : 0;
+    });
+    $('#rob-count').innerHTML = '<b>' + cov + ' of ' + pts.length + '</b> situations covered, <b style="color:var(--rose)">' + risky + '</b> hidden failures left.';
+  }
+  $('#rob-range').addEventListener('input', drawRob);
+  drawRob();
+
+  /* monitoring funnel */
+  var monDots = $('#mon-dots'), monTimers = [];
+  function runMon(){
+    monTimers.forEach(clearTimeout); monTimers = [];
+    monDots.innerHTML = '';
+    var c = [0, 0, 0];
+    $('#mon-c1').textContent = 'cleared 0'; $('#mon-c2').textContent = 'cleared 0'; $('#mon-c3').textContent = 'caught 0';
+    var r = rng((Date.now() & 0xffff) + 1);
+    var N = 80, gx = [151, 281, 411];
+    var outcomes = [], order = [], i;
+    for (i = 0; i < N; i++){ outcomes.push(1); order.push(i); }
+    for (i = N - 1; i > 0; i--){ var j = Math.floor(r() * (i + 1)); var tmp = order[i]; order[i] = order[j]; order[j] = tmp; }
+    order.slice(0, 12).forEach(function(k){ outcomes[k] = 2; });
+    order.slice(0, 3).forEach(function(k){ outcomes[k] = 3; });
+    order.slice(0, 2).forEach(function(k){ outcomes[k] = 4; });
+    var sp = reduce ? 0 : 1;
+    function at(ms, fn){ monTimers.push(setTimeout(fn, ms)); }
+    function place(d, x, y){ d.style.transform = 'translate(' + x + 'px,' + y + 'px)'; }
+    for (i = 0; i < N; i++) (function(i){
+      var jy = (r() - .5) * 24, o = outcomes[i], t0 = i * 45 * sp;
+      var d = el('circle', {cx: 0, cy: 0, r: 4.2}, monDots);
+      d.style.fill = 'var(--blue)';
+      d.style.transition = reduce ? 'none' : 'transform .55s ease, opacity .3s';
+      place(d, 40, 104 + jy); d.style.opacity = 0;
+      var bx = function(g){ return gx[g] + (r() - .5) * 64; };
+      var by = function(){ return 152 + r() * 98; };
+      at(t0 + 20, function(){ d.style.opacity = 1; place(d, gx[0] - 14, 104 + jy); });
+      if (o === 1){
+        at(t0 + 620 * sp + 30, function(){ place(d, bx(0), by()); d.style.fill = 'var(--green)'; d.style.opacity = .5; c[0]++; $('#mon-c1').textContent = 'cleared ' + c[0]; });
+        return;
+      }
+      at(t0 + 620 * sp + 30, function(){ place(d, gx[1] - 14, 104 + jy); d.style.fill = 'var(--gold)'; });
+      if (o === 2){
+        at(t0 + 1220 * sp + 40, function(){ place(d, bx(1), by()); d.style.fill = 'var(--green)'; d.style.opacity = .5; c[1]++; $('#mon-c2').textContent = 'cleared ' + c[1]; });
+        return;
+      }
+      at(t0 + 1220 * sp + 40, function(){ place(d, gx[2] - 14, 104 + jy); });
+      at(t0 + 1820 * sp + 50, function(){
+        if (o === 4){ d.style.fill = 'var(--rose)'; d.setAttribute('r', 6.5); c[2]++; $('#mon-c3').textContent = 'caught ' + c[2]; }
+        else { d.style.fill = 'var(--green)'; d.style.opacity = .5; }
+        place(d, bx(2), by());
+      });
+    })(i);
+  }
+  $('#mon-run').addEventListener('click', runMon);
+
+  /* pareto */
+  var parFill = $('#par-fill'), parLine = $('#par-line'), parOld = $('#par-old'), parPts = $('#par-pts');
+  var dots = [[.3, 'cautious'], [.78, 'balanced'], [1.24, 'bold']].map(function(a){
+    var c = el('circle', {r: 6.5, fill: 'var(--blue)'}, parPts);
+    var tx = el('text', {class: 'ts'}, parPts); tx.textContent = a[1];
+    return {t: a[0], c: c, tx: tx};
+  });
+  function frontier(k){
+    var rx = 270 * k, ry = 158 * k, d = '';
+    for (var i = 0; i <= 30; i++){
+      var t = (Math.PI / 2) * i / 30;
+      d += (i ? 'L' : 'M') + (50 + rx * Math.sin(t)).toFixed(1) + ' ' + (250 - ry * Math.cos(t)).toFixed(1);
+    }
+    return {d: d, rx: rx, ry: ry};
+  }
+  function drawPar(k){
+    var f = frontier(k);
+    parLine.setAttribute('d', f.d);
+    parFill.setAttribute('d', f.d + ' L50 250 Z');
+    dots.forEach(function(p){
+      var x = 50 + f.rx * Math.sin(p.t), y = 250 - f.ry * Math.cos(p.t);
+      p.c.setAttribute('cx', x); p.c.setAttribute('cy', y);
+      p.tx.setAttribute('x', x + 11); p.tx.setAttribute('y', y - 9);
+    });
+  }
+  parOld.setAttribute('d', frontier(1).d);
+  var parK = 1, parAnim = null, expanded = false;
+  drawPar(1);
+  $('#par-go').addEventListener('click', function(){
+    expanded = !expanded;
+    var from = parK, to = expanded ? 1.24 : 1, t0 = performance.now(), dur = reduce ? 1 : 900;
+    parOld.style.opacity = expanded ? 1 : 0;
+    cancelAnimationFrame(parAnim);
+    (function tick(now){
+      var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      parK = from + (to - from) * e; drawPar(parK);
+      if (p < 1) parAnim = requestAnimationFrame(tick);
+    })(t0);
+    $('#par-go').textContent = expanded ? 'Back to today' : 'Do the research';
+    $('#cap-par').innerHTML = expanded
+      ? '<b>After research, the whole curve moves out.</b> The same usefulness now comes with more safety. That’s why the paper wants these tradeoffs measured and pushed.'
+      : '<b>Today, safety costs usefulness.</b> Every design sits somewhere on this curve, from more cautious to more capable.';
+  });
+
+  /* safety cases */
+  var SC = [
+    ['Inability', 4, 'The AI couldn’t cause severe harm even if it tried, as shown by capability tests. This fits today’s models, but may stop applying soon.'],
+    ['Supervision, also called control', 2, 'If the AI tried something harmful, we would notice and stop it. The argument must hold even if the AI monitors are themselves misaligned and cover for each other. Control evaluations supply the evidence.'],
+    ['Incentives', 1, 'Training gave the AI the intended goal, so it shouldn’t be misaligned. This is hard to prove, because the AI may meet situations training never covered.'],
+    ['Understanding', 0, 'We understand the model well enough to certify that it only produces safe outputs, without testing every possible case. This is far off, and would need major advances in interpretability.']
+  ];
+  var scDots = $('#sc-dots');
+  seg('seg-sc', function(v){
+    var i = +v;
+    $$('#sc-svg .sc').forEach(function(g){ var on = +g.dataset.i === i; g.style.color = on ? 'var(--blue)' : 'var(--faint)'; g.style.opacity = on ? 1 : .55; });
+    scDots.innerHTML = '';
+    SC.forEach(function(s, j){
+      for (var k = 0; k < 4; k++){
+        var col = j === i ? 'var(--green)' : 'var(--faint)';
+        el('circle', {cx: 60 + j * 120 - 21 + k * 14, cy: 130, r: 4.5, fill: k < s[1] ? col : 'none', stroke: col, 'stroke-width': 1.5}, scDots);
+      }
+    });
+    $('#sc-panel').innerHTML = '<h4>' + SC[i][0] + '</h4><p>' + SC[i][2] + '</p>';
+  });
+
+  /* governance */
+  var govT = [];
+  $('#gov-go').addEventListener('click', function(){
+    govT.forEach(clearTimeout); govT = [];
+    var a = $('#gov-a'), b = $('#gov-b'), x = $('#gov-x'), bh = $('#gov-bh');
+    [a, b].forEach(function(p){ p.style.transition = 'none'; p.style.strokeDashoffset = 1; });
+    x.style.opacity = 0; bh.style.opacity = 0;
+    void a.getBoundingClientRect();
+    var sp = reduce ? 0 : 1;
+    govT.push(setTimeout(function(){ a.style.transition = reduce ? 'none' : 'stroke-dashoffset .8s ease-out'; a.style.strokeDashoffset = 0; }, 30));
+    govT.push(setTimeout(function(){ x.style.opacity = 1; }, 850 * sp + 40));
+    govT.push(setTimeout(function(){ b.style.transition = reduce ? 'none' : 'stroke-dashoffset .9s ease-out'; b.style.strokeDashoffset = 0; }, 1300 * sp + 60));
+    govT.push(setTimeout(function(){ bh.style.opacity = 1; }, 2200 * sp + 80));
+  });
+})();
+</script>
+</body>
+</html>
