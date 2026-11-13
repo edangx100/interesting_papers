@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Can LLM agents organize their own memory? An explainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F6; --raise:#FAFBFC; --ink:#2A2F37; --soft:#535B67; --faint:#8A929D; --line:#D3D9E0;
+  --blue:#2D7A9A; --brown:#8C6236; --gold:#94740F; --green:#3C8350; --rose:#AE4E4E; --lav:#665CAA; --teal:#2B8574;
+  --tint:rgba(45,122,154,.10);
+  --fs:1;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C2027; --raise:#232830; --ink:#D8DCE1; --soft:#A2AAB5; --faint:#6E7682; --line:#363D48;
+    --blue:#82C2DA; --brown:#C9A67C; --gold:#E0C97E; --green:#93C69B; --rose:#DD9393; --lav:#ADA6DA; --teal:#7EC3B3;
+    --tint:rgba(130,194,218,.13);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1C2027; --raise:#232830; --ink:#D8DCE1; --soft:#A2AAB5; --faint:#6E7682; --line:#363D48;
+  --blue:#82C2DA; --brown:#C9A67C; --gold:#E0C97E; --green:#93C69B; --rose:#DD9393; --lav:#ADA6DA; --teal:#7EC3B3;
+  --tint:rgba(130,194,218,.13);
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:Literata,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  font-size:calc(18px * var(--fs));line-height:1.72;font-optical-sizing:auto;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s ease,color .3s ease;
+}
+@media (min-width:720px){body{font-size:calc(19.5px * var(--fs))}}
+
+#progress{position:fixed;top:0;left:0;right:0;padding-top:env(safe-area-inset-top,0px);z-index:10;pointer-events:none}
+#progress i{display:block;height:3px;background:var(--blue);opacity:.55;transform-origin:left center;transform:scaleX(0)}
+
+.wrap{
+  max-width:680px;margin:0 auto;
+  padding-left:max(22px,env(safe-area-inset-left,0px));
+  padding-right:max(22px,env(safe-area-inset-right,0px));
+  padding-bottom:5em;
+}
+.tools{display:flex;justify-content:flex-end;gap:8px;padding-top:16px}
+header{padding:3.2em 0 1em}
+h1{font-size:2.05em;line-height:1.14;font-weight:500;letter-spacing:-.012em;margin:0;text-wrap:balance}
+@media (min-width:720px){h1{font-size:2.6em}}
+.summary{font-size:1.16em;line-height:1.5;color:var(--soft);margin:.75em 0 0;max-width:30em;text-wrap:pretty}
+.byline{font-size:.8em;color:var(--faint);margin-top:1.6em}
+.byline a{color:var(--soft)}
+h2{font-size:1.42em;font-weight:500;line-height:1.25;margin:3.4em 0 .7em;letter-spacing:-.005em;text-wrap:balance}
+p{margin:0 0 1.1em;max-width:34em;text-wrap:pretty}
+a{color:var(--blue);text-underline-offset:.18em;text-decoration-thickness:1px}
+strong{font-weight:600}
+.k-blue{color:var(--blue)} .k-brown{color:var(--brown)} .k-gold{color:var(--gold)} .k-lav{color:var(--lav)} .k-green{color:var(--green)}
+
+figure{margin:1.9em 0 2.1em}
+figure svg{display:block;width:100%;height:auto;max-width:600px;margin:0 auto;overflow:visible}
+figcaption,.live{font-size:.84em;color:var(--soft);line-height:1.6;margin-top:.9em;max-width:36em}
+.live{min-height:4.9em;margin-left:auto;margin-right:auto}
+@media (max-width:560px){
+  figure{margin-left:-12px;margin-right:-12px}
+  figcaption,.live{padding:0 12px}
+  .seg{padding:0 12px}
+}
+
+svg text{fill:var(--ink);font-family:inherit}
+.soft{fill:var(--soft)!important}
+.faintfill{fill:var(--faint)}
+
+/* buttons */
+button{font:inherit;color:var(--ink);-webkit-appearance:none;appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.pill{
+  font-size:.8em;min-height:44px;min-width:44px;padding:0 1.05em;border-radius:22px;
+  border:1px solid var(--line);background:transparent;line-height:1.2;
+  transition:background-color .2s,border-color .2s;
+}
+.pill[aria-pressed="true"]{border-color:var(--blue);background:var(--tint)}
+.pill:disabled{opacity:.45;cursor:default}
+@media (hover:hover){.pill:not(:disabled):hover{border-color:var(--faint)}}
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin:1.2em 0 .4em;justify-content:center}
+.stepbar{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:.6em}
+.stepcount{font-size:.8em;color:var(--soft);min-width:6.5em;text-align:center}
+
+.formula{font-size:1.3em;font-style:italic;text-align:center;margin:1.1em 0 .2em;letter-spacing:.03em}
+.formula span{font-style:italic}
+
+/* hero */
+.doc{fill:var(--blue);fill-opacity:.07;stroke:var(--blue);stroke-width:1.4}
+.bar{fill:var(--blue);fill-opacity:.8}
+.chip{fill:var(--brown);fill-opacity:.1;stroke:var(--brown);stroke-width:1.3}
+.chipline{fill:var(--brown);fill-opacity:.7}
+.thread{fill:none;stroke:var(--brown);stroke-width:1.2;stroke-opacity:.6}
+
+.panel{fill:var(--raise);stroke:var(--line);stroke-width:1}
+.arrhead{fill:var(--soft)}
+
+/* anatomy */
+#anat .part{transition:opacity .35s ease}
+#anat[data-hl] .part{opacity:.18}
+#anat[data-hl="id"] .p-id,#anat[data-hl="text"] .p-text,#anat[data-hl="ev"] .p-ev,#anat[data-hl="link"] .p-link{opacity:1}
+
+/* gate */
+.gcheck rect{fill:var(--raise);stroke:var(--line);transition:stroke .3s}
+.gcheck circle{fill:none;stroke:var(--faint);stroke-width:1.4;transition:fill .3s,stroke .3s}
+.gcheck.ok circle{fill:var(--green);stroke:var(--green)}
+.gcheck.ok rect{stroke:var(--green)}
+.gcheck.fail circle{fill:var(--rose);stroke:var(--rose)}
+.gcheck.fail rect{stroke:var(--rose)}
+.gcheck .mark{fill:var(--bg);font-weight:600}
+.gout{opacity:.32;transition:opacity .4s}
+.gout.on{opacity:1}
+
+/* query stepper */
+.qel{opacity:.25;transition:opacity .45s ease}
+.qel.on{opacity:1}
+.qarrow{opacity:0;transition:opacity .45s ease}
+.qarrow.on{opacity:1}
+
+/* views */
+.vlayer{transition:opacity .5s ease}
+.dot{stroke:var(--bg);stroke-width:2}
+.hit{fill:transparent;cursor:pointer}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+}
+.closing{margin-top:3.4em;padding-top:1.6em;border-top:1px solid var(--line)}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:1.2em}
+.links a{display:inline-flex;align-items:center;min-height:44px;padding:0 1.1em;border:1px solid var(--line);border-radius:22px;text-decoration:none;font-size:.82em;color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="progress"><i></i></div>
+<div class="wrap">
+
+<div class="tools">
+  <button class="pill" id="fsDown" type="button" aria-label="Smaller text">A−</button>
+  <button class="pill" id="fsUp" type="button" aria-label="Larger text">A+</button>
+  <button class="pill" id="themeBtn" type="button">Light</button>
+</div>
+
+<header>
+  <h1>Can LLM agents organize their own memory?</h1>
+  <p class="summary">A new paper lets an AI agent keep its memories as ordinary notes it writes and rearranges itself, each one tied back to the original conversation, and it scored highest on all three memory tests it faced.</p>
+  <p class="byline">An explainer of <a href="https://arxiv.org/abs/2611.11929">Fu, Qi and colleagues</a>, City University of Hong Kong and Tencent, November 2026</p>
+</header>
+
+<p>A chatbot doesn’t learn from talking to you. Its knowledge is frozen when training ends, so anything it should remember from last week has to be written down somewhere outside it, like a notebook it can reread. Most memory systems decide in advance what that notebook looks like: fixed fields, fixed rules for filing. This paper asks a simpler question. What if the agent just kept ordinary notes, and decided for itself how to arrange them?</p>
+
+<figure>
+  <svg id="hero" viewBox="0 0 480 296" role="img" aria-label="Eight original messages sit on a shelf at the bottom. Threads rise from each message into one of three topic notes the agent writes: Job, Offsite and Running."></svg>
+  <figcaption>Messages arrive and are archived untouched (<span class="k-brown">brown</span>). The agent writes what matters into topic notes (<span class="k-blue">blue</span>), and every line it writes keeps a thread back to the message it came from.</figcaption>
+  <div class="seg"><button class="pill" type="button" id="heroReplay">Replay</button></div>
+</figure>
+
+<h2>The dilemma every memory faces</h2>
+<p>Imagine helping a friend plan a team offsite over months of chats. If you keep the full transcript, nothing is lost, but finding the one line about the venue means rereading everything. If you keep tidy summaries, the venue is easy to find, but the detail that it was moved, and when, may have been smoothed away.</p>
+
+<figure>
+  <svg viewBox="0 0 480 292" role="img" aria-label="Left: a long transcript with one important line hidden among many. Right: a short summary card, with dashed outlines where details were dropped.">
+    <rect class="panel" x="12" y="12" width="216" height="240" rx="12"/>
+    <text x="120" y="42" text-anchor="middle" font-size="17" font-weight="600">Keep everything</text>
+    <g id="haystack"></g>
+    <circle cx="170" cy="171" r="22" fill="none" stroke="var(--soft)" stroke-width="2"/>
+    <line x1="186" y1="187" x2="202" y2="203" stroke="var(--soft)" stroke-width="4" stroke-linecap="round"/>
+    <text x="120" y="280" text-anchor="middle" font-size="15" class="soft">All detail, slow to search</text>
+
+    <rect class="panel" x="252" y="12" width="216" height="240" rx="12"/>
+    <text x="360" y="42" text-anchor="middle" font-size="17" font-weight="600">Keep a summary</text>
+    <rect x="278" y="62" width="164" height="72" rx="8" class="doc"/>
+    <rect x="292" y="78" width="122" height="6" rx="3" class="bar"/>
+    <rect x="292" y="94" width="104" height="6" rx="3" class="bar"/>
+    <rect x="292" y="110" width="76" height="6" rx="3" class="bar"/>
+    <g fill="none" stroke="var(--faint)" stroke-dasharray="3 4" stroke-width="1.2">
+      <rect x="292" y="156" width="138" height="6" rx="3"/>
+      <rect x="292" y="174" width="112" height="6" rx="3"/>
+      <rect x="292" y="192" width="146" height="6" rx="3"/>
+      <rect x="292" y="210" width="90" height="6" rx="3"/>
+    </g>
+    <text x="360" y="280" text-anchor="middle" font-size="15" class="soft">Quick to read, details gone</text>
+  </svg>
+</figure>
+
+<p>The method in this paper, called <strong>SoMem</strong> (self-organized memory), refuses to choose. It keeps both, and ties them together.</p>
+
+<h2>Three layers, one notebook</h2>
+
+<figure>
+  <svg viewBox="0 0 480 378" role="img" aria-label="Three stacked layers. At the bottom, locked original messages. In the middle, topic documents the agent writes. At the top, a small Core note that is always in view.">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="arrhead"/></marker>
+    </defs>
+    <rect x="150" y="14" width="180" height="58" rx="10" fill="var(--gold)" fill-opacity=".1" stroke="var(--gold)" stroke-width="1.4"/>
+    <text x="240" y="40" text-anchor="middle" font-size="17" font-weight="600">Core</text>
+    <text x="240" y="61" text-anchor="middle" font-size="13.5" class="soft">always in view</text>
+
+    <line x1="240" y1="118" x2="240" y2="80" stroke="var(--soft)" stroke-width="1.4" marker-end="url(#arr)"/>
+    <text x="252" y="104" font-size="14" class="soft">promote what always matters</text>
+
+    <g id="layerDocs"></g>
+    <text x="22" y="108" font-size="14" class="soft">Topic: the agent’s documents</text>
+
+    <g id="layerThreads"></g>
+    <g id="layerChips"></g>
+
+    <g transform="translate(108 344)">
+      <rect x="0" y="6" width="12" height="10" rx="2" fill="var(--brown)"/>
+      <path d="M2.5 6 V3.5 a3.5 3.5 0 0 1 7 0 V6" fill="none" stroke="var(--brown)" stroke-width="1.6"/>
+    </g>
+    <text x="128" y="360" font-size="14" class="soft">Source: original messages, locked</text>
+  </svg>
+</figure>
+
+<p><strong class="k-brown">Source</strong> is the archive. Every message is stored exactly as it was said, and nothing is allowed to edit it.</p>
+<p><strong class="k-blue">Topic</strong> is a set of plain Markdown documents the agent writes itself. It picks the subjects and the headings, and decides when a topic should be split in two, merged with another, or rewritten because something changed.</p>
+<p><strong class="k-gold">Core</strong> is one short, size-capped note for things that should always be in mind: standing preferences, rules, frequently needed background. It’s placed at the start of every question, a bit like a system prompt.</p>
+
+<h2>Anatomy of one memory</h2>
+<p>The unit of memory is a paragraph. Each paragraph carries four things, which the paper writes compactly as</p>
+<p class="formula" aria-label="u equals b, c, E, L"><span>u</span> = ( <span class="k-gold">b</span>, <span class="k-blue">c</span>, <span class="k-brown">E</span>, <span class="k-lav">L</span> )</p>
+
+<div class="seg" id="anatBtns" role="group" aria-label="Highlight a part of the memory">
+  <button class="pill" type="button" data-hl="id" aria-pressed="false">b: name</button>
+  <button class="pill" type="button" data-hl="text" aria-pressed="false">c: text</button>
+  <button class="pill" type="button" data-hl="ev" aria-pressed="false">E: evidence</button>
+  <button class="pill" type="button" data-hl="link" aria-pressed="false">L: links</button>
+</div>
+
+<figure>
+  <svg id="anat" viewBox="0 0 480 392" role="img" aria-label="A topic paragraph about the offsite venue with footnotes that point to two original messages, and a link to a budget document.">
+    <defs>
+      <marker id="arrL" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--lav)"/></marker>
+    </defs>
+    <rect x="12" y="12" width="456" height="252" rx="12" fill="var(--blue)" fill-opacity=".05" stroke="var(--blue)" stroke-width="1.4"/>
+    <text x="32" y="42" font-size="13" class="soft">Offsite.md</text>
+    <g class="part p-id"><text x="452" y="42" text-anchor="end" font-size="13.5" fill="var(--gold)" style="fill:var(--gold)">id: offsite-venue</text></g>
+    <g class="part p-text">
+      <text x="32" y="76" font-size="18" font-weight="600">Venue</text>
+      <text x="32" y="108" font-size="16">The team offsite was first booked at</text>
+      <text x="32" y="133" font-size="16">Harbour Hall<tspan dy="-6" font-size="11" style="fill:var(--brown)">1</tspan><tspan dy="6">, then moved to the</tspan></text>
+      <text x="32" y="158" font-size="16">Riverside Centre<tspan dy="-6" font-size="11" style="fill:var(--brown)">2</tspan><tspan dy="6">.</tspan></text>
+    </g>
+    <g class="part p-link">
+      <text x="32" y="192" font-size="14.5" style="fill:var(--lav)">Linked to</text>
+      <line x1="104" y1="187" x2="292" y2="187" stroke="var(--lav)" stroke-width="1.3" marker-end="url(#arrL)"/>
+      <rect x="298" y="170" width="152" height="34" rx="8" fill="var(--lav)" fill-opacity=".1" stroke="var(--lav)" stroke-width="1.2"/>
+      <text x="374" y="192" text-anchor="middle" font-size="13">Budget › Venue costs</text>
+    </g>
+    <line x1="32" y1="214" x2="448" y2="214" stroke="var(--line)"/>
+    <g class="part p-ev">
+      <text x="32" y="236" font-size="14" style="fill:var(--brown)">¹ March 4, from message 12</text>
+      <text x="32" y="256" font-size="14" style="fill:var(--brown)">² April 2, from message 31</text>
+      <path class="thread" d="M40 262 C40 280, 110 280, 110 300"/>
+      <path class="thread" d="M222 252 C300 256, 360 272, 360 300"/>
+      <rect class="chip" x="12" y="300" width="216" height="80" rx="10"/>
+      <text x="26" y="324" font-size="12.5" class="soft">Message 12, March 4</text>
+      <text x="26" y="348" font-size="14">“Let’s book Harbour Hall</text>
+      <text x="26" y="368" font-size="14">for the offsite.”</text>
+      <rect class="chip" x="252" y="300" width="216" height="80" rx="10"/>
+      <text x="266" y="324" font-size="12.5" class="soft">Message 31, April 2</text>
+      <text x="266" y="348" font-size="14">“Harbour Hall cancelled.</text>
+      <text x="266" y="368" font-size="14">We’re moving to Riverside.”</text>
+    </g>
+  </svg>
+  <p class="live" id="anatCap" aria-live="polite">Tap a part above to see what it does. Brown threads always lead back to the exact messages a statement rests on.</p>
+</figure>
+
+<p>Dates keep the precision of the original. If a message only said “in March”, the memory says March, not March 1.</p>
+
+<h2>A referee for every edit</h2>
+<p>Letting a language model freely rewrite its own memory is risky. It might drop a citation, or point a link at a paragraph that no longer exists. So the agent never edits memory directly. It proposes an edit, and plain code checks it first.</p>
+
+<div class="seg">
+  <button class="pill" type="button" id="gGood">Try a sound edit</button>
+  <button class="pill" type="button" id="gBad">Try a broken edit</button>
+</div>
+<figure>
+  <svg id="gate" viewBox="0 0 480 420" role="img" aria-label="A proposed edit passes through four checks before it is accepted or rejected.">
+    <rect x="20" y="12" width="440" height="64" rx="12" fill="var(--raise)" stroke="var(--soft)" stroke-width="1.2"/>
+    <text x="40" y="38" font-size="13" class="soft">Proposed edit to Offsite.md</text>
+    <text x="40" y="62" font-size="15" id="gEdit">Waiting for an edit</text>
+    <line x1="240" y1="76" x2="240" y2="96" stroke="var(--line)" stroke-width="1.4"/>
+    <g id="gChecks"></g>
+    <path d="M240 292 V310 M240 310 C240 322, 125 318, 125 336 M240 310 C240 322, 355 318, 355 336" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+    <g class="gout" id="gAcc">
+      <rect x="20" y="336" width="210" height="72" rx="12" fill="var(--green)" fill-opacity=".1" stroke="var(--green)" stroke-width="1.4"/>
+      <text x="125" y="366" text-anchor="middle" font-size="16" font-weight="600">Accepted</text>
+      <text x="125" y="390" text-anchor="middle" font-size="13.5" class="soft">saved, views rebuilt</text>
+    </g>
+    <g class="gout" id="gRej">
+      <rect x="250" y="336" width="210" height="72" rx="12" fill="var(--rose)" fill-opacity=".1" stroke="var(--rose)" stroke-width="1.4"/>
+      <text x="355" y="366" text-anchor="middle" font-size="16" font-weight="600">Rejected</text>
+      <text x="355" y="390" text-anchor="middle" font-size="13.5" class="soft">old memory kept</text>
+    </g>
+  </svg>
+  <p class="live" id="gCap" aria-live="polite">Choose an edit above and watch it go through the checks.</p>
+</figure>
+
+<p>The split is deliberate. The model handles meaning, which it’s good at, and code handles bookkeeping, which it’s reliable at. One honest caveat: the checks guarantee the structure is sound, not that the content is true. A wrong summary with valid citations still gets through.</p>
+
+<h2>Three more views, for free</h2>
+<p>Some questions are about a topic. Others are about what connects to what, what happened when, or what came up lately. Rather than asking the agent to maintain four separate structures and keep them in sync, the runtime derives three extra views from the topic notes, automatically, after every accepted edit.</p>
+
+<div class="seg" id="viewBtns" role="group" aria-label="Choose a view">
+  <button class="pill" type="button" data-v="topics" aria-pressed="true">Topics</button>
+  <button class="pill" type="button" data-v="graph" aria-pressed="false">Graph</button>
+  <button class="pill" type="button" data-v="timeline" aria-pressed="false">Timeline</button>
+  <button class="pill" type="button" data-v="recent" aria-pressed="false">Recent</button>
+</div>
+<figure>
+  <svg id="views" viewBox="0 0 480 300" role="img" aria-label="Ten memories shown as dots, rearranged by topic, by links, by date, or by how recently they were written."></svg>
+  <p class="live" id="viewCap" aria-live="polite"></p>
+</figure>
+<p>Same ten memories, four arrangements. Because the views are rebuilt from the notes rather than written separately, they can’t drift out of date.</p>
+
+<h2>Answering a question</h2>
+<p>At question time the agent isn’t handed a fixed bundle of retrieved snippets. It gets a few read-only tools (search, list files, read a file) and decides what to look at next based on what it just read.</p>
+
+<figure>
+  <svg id="query" viewBox="0 0 480 412" role="img" aria-label="Step by step: a question, a search, reading a topic note, following a footnote to the original message, and the answer.">
+    <defs>
+      <marker id="arrQ" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="arrhead"/></marker>
+    </defs>
+    <g class="qel" id="q-q">
+      <rect x="40" y="12" width="400" height="46" rx="23" fill="var(--raise)" stroke="var(--soft)" stroke-width="1.2"/>
+      <text x="240" y="41" text-anchor="middle" font-size="16">Where is the team offsite now?</text>
+    </g>
+    <g class="qel" id="q-ctx">
+      <rect x="12" y="86" width="140" height="128" rx="10" fill="var(--gold)" fill-opacity=".07" stroke="var(--gold)" stroke-width="1.3"/>
+      <text x="26" y="110" font-size="12.5" class="soft">Already loaded</text>
+      <rect x="26" y="130" width="10" height="10" rx="2" fill="var(--gold)"/><text x="44" y="140" font-size="15">Core</text>
+      <rect x="26" y="156" width="10" height="10" rx="2" fill="var(--blue)"/><text x="44" y="166" font-size="15">Recent</text>
+      <rect x="26" y="182" width="10" height="10" rx="2" fill="var(--faint)"/><text x="44" y="192" font-size="15">File list</text>
+    </g>
+    <g class="qel" id="q-search">
+      <rect x="182" y="98" width="116" height="30" rx="15" fill="var(--raise)" stroke="var(--blue)" stroke-width="1.3"/>
+      <text x="240" y="118" text-anchor="middle" font-size="14.5">Search</text>
+    </g>
+    <g class="qel" id="q-list">
+      <rect x="182" y="136" width="116" height="30" rx="15" fill="var(--raise)" stroke="var(--line)" stroke-width="1.3"/>
+      <text x="240" y="156" text-anchor="middle" font-size="14.5">List</text>
+    </g>
+    <g class="qel" id="q-read">
+      <rect x="182" y="174" width="116" height="30" rx="15" fill="var(--raise)" stroke="var(--blue)" stroke-width="1.3"/>
+      <text x="240" y="194" text-anchor="middle" font-size="14.5">Read</text>
+    </g>
+    <g class="qel" id="q-doc">
+      <rect x="328" y="86" width="140" height="128" rx="10" class="doc"/>
+      <text x="342" y="110" font-size="14" font-weight="600">Offsite.md</text>
+      <rect x="342" y="124" width="104" height="6" rx="3" class="bar"/>
+      <rect x="342" y="140" width="92" height="6" rx="3" class="bar"/>
+      <rect x="342" y="156" width="60" height="6" rx="3" class="bar"/>
+      <text x="342" y="196" font-size="13" style="fill:var(--brown)">² message 31</text>
+    </g>
+    <g class="qel" id="q-src">
+      <rect class="chip" x="254" y="250" width="214" height="76" rx="10"/>
+      <text x="268" y="273" font-size="12.5" class="soft">Message 31, April 2</text>
+      <text x="268" y="296" font-size="14">“Harbour Hall cancelled.</text>
+      <text x="268" y="315" font-size="14">We’re moving to Riverside.”</text>
+    </g>
+    <g class="qel" id="q-ans">
+      <rect x="12" y="350" width="456" height="54" rx="12" fill="var(--green)" fill-opacity=".09" stroke="var(--green)" stroke-width="1.3"/>
+      <text x="240" y="374" text-anchor="middle" font-size="16" font-weight="600">Riverside Centre</text>
+      <text x="240" y="394" text-anchor="middle" font-size="13.5" class="soft">moved on April 2, per message 31</text>
+    </g>
+    <path class="qarrow" id="a-search" d="M298 113 H322" stroke="var(--soft)" stroke-width="1.6" fill="none" marker-end="url(#arrQ)"/>
+    <path class="qarrow" id="a-read" d="M298 189 H322" stroke="var(--soft)" stroke-width="1.6" fill="none" marker-end="url(#arrQ)"/>
+    <path class="qarrow" id="a-src" d="M392 202 C392 222, 380 226, 380 244" stroke="var(--brown)" stroke-width="1.6" fill="none" marker-end="url(#arrQ)"/>
+    <path class="qarrow" id="a-ans" d="M300 326 C300 340, 262 334, 248 346" stroke="var(--soft)" stroke-width="1.6" fill="none" marker-end="url(#arrQ)"/>
+  </svg>
+  <p class="live" id="qCap" aria-live="polite"></p>
+  <div class="stepbar">
+    <button class="pill" type="button" id="qBack">Back</button>
+    <span class="stepcount" id="qCount">Step 1 of 5</span>
+    <button class="pill" type="button" id="qNext">Next</button>
+  </div>
+</figure>
+
+<p>The agent can take up to 20 rounds of this on one benchmark and 50 on the others. Being able to go back to the original message turns out to be the most important part of the whole design, as the next sections show.</p>
+
+<h2>How well does it work?</h2>
+<p>The authors tested on three long-term memory benchmarks, against six other memory systems and against simply pasting the whole history into the prompt (“Full Context”). Every method used the same model, GPT-6 Luna, both to build its memory and to answer.</p>
+
+<div class="seg" id="resBtns" role="group" aria-label="Choose a benchmark">
+  <button class="pill" type="button" data-b="0" aria-pressed="true">LoCoMo</button>
+  <button class="pill" type="button" data-b="1" aria-pressed="false">BEAM-100K</button>
+  <button class="pill" type="button" data-b="2" aria-pressed="false">LongMemEval-S</button>
+</div>
+<figure>
+  <svg id="results" viewBox="0 0 480 300" role="img" aria-label="Bar chart of overall scores for eight methods on the selected benchmark."></svg>
+  <p class="live" id="resCap" aria-live="polite"></p>
+</figure>
+<p>The margins are modest, two to three points, but consistent. SoMem came first on all three benchmarks, and on all three it also beat handing the model the complete history.</p>
+
+<h2>What actually matters?</h2>
+<p>To find out which parts earn their keep, the authors froze one finished memory and switched pieces off at question time, one at a time, on all 1,540 LoCoMo questions.</p>
+<figure>
+  <svg id="ablation" viewBox="0 0 480 334" role="img" aria-label="Change in accuracy when each component is removed. Removing Source costs 8.64 points, removing Topic costs 2.92 points, the rest are within noise."></svg>
+  <figcaption>Change in accuracy, in percentage points, when one part is switched off. Whiskers show 95% confidence ranges; only the two <span style="color:var(--rose)">rose</span> bars stay clear of zero.</figcaption>
+</figure>
+<p>Two parts clearly matter. Taking away the original messages costs almost 9 points; taking away the topic notes costs about 3. The organized notes help, but they complement the originals rather than replace them. The other pieces mostly shift which kinds of question go right. Removing the timeline or the graph, for example, costs a little on questions about time. Core changes nothing here, which is expected: this benchmark doesn’t test standing preferences, and that’s what Core is for.</p>
+
+<h2>One model writes, another reads</h2>
+<p>Because the memory is just Markdown files, any model can read what another model wrote. The authors had three models each build a memory, then had four models answer questions from each one.</p>
+<figure>
+  <svg id="heat" viewBox="0 0 480 300" role="img" aria-label="A three by four grid of LoCoMo accuracy for each writer and reader pairing, all between 90.1 and 93.3 percent."></svg>
+  <figcaption>LoCoMo accuracy (%) for each pairing. Rows are the model that built the memory; columns are the model that answered from it. Darker means higher.</figcaption>
+</figure>
+<p>Every pairing lands between 90 and 93.3 percent, so the notebook travels well. Readers also bring their own strengths to the same memory: DeepSeek V4 Flash beat GPT-5.6 Luna and Gemini 3 Flash on multi-step questions every time, while Qwen 3.8 Flash was consistently best on open-ended ones.</p>
+
+<h2>Thinking harder, sometimes reading less</h2>
+<p>Modern models can be asked to reason more before answering. Since SoMem lets the reader keep searching, extra reasoning has somewhere to go. Here is what happened on BEAM-100K as each model’s effort setting was turned up.</p>
+<div class="seg" id="effBtns" role="group" aria-label="Focus on one model">
+  <button class="pill" type="button" data-s="-1" aria-pressed="true">All</button>
+  <button class="pill" type="button" data-s="0" aria-pressed="false">GPT-6 Luna</button>
+  <button class="pill" type="button" data-s="1" aria-pressed="false">GPT-6.1 Sol</button>
+  <button class="pill" type="button" data-s="2" aria-pressed="false">Qwen 3.8 Flash</button>
+  <button class="pill" type="button" data-s="3" aria-pressed="false">GLM-5.3 Flash</button>
+</div>
+<figure>
+  <svg id="effort" viewBox="0 0 480 334" role="img" aria-label="Score against tokens used per question for four models at increasing effort levels."></svg>
+  <figcaption>Each line follows one model from low to high effort. Across: tokens the reader used per question. Up: BEAM-100K score.</figcaption>
+</figure>
+<p>More effort mostly meant better answers. One surprise: when GPT-6 Luna went from high to extra-high effort, its score rose and its token use fell, because sharper searches meant fewer repeated lookups. The gains do level off. On the shorter LoCoMo histories, some models plateaued or slipped at the top setting.</p>
+
+<h2>The bill</h2>
+<p>Organizing memory with a capable model isn’t cheap. Here is the total cost of running the full LoCoMo benchmark with GPT-6 Luna, building memory and answering all 1,540 questions.</p>
+<figure>
+  <svg id="cost" viewBox="0 0 480 214" role="img" aria-label="Total cost: SoMem 229.73 dollars, A-Mem 35.19, Mem0 6.75, LightMem 6.46."></svg>
+</figure>
+<p>About half of SoMem’s cost is a one-time build ($118.85). After that, each question costs about 7 cents. Most of the spend is input text that gets reread, and two-thirds of it was already cached; with cached text billed at a tenth of the normal price, the total falls to $96.33. That is still many times more than the lightweight systems, in exchange for roughly 9 to 29 points of accuracy.</p>
+
+<h2>What the paper doesn’t show</h2>
+<p>The tests are all question answering over past conversations; they don’t cover long-running personalization or actually carrying out tasks. Answers were graded by another language model (GPT-4o-mini) with no human spot checks. The component tests were single runs on a frozen memory, so they show what each part does at question time, not how memory would have been built without it. And as noted, the referee checks structure, not truth. Catching an agent’s own mistakes as its memory grows remains an open problem.</p>
+
+<div class="closing">
+  <h2 style="margin-top:0">So, can agents organize their own memory?</h2>
+  <p>Here the answer is a qualified yes. Give a model plain documents and the freedom to arrange them, pair it with simple code that keeps the bookkeeping honest, and never throw the originals away. That last part matters most.</p>
+  <div class="links">
+    <a href="https://arxiv.org/abs/2611.11929">Read the paper</a>
+    <a href="https://github.com/Qi202/SoMem">See the code</a>
+  </div>
+</div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+var RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);if(attrs){for(var k in attrs){e.setAttribute(k,attrs[k]);}}if(parent){parent.appendChild(e);}return e;}
+function txt(parent,x,y,s,attrs){var a=attrs||{};a.x=x;a.y=y;var t=el("text",a,parent);t.textContent=s;return t;}
+function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function tween(dur,fn,done){
+  if(RM||dur<=0){fn(1);if(done){done();}return;}
+  var t0=null;
+  function f(now){if(t0===null){t0=now;}var t=Math.min(1,(now-t0)/dur);fn(ease(t));if(t<1){requestAnimationFrame(f);}else if(done){done();}}
+  requestAnimationFrame(f);
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function $(id){return document.getElementById(id);}
+function press(group,btn){Array.prototype.forEach.call(group.querySelectorAll("button"),function(b){b.setAttribute("aria-pressed",b===btn?"true":"false");});}
+
+/* ---------- reading tools ---------- */
+var root=document.documentElement;
+var fs=1;
+function setFs(v){fs=Math.max(.88,Math.min(1.3,v));root.style.setProperty("--fs",fs.toFixed(3));}
+$("fsDown").addEventListener("click",function(){setFs(fs-.07);});
+$("fsUp").addEventListener("click",function(){setFs(fs+.07);});
+var mq=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+function effTheme(){var a=root.getAttribute("data-theme");if(a){return a;}return mq&&mq.matches?"dark":"light";}
+function themeLabel(){var cur=effTheme();var b=$("themeBtn");b.textContent=cur==="dark"?"Light":"Dim";b.setAttribute("aria-label",cur==="dark"?"Switch to a light page":"Switch to a dim page");}
+$("themeBtn").addEventListener("click",function(){root.setAttribute("data-theme",effTheme()==="dark"?"light":"dark");themeLabel();});
+if(mq&&mq.addEventListener){mq.addEventListener("change",themeLabel);}
+themeLabel();
+
+var bar=document.querySelector("#progress i");
+function onScroll(){var h=document.documentElement.scrollHeight-window.innerHeight;var p=h>0?window.scrollY/h:0;bar.style.transform="scaleX("+Math.max(0,Math.min(1,p)).toFixed(4)+")";}
+window.addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+/* ---------- hero ---------- */
+(function(){
+  var svg=$("hero");
+  var names=["Job","Offsite","Running"];
+  var chipDoc=[0,1,2,0,1,1,2,0];
+  var widths=[104,88,96];
+  var docCount=[0,0,0];
+  var threads=el("g",{},svg);
+  var bars=[],chips=[],paths=[];
+  for(var d=0;d<3;d++){
+    var x=16+d*156;
+    el("rect",{x:x,y:16,width:136,height:150,rx:10,"class":"doc"},svg);
+    txt(svg,x+14,44,names[d],{"font-size":17,"font-weight":600});
+  }
+  for(var i=0;i<8;i++){
+    var dd=chipDoc[i],k=docCount[dd]++;
+    var bx=16+dd*156+14,by=64+k*28;
+    var bw=widths[(i+k)%3];
+    var b=el("rect",{x:bx,y:by,width:0,height:8,rx:4,"class":"bar"},svg);
+    b._w=bw;bars.push(b);
+    var cx=16+i*58+24,cy=250;
+    var sx=16+dd*156+28+k*40,sy=166;
+    var p=el("path",{d:"M"+sx+" "+sy+" C"+sx+" "+(sy+44)+", "+cx+" "+(cy-40)+", "+cx+" "+cy,"class":"thread",pathLength:1,"stroke-dasharray":"1","stroke-dashoffset":"1"},threads);
+    paths.push(p);
+    var g=el("g",{opacity:0,transform:"translate(0 -18)"},svg);
+    el("rect",{x:16+i*58,y:cy,width:48,height:30,rx:7,"class":"chip"},g);
+    el("rect",{x:16+i*58+9,y:cy+9,width:30,height:3,rx:1.5,"class":"chipline"},g);
+    el("rect",{x:16+i*58+9,y:cy+17,width:20,height:3,rx:1.5,"class":"chipline"},g);
+    chips.push(g);
+  }
+  var run=0,timers=[];
+  function play(){
+    run++;var my=run;
+    timers.forEach(clearTimeout);timers=[];
+    chips.forEach(function(g){g.setAttribute("opacity",0);g.setAttribute("transform","translate(0 -18)");});
+    bars.forEach(function(b){b.setAttribute("width",0);});
+    paths.forEach(function(p){p.setAttribute("stroke-dashoffset",1);});
+    if(RM){
+      chips.forEach(function(g){g.setAttribute("opacity",1);g.setAttribute("transform","translate(0 0)");});
+      bars.forEach(function(b){b.setAttribute("width",b._w);});
+      paths.forEach(function(p){p.setAttribute("stroke-dashoffset",0);});
+      return;
+    }
+    chips.forEach(function(g,i){
+      timers.push(setTimeout(function(){tween(480,function(t){if(my!==run){return;}g.setAttribute("opacity",t.toFixed(3));g.setAttribute("transform","translate(0 "+(-18*(1-t)).toFixed(2)+")");});},200+i*110));
+    });
+    paths.forEach(function(p,i){
+      timers.push(setTimeout(function(){
+        tween(560,function(t){if(my!==run){return;}p.setAttribute("stroke-dashoffset",(1-t).toFixed(3));});
+      },1350+i*290));
+      timers.push(setTimeout(function(){
+        var b=bars[i];tween(460,function(t){if(my!==run){return;}b.setAttribute("width",(b._w*t).toFixed(1));});
+      },1750+i*290));
+    });
+  }
+  $("heroReplay").addEventListener("click",play);
+  play();
+})();
+
+/* ---------- haystack ---------- */
+(function(){
+  var g=$("haystack");
+  var w=[150,128,164,118,140,156,122,160,146,112,150,134,158];
+  for(var k=0;k<13;k++){
+    var y=64+k*13.5;
+    if(k===8){el("rect",{x:36,y:y,width:w[k],height:5,rx:2.5,fill:"var(--gold)"},g);}
+    else{el("rect",{x:36,y:y,width:w[k],height:5,rx:2.5,fill:"var(--brown)","fill-opacity":.42},g);}
+  }
+})();
+
+/* ---------- layers ---------- */
+(function(){
+  var docs=$("layerDocs"),th=$("layerThreads"),ch=$("layerChips");
+  var names=["Job","Offsite","Running"];
+  for(var d=0;d<3;d++){
+    var x=22+d*153;
+    el("rect",{x:x,y:122,width:130,height:96,rx:10,"class":"doc"},docs);
+    txt(docs,x+14,148,names[d],{"font-size":15,"font-weight":600});
+    el("rect",{x:x+14,y:162,width:92,height:6,rx:3,"class":"bar"},docs);
+    el("rect",{x:x+14,y:178,width:76,height:6,rx:3,"class":"bar"},docs);
+    el("rect",{x:x+14,y:194,width:60,height:6,rx:3,"class":"bar"},docs);
+  }
+  var chipDoc=[0,1,2,0,1,1,2,0];
+  for(var i=0;i<8;i++){
+    var cx=16+i*58;
+    el("rect",{x:cx,y:298,width:48,height:30,rx:7,"class":"chip"},ch);
+    el("rect",{x:cx+9,y:307,width:30,height:3,rx:1.5,"class":"chipline"},ch);
+    el("rect",{x:cx+9,y:315,width:20,height:3,rx:1.5,"class":"chipline"},ch);
+    var dx=22+chipDoc[i]*153+65;
+    el("path",{d:"M"+dx+" 218 C"+dx+" 258, "+(cx+24)+" 258, "+(cx+24)+" 298","class":"thread"},th);
+  }
+
+})();
+
+/* ---------- anatomy ---------- */
+(function(){
+  var svg=$("anat"),cap=$("anatCap"),grp=$("anatBtns");
+  var msgs={
+    id:"b is a stable name for the paragraph, so other documents can link straight to it even after the agent moves it around.",
+    text:"c is the paragraph itself: plain prose the agent writes, regroups and revises as new information arrives.",
+    ev:"E is the evidence: each statement gets a time and footnotes pointing to the exact original messages behind it.",
+    link:"L is the set of links to related paragraphs in other documents. These links later become the edges of a graph.",
+    none:"Tap a part above to see what it does. Brown threads always lead back to the exact messages a statement rests on."
+  };
+  grp.addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b){return;}
+    var k=b.getAttribute("data-hl");
+    if(svg.getAttribute("data-hl")===k){svg.removeAttribute("data-hl");press(grp,null);cap.textContent=msgs.none;return;}
+    svg.setAttribute("data-hl",k);press(grp,b);cap.textContent=msgs[k];
+  });
+})();
+
+/* ---------- gate ---------- */
+(function(){
+  var g=$("gChecks");
+  var labels=["Original messages untouched","Document structure intact","Every citation and link resolves","Dates are valid"];
+  var rows=[];
+  labels.forEach(function(s,i){
+    var y=96+i*52;
+    var r=el("g",{"class":"gcheck"},g);
+    el("rect",{x:50,y:y,width:380,height:40,rx:20,"stroke-width":1.2},r);
+    el("circle",{cx:76,cy:y+20,r:11},r);
+    var m=txt(r,76,y+25,"",{"text-anchor":"middle","font-size":14,"class":"mark"});
+    txt(r,98,y+26,s,{"font-size":15});
+    r._m=m;rows.push(r);
+  });
+  var acc=$("gAcc"),rej=$("gRej"),cap=$("gCap"),edit=$("gEdit");
+  var bGood=$("gGood"),bBad=$("gBad");
+  var timers=[];
+  function reset(){timers.forEach(clearTimeout);timers=[];rows.forEach(function(r){r.setAttribute("class","gcheck");r._m.textContent="";});acc.setAttribute("class","gout");rej.setAttribute("class","gout");}
+  function go(good){
+    reset();
+    edit.textContent=good?"Add “moved to Riverside Centre”, citing message 31":"Add “moved to Riverside Centre”, citing message 99";
+    cap.textContent="Checking the edit…";
+    bGood.disabled=true;bBad.disabled=true;
+    var step=RM?0:560;
+    var n=good?4:3;
+    for(var i=0;i<n;i++){(function(i){
+      timers.push(setTimeout(function(){
+        var fail=!good&&i===2;
+        rows[i].setAttribute("class","gcheck "+(fail?"fail":"ok"));
+        rows[i]._m.textContent=fail?"✕":"✓";
+      },step*(i+1)));
+    })(i);}
+    timers.push(setTimeout(function(){
+      if(good){acc.setAttribute("class","gout on");cap.textContent="Every check passes. The edit is installed, and the graph, timeline and recent views are rebuilt from the new notes.";}
+      else{rej.setAttribute("class","gout on");cap.textContent="There is no message 99, so the citation can’t resolve. The edit is rejected and memory stays exactly as it was.";}
+      bGood.disabled=false;bBad.disabled=false;
+    },step*(n+1)));
+  }
+  bGood.addEventListener("click",function(){go(true);});
+  bBad.addEventListener("click",function(){go(false);});
+})();
+
+/* ---------- views ---------- */
+(function(){
+  var svg=$("views"),cap=$("viewCap"),grp=$("viewBtns");
+  var colors=["var(--blue)","var(--teal)","var(--lav)"];
+  var docNames=["Job","Offsite","Running"];
+  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"];
+  var U=[
+    {id:1,doc:0,m:1,o:1,t:"Joined Acme as a designer"},
+    {id:2,doc:0,m:9,o:8,t:"Promoted to design lead"},
+    {id:3,doc:0,m:10,o:9,t:"Now leads the Atlas project"},
+    {id:10,doc:0,m:11,o:10,t:"Atlas launch date set"},
+    {id:6,doc:1,m:2,o:2,t:"Offsite budget approved"},
+    {id:4,doc:1,m:3,o:3,t:"Offsite booked at Harbour Hall"},
+    {id:5,doc:1,m:4,o:5,t:"Offsite moved to Riverside"},
+    {id:7,doc:2,m:2,o:4,t:"Started running again"},
+    {id:8,doc:2,m:5,o:6,t:"Finished a first 10K"},
+    {id:9,doc:2,m:8,o:7,t:"Signed up for a half marathon"}
+  ];
+  var byId={};U.forEach(function(u){byId[u.id]=u;});
+  var edges=[[2,1],[3,2],[3,10],[5,4],[5,6],[5,3],[9,8],[8,7]];
+  var gpos={1:[70,232],2:[118,166],3:[206,128],10:[168,250],4:[318,64],5:[282,150],6:[372,160],7:[410,268],8:[338,250],9:[420,198]};
+  function pos(u,mode){
+    if(mode==="topics"){var same=U.filter(function(v){return v.doc===u.doc;}).sort(function(a,b){return a.o-b.o;});var k=same.indexOf(u);return [90+u.doc*150,104+k*46];}
+    if(mode==="graph"){return gpos[u.id];}
+    if(mode==="timeline"){return [40+(u.m-1)*40,u.id===7?120:156];}
+    return [40+(u.o-1)*44.44,166];
+  }
+  var Ltop=el("g",{"class":"vlayer"},svg);
+  for(var d=0;d<3;d++){
+    el("rect",{x:30+d*150,y:40,width:120,height:240,rx:10,fill:colors[d],"fill-opacity":.07,stroke:colors[d],"stroke-width":1.3},Ltop);
+    txt(Ltop,90+d*150,68,docNames[d]+".md",{"text-anchor":"middle","font-size":15,"font-weight":600});
+  }
+  var Ledge=el("g",{"class":"vlayer",opacity:0},svg);
+  var lines=edges.map(function(e){return el("line",{stroke:"var(--soft)","stroke-width":1.4,"stroke-opacity":.7},Ledge);});
+  var Ltime=el("g",{"class":"vlayer",opacity:0},svg);
+  el("line",{x1:22,y1:190,x2:458,y2:190,stroke:"var(--soft)","stroke-width":1.2},Ltime);
+  months.forEach(function(m,i){var x=40+i*40;el("line",{x1:x,y1:185,x2:x,y2:195,stroke:"var(--soft)"},Ltime);txt(Ltime,x,216,m,{"text-anchor":"middle","font-size":13,"class":"soft"});});
+  var Lrec=el("g",{"class":"vlayer",opacity:0},svg);
+  el("line",{x1:22,y1:196,x2:458,y2:196,stroke:"var(--line)","stroke-width":1.2},Lrec);
+  txt(Lrec,24,222,"written first",{"font-size":13,"class":"soft"});
+  txt(Lrec,456,222,"written last",{"text-anchor":"end","font-size":13,"class":"soft"});
+  el("path",{d:"M300 140 V130 H452 V140",fill:"none",stroke:"var(--blue)","stroke-width":1.4},Lrec);
+  txt(Lrec,376,118,"Recent: last 4",{"text-anchor":"middle","font-size":14.5,"font-weight":600});
+  var Lleg=el("g",{"class":"vlayer",opacity:0},svg);
+  docNames.forEach(function(n,i){var x=24+i*110;el("circle",{cx:x,cy:22,r:6,fill:colors[i]},Lleg);txt(Lleg,x+12,27,n,{"font-size":14,"class":"soft"});});
+  var ring=el("circle",{r:15,fill:"none",stroke:"var(--ink)","stroke-width":1.4,opacity:0},svg);
+  var dots=U.map(function(u){
+    var g=el("g",{},svg);
+    var c=el("circle",{r:9,fill:colors[u.doc],"class":"dot"},g);
+    var h=el("circle",{r:20,"class":"hit",tabindex:0,role:"button","aria-label":u.t},g);
+    u._g=g;u._c=c;u._h=h;
+    function pick(){sel=u;place();cap.textContent="“"+u.t+".” Filed in "+docNames[u.doc]+".md, dated "+months[u.m-1]+", the "+ord(u.o)+" memory written.";}
+    h.addEventListener("click",pick);
+    h.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+    return u;
+  });
+  function ord(n){var s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  var sel=null,mode="topics",cur={};
+  U.forEach(function(u){cur[u.id]=pos(u,"topics");});
+  var caps={
+    topics:"Topics: the agent’s own grouping. Each column is one Markdown document it chose to create. Tap any dot to see the memory it stands for.",
+    graph:"Graph: every link the agent wrote between paragraphs becomes an edge, and it can be followed both ways (links and backlinks).",
+    timeline:"Timeline: each dated statement is filed under its year, month or day, so “what happened in April?” is one file away.",
+    recent:"Recent: the last few memories written, placed in front of the agent at the start of every question."
+  };
+  function place(){
+    U.forEach(function(u){var p=cur[u.id];u._c.setAttribute("cx",p[0]);u._c.setAttribute("cy",p[1]);u._h.setAttribute("cx",p[0]);u._h.setAttribute("cy",p[1]);
+      var faded=(mode==="recent"&&u.o<7);u._g.setAttribute("opacity",faded?.3:1);});
+    edges.forEach(function(e,i){var a=cur[e[0]],b=cur[e[1]];lines[i].setAttribute("x1",a[0]);lines[i].setAttribute("y1",a[1]);lines[i].setAttribute("x2",b[0]);lines[i].setAttribute("y2",b[1]);});
+    if(sel){var p=cur[sel.id];ring.setAttribute("cx",p[0]);ring.setAttribute("cy",p[1]);ring.setAttribute("opacity",1);}
+  }
+  var run=0;
+  function setMode(m){
+    mode=m;run++;var my=run;
+    Ltop.setAttribute("opacity",m==="topics"?1:0);
+    Ledge.setAttribute("opacity",m==="graph"?1:0);
+    Ltime.setAttribute("opacity",m==="timeline"?1:0);
+    Lrec.setAttribute("opacity",m==="recent"?1:0);
+    Lleg.setAttribute("opacity",m==="topics"?0:1);
+    var from={};U.forEach(function(u){from[u.id]=cur[u.id].slice();});
+    tween(900,function(t){if(my!==run){return;}U.forEach(function(u){var a=from[u.id],b=pos(u,m);cur[u.id]=[lerp(a[0],b[0],t),lerp(a[1],b[1],t)];});place();});
+    cap.textContent=caps[m];
+  }
+  grp.addEventListener("click",function(e){var b=e.target.closest("button");if(!b){return;}press(grp,b);setMode(b.getAttribute("data-v"));});
+  place();cap.textContent=caps.topics;
+})();
+
+/* ---------- query stepper ---------- */
+(function(){
+  var steps=[
+    {on:["q-q","q-ctx"],a:[],c:"The question arrives. Core, the recent memories and a list of files are already in front of the agent."},
+    {on:["q-q","q-search","q-doc"],a:["a-search"],c:"It searches for “offsite venue”, either by exact words (BM25) or by meaning, and gets a hit in Offsite.md."},
+    {on:["q-read","q-doc"],a:["a-read"],c:"It opens Offsite.md and reads the venue paragraph: booked at Harbour Hall, then moved to Riverside."},
+    {on:["q-doc","q-src"],a:["a-src"],c:"The summary says “moved”. To be sure of the details, it follows footnote 2 back to the original message."},
+    {on:["q-q","q-src","q-ans"],a:["a-ans"],c:"It answers with the evidence in hand. Nothing forced this order; the agent chose every step."}
+  ];
+  var idx=0;var all=["q-q","q-ctx","q-search","q-list","q-read","q-doc","q-src","q-ans"],arrows=["a-search","a-read","a-src","a-ans"];
+  function show(){
+    var s=steps[idx];
+    all.forEach(function(id){$(id).setAttribute("class","qel"+(s.on.indexOf(id)>=0?" on":""));});
+    arrows.forEach(function(id){$(id).setAttribute("class","qarrow"+(s.a.indexOf(id)>=0?" on":""));});
+    $("qCap").textContent=s.c;
+    $("qCount").textContent="Step "+(idx+1)+" of "+steps.length;
+    $("qBack").disabled=idx===0;
+    $("qNext").textContent=idx===steps.length-1?"Start over":"Next";
+  }
+  $("qNext").addEventListener("click",function(){idx=idx===steps.length-1?0:idx+1;show();});
+  $("qBack").addEventListener("click",function(){if(idx>0){idx--;show();}});
+  show();
+})();
+
+/* ---------- results ---------- */
+(function(){
+  var svg=$("results"),cap=$("resCap"),grp=$("resBtns");
+  var methods=["SoMem","Full Context","E-mem","Mem0","LightMem","Nemori","A-Mem","MemoryOS"];
+  var data=[
+    {"SoMem":88.96,"Full Context":84.22,"E-mem":86.30,"Mem0":80.32,"LightMem":77.99,"Nemori":72.53,"A-Mem":60.06,"MemoryOS":56.23},
+    {"SoMem":54.02,"Full Context":50.92,"E-mem":43.36,"Mem0":49.00,"LightMem":43.54,"Nemori":47.96,"A-Mem":50.51,"MemoryOS":47.96},
+    {"SoMem":76.50,"Full Context":65.80,"E-mem":65.20,"Mem0":72.80,"LightMem":74.50,"Nemori":66.40,"A-Mem":62.80,"MemoryOS":53.00}
+  ];
+  var caps=[
+    "LoCoMo: 1,540 questions about long, multi-session chats. Score is the share answered correctly. SoMem leads the next best, E-mem, by 2.66 points.",
+    "BEAM-100K: 400 questions testing ten memory skills, such as ordering events and resolving contradictions. Score is a rubric score out of 100. SoMem leads the next best, Full Context, by 3.10 points.",
+    "LongMemEval-S: 500 questions including updated facts, preferences and temporal reasoning. Score is the share answered correctly. SoMem leads the next best, LightMem, by 2.00 points."
+  ];
+  var X0=128,S=2.9,RH=35,Y0=12;
+  var rows={};
+  methods.forEach(function(m,i){
+    var g=el("g",{transform:"translate(0 "+(Y0+i*RH)+")"},svg);
+    var hl=m==="SoMem";
+    txt(g,X0-10,20,m,{"text-anchor":"end","font-size":15,"font-weight":hl?600:400});
+    var col=hl?"var(--blue)":(m==="Full Context"?"var(--brown)":"var(--faint)");
+    var r=el("rect",{x:X0,y:6,height:18,rx:4,width:0,fill:col,"fill-opacity":hl?.9:.6},g);
+    var v=txt(g,X0+8,20,"",{"font-size":14,"class":hl?"":"soft","font-weight":hl?600:400});
+    rows[m]={g:g,r:r,v:v,y:Y0+i*RH,val:0};
+  });
+  el("line",{x1:X0,y1:6,x2:X0,y2:Y0+methods.length*RH,stroke:"var(--line)"},svg);
+  var run=0;
+  function show(b){
+    run++;var my=run;var d=data[b];
+    var order=methods.slice().sort(function(a,c){return d[c]-d[a];});
+    var from={};methods.forEach(function(m){from[m]={y:rows[m].y,v:rows[m].val};});
+    tween(800,function(t){
+      if(my!==run){return;}
+      order.forEach(function(m,i){
+        var R=rows[m];var y=lerp(from[m].y,Y0+i*RH,t),v=lerp(from[m].v,d[m],t);
+        R.y=y;R.val=v;R.g.setAttribute("transform","translate(0 "+y.toFixed(2)+")");
+        R.r.setAttribute("width",(v*S).toFixed(1));R.v.setAttribute("x",(X0+v*S+8).toFixed(1));R.v.textContent=v.toFixed(2);
+      });
+    });
+    cap.textContent=caps[b];
+  }
+  grp.addEventListener("click",function(e){var b=e.target.closest("button");if(!b){return;}press(grp,b);show(+b.getAttribute("data-b"));});
+  show(0);
+})();
+
+/* ---------- ablation ---------- */
+(function(){
+  var svg=$("ablation");
+  var rows=[["Source",-8.64,-11.67,-6.11,true],["Topic",-2.92,-4.96,-0.88,true],["Recent",-1.30,-2.98,0.30,false],["Timeline",-0.97,-2.54,0.52,false],["Graph",-0.91,-2.65,0.85,false],["Core",0.00,-1.16,1.09,false]];
+  function X(d){return 170+(d+12)*(270/14);}
+  [-12,-8,-4,0].forEach(function(v){
+    el("line",{x1:X(v),y1:16,x2:X(v),y2:282,stroke:v===0?"var(--soft)":"var(--line)","stroke-dasharray":v===0?"":"2 4","stroke-width":v===0?1.3:1},svg);
+    txt(svg,X(v),302,(v<0?"−":"")+Math.abs(v),{"text-anchor":"middle","font-size":13,"class":"soft"});
+  });
+  txt(svg,X(-6),326,"change in accuracy (points)",{"text-anchor":"middle","font-size":13,"class":"soft"});
+  rows.forEach(function(r,i){
+    var y=40+i*44,col=r[4]?"var(--rose)":"var(--faint)";
+    txt(svg,160,y+5,"Without "+r[0],{"text-anchor":"end","font-size":15,"font-weight":r[4]?600:400});
+    var x0=X(0),x1=X(r[1]);
+    el("rect",{x:Math.min(x0,x1),y:y-8,width:Math.max(2,Math.abs(x1-x0)),height:16,rx:3,fill:col,"fill-opacity":r[4]?.75:.5},svg);
+    el("line",{x1:X(r[2]),y1:y,x2:X(r[3]),y2:y,stroke:"var(--ink)","stroke-width":1.3,"stroke-opacity":.75},svg);
+    el("line",{x1:X(r[2]),y1:y-6,x2:X(r[2]),y2:y+6,stroke:"var(--ink)","stroke-width":1.3,"stroke-opacity":.75},svg);
+    el("line",{x1:X(r[3]),y1:y-6,x2:X(r[3]),y2:y+6,stroke:"var(--ink)","stroke-width":1.3,"stroke-opacity":.75},svg);
+    var lab=(r[1]<0?"−":"")+Math.abs(r[1]).toFixed(2);
+    txt(svg,Math.max(X(r[3]),X(0))+8,y+5,lab,{"font-size":13.5,"class":r[4]?"":"soft","font-weight":r[4]?600:400});
+  });
+})();
+
+/* ---------- heatmap ---------- */
+(function(){
+  var svg=$("heat");
+  var names=[["GPT-5.6","Luna"],["Gemini 3","Flash"],["DeepSeek","V4 Flash"],["Qwen 3.8","Flash"]];
+  var M=[[92.34,92.79,93.18,93.25],[91.95,91.17,93.12,91.23],[92.01,92.86,92.73,90.13]];
+  var X0=146,CW=83,Y0=72,RH=62;
+  txt(svg,10,30,"Answered by →",{"font-size":13,"class":"soft"});
+  txt(svg,10,52,"Built by ↓",{"font-size":13,"class":"soft"});
+  names.forEach(function(n,c){var x=X0+c*CW+CW/2;txt(svg,x,34,n[0],{"text-anchor":"middle","font-size":13});txt(svg,x,52,n[1],{"text-anchor":"middle","font-size":13,"class":"soft"});});
+  M.forEach(function(row,r){
+    var y=Y0+r*RH;
+    txt(svg,X0-12,y+RH/2-3,names[r][0],{"text-anchor":"end","font-size":13});
+    txt(svg,X0-12,y+RH/2+15,names[r][1],{"text-anchor":"end","font-size":13,"class":"soft"});
+    row.forEach(function(v,c){
+      var x=X0+c*CW;
+      var a=.06+(v-90)/3.3*.5;
+      var at={x:x+3,y:y+3,width:CW-6,height:RH-6,rx:7,fill:"var(--blue)","fill-opacity":a.toFixed(3)};
+      if(r===c){at.stroke="var(--soft)";at["stroke-dasharray"]="4 3";at["stroke-width"]=1.2;}
+      el("rect",at,svg);
+      txt(svg,x+CW/2,y+RH/2+6,v.toFixed(2),{"text-anchor":"middle","font-size":16});
+    });
+  });
+  txt(svg,X0,Y0+3*RH+28,"Dashed: the same model built and answered",{"font-size":13,"class":"soft"});
+})();
+
+/* ---------- effort ---------- */
+(function(){
+  var svg=$("effort"),grp=$("effBtns");
+  var series=[
+    {n:"GPT-6 Luna",c:"var(--blue)",p:[["Low",48.1,56.82],["Med",76.8,57.60],["High",112.6,59.07],["xHigh",104.4,61.79]]},
+    {n:"GPT-6.1 Sol",c:"var(--gold)",p:[["Low",38.7,63.98],["Med",45.0,66.35],["High",64.4,67.25],["xHigh",103.3,70.42]]},
+    {n:"Qwen 3.8 Flash",c:"var(--lav)",p:[["Low",197.5,66.68],["Med",160.2,69.60],["xHigh",210.3,70.35]]},
+    {n:"GLM-5.3 Flash",c:"var(--green)",p:[["Low",20.7,63.93],["High",26.8,68.82],["Max",48.7,70.43]]}
+  ];
+  function X(t){return 56+t/220*400;}
+  function Y(s){return 280-(s-54)/18*256;}
+  [56,60,64,68,72].forEach(function(s){el("line",{x1:56,y1:Y(s),x2:460,y2:Y(s),stroke:"var(--line)","stroke-width":1},svg);txt(svg,48,Y(s)+4,String(s),{"text-anchor":"end","font-size":12.5,"class":"soft"});});
+  [0,50,100,150,200].forEach(function(t){txt(svg,X(t),300,String(t),{"text-anchor":"middle","font-size":12.5,"class":"soft"});});
+  txt(svg,258,326,"tokens per question (thousands)",{"text-anchor":"middle","font-size":13,"class":"soft"});
+  var yl=txt(svg,0,0,"score",{"text-anchor":"middle","font-size":13,"class":"soft"});yl.setAttribute("transform","translate(16 168) rotate(-90)");
+  var groups=series.map(function(s,i){
+    var g=el("g",{"class":"vlayer"},svg);
+    var d=s.p.map(function(q,k){return (k?"L":"M")+X(q[1]).toFixed(1)+" "+Y(q[2]).toFixed(1);}).join(" ");
+    el("path",{d:d,fill:"none",stroke:s.c,"stroke-width":2,"stroke-linejoin":"round"},g);
+    s.p.forEach(function(q){
+      el("circle",{cx:X(q[1]),cy:Y(q[2]),r:4.5,fill:s.c,stroke:"var(--bg)","stroke-width":1.5},g);
+    });
+    var last=s.p[s.p.length-1];
+    var lx=X(last[1]),ly=Y(last[2])-10,anchor="middle";
+    if(i===2){lx=X(last[1])-4;ly=Y(last[2])-12;anchor="end";}
+    if(i===0){lx=X(last[1])+10;ly=Y(last[2])+4;anchor="start";}
+    if(i===3){lx=X(last[1])-6;ly=Y(last[2])-11;anchor="middle";}
+    if(i===1){lx=X(last[1])+10;ly=Y(last[2])+4;anchor="start";}
+    txt(g,lx,ly,s.n,{"text-anchor":anchor,"font-size":13,"font-weight":600,style:"fill:"+s.c});
+    s._g=g;return g;
+  });
+  var note=el("g",{"class":"vlayer"},svg);
+  var sL=series[0].p;
+  txt(note,X(sL[3][1])-12,Y(sL[3][2])+4,"xHigh: better, fewer tokens",{"text-anchor":"end","font-size":12.5,style:"fill:var(--blue)"});
+  function focus(i){
+    groups.forEach(function(g,k){g.setAttribute("opacity",i<0||i===k?1:.14);});
+    note.setAttribute("opacity",i<0||i===0?1:0);
+  }
+  grp.addEventListener("click",function(e){var b=e.target.closest("button");if(!b){return;}press(grp,b);focus(+b.getAttribute("data-s"));});
+  focus(-1);
+})();
+
+/* ---------- cost ---------- */
+(function(){
+  var svg=$("cost");
+  var X0=124,S=1.3;
+  var rows=[["SoMem","89.0% correct",229.73],["A-Mem","60.1% correct",35.19],["Mem0","80.3% correct",6.75],["LightMem","78.0% correct",6.46]];
+  rows.forEach(function(r,i){
+    var y=40+i*40;
+    txt(svg,X0-12,y+1,r[0],{"text-anchor":"end","font-size":15,"font-weight":i===0?600:400});
+    txt(svg,X0-12,y+18,r[1],{"text-anchor":"end","font-size":12,"class":"soft"});
+    if(i===0){
+      el("rect",{x:X0,y:y-8,width:118.85*S,height:20,rx:3,fill:"var(--brown)","fill-opacity":.75},svg);
+      el("rect",{x:X0+118.85*S,y:y-8,width:110.88*S,height:20,rx:3,fill:"var(--blue)","fill-opacity":.8},svg);
+      var cx=X0+96.33*S;
+      el("line",{x1:cx,y1:y-16,x2:cx,y2:y+18,stroke:"var(--ink)","stroke-width":1.3,"stroke-dasharray":"3 3"},svg);
+      txt(svg,cx,y-21,"$96.33 with caching",{"text-anchor":"middle","font-size":12.5,"class":"soft"});
+    }else{
+      el("rect",{x:X0,y:y-8,width:Math.max(2,r[2]*S),height:20,rx:3,fill:"var(--faint)","fill-opacity":.6},svg);
+    }
+    txt(svg,X0+r[2]*S+8,y+7,"$"+r[2].toFixed(2),{"font-size":14,"font-weight":i===0?600:400});
+  });
+  el("rect",{x:X0,y:198,width:12,height:12,rx:2,fill:"var(--brown)","fill-opacity":.75},svg);
+  txt(svg,X0+18,209,"build once",{"font-size":13,"class":"soft"});
+  el("rect",{x:X0+110,y:198,width:12,height:12,rx:2,fill:"var(--blue)","fill-opacity":.8},svg);
+  txt(svg,X0+128,209,"answer 1,540 questions",{"font-size":13,"class":"soft"});
+})();
+
+})();
+</script>
+</body>
+</html>
