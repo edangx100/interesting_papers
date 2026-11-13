@@ -78,3 +78,6 @@
 - Agentic misalignment: How LLMs could be insider threats
   - https://www.anthropic.com/research/agentic-misalignment
   - https://edangx100.github.io/interesting_papers/agentic-misalignment
+- Chain of Thought Monitorability: A New and Fragile Opportunity for AI Safety
+  - https://arxiv.org/pdf/2507.11473
+  - https://edangx100.github.io/interesting_papers/COT-monitorability
