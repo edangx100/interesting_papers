@@ -69,3 +69,6 @@
 - What affects chain-of-thought monitorability across the model lifecycle?
   - https://alignment.openai.com/cot-monitorability-model-lifecycle
   -  https://edangx100.github.io/interesting_papers/cot-monitorability-model-lifecycle
+- Can LLM Agents Organize Their Own Memory?
+  - https://arxiv.org/html/2611.11929
+  - https://edangx100.github.io/interesting_papers/agents-organise-memory
