@@ -75,3 +75,6 @@
 - An Approach to Technical AGI Safety and Security
   - https://deepmindsafetyresearch.medium.com/an-approach-to-technical-agi-safety-and-security-25928819fbc6
   - https://edangx100.github.io/interesting_papers/approach-to-technical-agi-safety-and-security
+- Agentic misalignment: How LLMs could be insider threats
+  - https://www.anthropic.com/research/agentic-misalignment
+  - https://edangx100.github.io/interesting_papers/agentic-misalignment
