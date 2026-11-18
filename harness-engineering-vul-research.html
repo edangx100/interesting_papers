@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#1c1f29">
+<title>Harness Engineering for Vulnerability Research — an illustrated explainer</title>
+<script>
+(function(){var d=document.documentElement;d.classList.add('js');var t=null,f=null;
+try{t=localStorage.getItem('he-theme');f=localStorage.getItem('he-fs')}catch(e){}
+if(!t){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}
+d.setAttribute('data-theme',t);if(f){d.style.setProperty('--fs',f+'px')}})();
+</script>
+<style>
+:root{
+  --fs:17px;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (min-width:720px){:root{--fs:18px}}
+html[data-theme="dark"]{
+  --bg:#1c1f29;--bg2:#242836;--bg3:#2b3040;--bar:rgba(28,31,41,.86);
+  --ink:#e3dfd4;--ink2:#a3a7b3;--line:#3a4052;--code:#20232e;
+  --b:#71b7d4;--t:#6fc2a6;--y:#e6cc72;--r:#e0907c;--g:#9cc47f;--p:#ad9fe0;--o:#e4a96a;--m:#878c99;
+  --b-s:rgba(113,183,212,.13);--t-s:rgba(111,194,166,.13);--y-s:rgba(230,204,114,.12);--r-s:rgba(224,144,124,.13);
+  --g-s:rgba(156,196,127,.13);--p-s:rgba(173,159,224,.13);--o-s:rgba(228,169,106,.13);--m-s:rgba(135,140,153,.12);
+}
+html[data-theme="light"]{
+  --bg:#f6f2e9;--bg2:#eee8db;--bg3:#e6dfcf;--bar:rgba(246,242,233,.88);
+  --ink:#2d2b27;--ink2:#625d55;--line:#d4cab7;--code:#efe9dc;
+  --b:#2d7a9c;--t:#2b806a;--y:#94740f;--r:#ad553e;--g:#527b34;--p:#6656a8;--o:#a0601e;--m:#8b857a;
+  --b-s:rgba(45,122,156,.11);--t-s:rgba(43,128,106,.11);--y-s:rgba(176,140,20,.12);--r-s:rgba(173,85,62,.10);
+  --g-s:rgba(82,123,52,.11);--p-s:rgba(102,86,168,.10);--o-s:rgba(160,96,30,.11);--m-s:rgba(139,133,122,.12);
+}
+*{box-sizing:border-box}
+html{font-size:var(--fs);-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:1rem;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+::selection{background:var(--y-s)}
+a{color:var(--b);text-underline-offset:3px;text-decoration-thickness:1px}
+p,li{max-width:66ch}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.22;letter-spacing:.005em}
+h2{font-size:1.75rem;margin:.2rem 0 .9rem}
+h3{font-size:1.2rem;margin:2.2rem 0 .6rem}
+code{font-family:var(--mono);font-size:.86em;background:var(--code);border:1px solid var(--line);padding:.06em .35em;border-radius:6px;overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:.8rem;line-height:1.6;background:var(--code);border:1px solid var(--line);border-radius:14px;
+  padding:1rem 1.1rem;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.2rem 0}
+pre code{background:none;border:0;padding:0;font-size:1em;overflow-wrap:normal}
+.cm{color:var(--ink2)} .ck{color:var(--b)} .cs{color:var(--t)} .cy{color:var(--y)}
+
+/* top bar */
+.bar{position:sticky;top:0;z-index:30;background:var(--bar);-webkit-backdrop-filter:saturate(1.2) blur(10px);backdrop-filter:saturate(1.2) blur(10px);
+  border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.bar-in{display:flex;align-items:center;gap:.35rem;max-width:62rem;margin:0 auto;padding:.3rem max(.6rem,env(safe-area-inset-right)) .3rem max(.6rem,env(safe-area-inset-left))}
+.bar-title{flex:1;min-width:0;font-family:var(--serif);font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2)}
+.ib{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:.35rem;border-radius:12px;border:1px solid transparent;
+  background:transparent;color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:0 .55rem}
+.ib:active{background:var(--bg3)}
+.ib svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.prog{height:2px;background:transparent}
+.prog i{display:block;height:100%;width:0;background:var(--b);opacity:.75}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .25s;z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(86vw,350px);background:var(--bg2);border-left:1px solid var(--line);z-index:50;
+  transform:translateX(102%);transition:transform .28s ease;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top) + .8rem) max(1rem,env(safe-area-inset-right)) 2rem 1rem;visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer h2{font-size:1.15rem;margin:.4rem 0 .8rem}
+.drawer ol{list-style:none;padding:0;margin:0}
+.drawer a{display:flex;gap:.7rem;align-items:baseline;padding:.62rem .6rem;min-height:44px;border-radius:10px;color:var(--ink);text-decoration:none;font-size:.95rem;line-height:1.35}
+.drawer a:active,.drawer a.cur{background:var(--bg3)}
+.drawer a span{color:var(--ink2);font-family:var(--mono);font-size:.75rem;min-width:1.6rem}
+.dr-head{display:flex;justify-content:space-between;align-items:center}
+body.lock{overflow:hidden}
+
+/* layout */
+main{max-width:44rem;margin:0 auto;padding:0 max(1.25rem,env(safe-area-inset-right)) 5rem max(1.25rem,env(safe-area-inset-left))}
+.hero{padding:3.2rem 0 1rem}
+.kick{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin:0 0 .5rem}
+.hero h1{font-size:clamp(2rem,6.4vw,3rem);margin:.2rem 0 1rem}
+.hero h1 em{font-style:italic;color:var(--b);font-weight:500}
+.tldr{font-family:var(--serif);font-size:1.28rem;line-height:1.5;margin:0 0 1rem;max-width:34em}
+.tldr b{font-weight:600;color:var(--y)}
+.meta{color:var(--ink2);font-size:.85rem}
+.intro{font-size:1.04rem}
+section.chap{padding-top:3.4rem;margin-top:3rem;border-top:1px solid var(--line)}
+.lede{font-family:var(--serif);font-size:1.15rem;color:var(--ink2);line-height:1.55;margin-top:0}
+
+figure.fig{margin:2.2rem 0;padding:0}
+figure.fig svg.d{display:block;width:100%;height:auto;max-width:560px;margin:0 auto;overflow:visible}
+@media (max-width:560px){figure.fig{margin-left:calc(-1 * max(1.25rem,env(safe-area-inset-left)) + 6px);margin-right:calc(-1 * max(1.25rem,env(safe-area-inset-right)) + 6px)}figcaption,.fig .panel,.fig .chips,.fig .stepper,.fig pre{margin-left:14px;margin-right:14px}}
+figcaption{font-size:.84rem;color:var(--ink2);text-align:center;margin:.8rem auto 0;max-width:46ch;line-height:1.55}
+
+.eq{font-family:var(--serif);font-style:italic;font-size:clamp(1.15rem,4.4vw,1.5rem);text-align:center;margin:2rem 0;line-height:1.9}
+.eq .ne{color:var(--y);font-style:normal;padding:0 .3em}
+.eq .pl{color:var(--ink2);font-style:normal;padding:0 .25em}
+.eq .hb{color:var(--b)} .eq .ht{color:var(--t)}
+blockquote.pull{font-family:var(--serif);font-size:1.4rem;line-height:1.45;margin:2rem 0;padding:0 0 0 1.1rem;border-left:3px solid var(--y)}
+blockquote.pull cite{display:block;font-family:var(--sans);font-size:.8rem;font-style:normal;color:var(--ink2);margin-top:.5rem}
+
+.callout{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--b);border-radius:4px 14px 14px 4px;padding:.9rem 1.1rem;margin:1.6rem 0}
+.callout.y{border-left-color:var(--y)} .callout.r{border-left-color:var(--r)} .callout.t{border-left-color:var(--t)}
+.callout p{margin:.35rem 0}
+.callout .lab{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+.check{border:1px dashed var(--t);border-radius:14px;padding:.9rem 1.1rem;margin:2rem 0 0;background:var(--t-s)}
+.check .lab{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--t)}
+.check p{margin:.3rem 0}
+
+.grid2{display:grid;grid-template-columns:1fr;gap:.9rem;margin:1.6rem 0}
+@media (min-width:600px){.grid2{grid-template-columns:1fr 1fr}}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem}
+.card h4{font-family:var(--serif);font-size:1.05rem;margin:.3rem 0 .3rem}
+.card p{margin:.2rem 0;font-size:.93rem;color:var(--ink2)}
+.card svg{width:96px;height:64px;display:block}
+.card .mono{font-family:var(--mono);font-size:.78rem}
+
+ul.clean,ol.clean{padding-left:1.15rem}
+ul.clean li,ol.clean li{margin:.35rem 0}
+ul.clean li::marker{color:var(--b)}
+ol.steps{list-style:none;padding:0;counter-reset:s;margin:1.4rem 0}
+ol.steps li{counter-increment:s;position:relative;padding:0 0 1.1rem 3rem;margin:0}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:-.05rem;width:2rem;height:2rem;border-radius:50%;border:1.5px solid var(--b);
+  color:var(--b);font-family:var(--serif);display:flex;align-items:center;justify-content:center;font-size:.95rem}
+ol.steps li::after{content:"";position:absolute;left:1rem;top:2.2rem;bottom:.2rem;width:1px;background:var(--line)}
+ol.steps li:last-child::after{display:none}
+ol.steps b{font-weight:600}
+
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin:1rem 0 .4rem}
+.btn{min-height:44px;padding:.5rem 1rem;border-radius:999px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);
+  font:inherit;font-size:.86rem;line-height:1.2;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;transition:background .15s,border-color .15s,color .15s}
+.btn:active{transform:scale(.97)}
+.btn[aria-pressed="true"],.btn.on{border-color:var(--b);color:var(--b);background:var(--b-s)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.mono{font-family:var(--mono);font-size:.78rem}
+:focus-visible{outline:2px solid var(--y);outline-offset:2px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:.85rem 1.1rem;margin:.6rem auto 0;max-width:560px;min-height:5.2rem}
+.panel b{font-family:var(--serif);font-size:1.05rem;font-weight:600}
+.panel p{margin:.25rem 0;font-size:.93rem}
+.panel a{font-size:.88rem}
+.stepper{display:flex;align-items:center;justify-content:center;gap:.6rem;margin:1rem 0 0}
+.stepper .count{font-family:var(--mono);font-size:.8rem;color:var(--ink2);min-width:3.5rem;text-align:center}
+
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:1.4rem 0}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--ink2);font-size:.8rem}
+.pills{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
+.pill{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .8rem;border-radius:999px;border:1px solid var(--line);font-size:.85rem;background:var(--bg2)}
+.pill svg{width:16px;height:16px}
+.take{counter-reset:k;list-style:none;padding:0}
+.take li{counter-increment:k;display:grid;grid-template-columns:2.4rem 1fr;gap:.4rem;padding:.75rem 0;border-bottom:1px solid var(--line);max-width:none}
+.take li::before{content:counter(k,decimal-leading-zero);font-family:var(--mono);font-size:.8rem;color:var(--b);padding-top:.25rem}
+.endnav{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:2rem}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+
+/* ---------- SVG vocabulary ---------- */
+svg.d text{font-family:var(--sans);fill:var(--ink);font-size:15px}
+svg.d .mut{fill:var(--ink2)} svg.d .sm{font-size:13px} svg.d .xs{font-size:12px} svg.d .lg{font-size:18px} svg.d .xl{font-size:24px}
+svg.d .mono{font-family:var(--mono);font-size:12.5px} svg.d .serif{font-family:var(--serif);font-style:italic}
+svg.d .bold{font-weight:600}
+.ln{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.thin{stroke-width:1.3}
+.box{stroke-width:1.6}
+.dash{stroke-dasharray:5 5}
+.dot2{stroke-dasharray:2 5}
+.s-b{stroke:var(--b)}.s-t{stroke:var(--t)}.s-y{stroke:var(--y)}.s-r{stroke:var(--r)}.s-g{stroke:var(--g)}.s-p{stroke:var(--p)}.s-o{stroke:var(--o)}.s-m{stroke:var(--m)}.s-l{stroke:var(--line)}.s-i{stroke:var(--ink)}
+svg .f-b{fill:var(--b)}svg .f-t{fill:var(--t)}svg .f-y{fill:var(--y)}svg .f-r{fill:var(--r)}svg .f-g{fill:var(--g)}svg .f-p{fill:var(--p)}svg .f-o{fill:var(--o)}svg .f-m{fill:var(--m)}svg .f-bg{fill:var(--bg)}svg .f-bg2{fill:var(--bg2)}svg .f-bg3{fill:var(--bg3)}svg .f-n{fill:none}
+svg .fs-b{fill:var(--b-s)}svg .fs-t{fill:var(--t-s)}svg .fs-y{fill:var(--y-s)}svg .fs-r{fill:var(--r-s)}svg .fs-g{fill:var(--g-s)}svg .fs-p{fill:var(--p-s)}svg .fs-o{fill:var(--o-s)}svg .fs-m{fill:var(--m-s)}
+svg.d text.f-b{fill:var(--b)}svg.d text.f-t{fill:var(--t)}svg.d text.f-y{fill:var(--y)}svg.d text.f-r{fill:var(--r)}svg.d text.f-p{fill:var(--p)}svg.d text.f-o{fill:var(--o)}svg.d text.f-g{fill:var(--g)}
+.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tap .ring{opacity:0;transition:opacity .2s}
+.tap.sel .ring{opacity:1}
+.tap.sel text{fill:var(--y)}
+.lp-box{transition:fill .25s,stroke .25s}
+.lp.cur .lp-box{fill:var(--y-s);stroke:var(--y)}
+.lp.done .lp-box{stroke:var(--t)}
+.hk .halo{opacity:0;transition:opacity .2s}
+.hk.sel .halo{opacity:1}
+.hk.sel text.ev{fill:var(--y)}
+.sq{transition:opacity .35s,stroke-width .35s}
+.dim{opacity:.28}
+
+/* draw-on animation (3b1b feel) */
+.js .fig path.draw{stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset 1.5s cubic-bezier(.45,.05,.25,1)}
+.js .fig.in path.draw{stroke-dashoffset:0}
+.js .fig .fade{opacity:0;transition:opacity .9s ease .35s}
+.js .fig.in .fade{opacity:1}
+.js .fig .fade2{opacity:0;transition:opacity .9s ease .9s}
+.js .fig.in .fade2{opacity:1}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .js .fig path.draw{stroke-dasharray:none;stroke-dashoffset:0;transition:none}
+  .js .fig .fade,.js .fig .fade2{opacity:1;transition:none}
+  .drawer,.scrim{transition:none}
+}
+</style>
+</head>
+<body>
+
+<!-- shared arrowheads -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="a-m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-m"/></marker>
+    <marker id="a-b" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-b"/></marker>
+    <marker id="a-t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-t"/></marker>
+    <marker id="a-y" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-y"/></marker>
+    <marker id="a-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-r"/></marker>
+    <marker id="a-p" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" class="f-p"/></marker>
+    <pattern id="ticks" width="7" height="22" patternUnits="userSpaceOnUse"><rect width="2" height="22" class="f-t"/></pattern>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.6" height="6" class="f-m"/></pattern>
+  </defs>
+</svg>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="bar-title">Harness Engineering, explained</div>
+    <button class="ib" id="fsDown" type="button" aria-label="Smaller text"><span style="font-size:.8rem">A−</span></button>
+    <button class="ib" id="fsUp" type="button" aria-label="Larger text"><span style="font-size:1.05rem">A+</span></button>
+    <button class="ib" id="themeBtn" type="button" aria-label="Switch light or dark theme">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="ib" id="tocBtn" type="button" aria-label="Open contents" aria-controls="drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+    </button>
+  </div>
+  <div class="prog" aria-hidden="true"><i id="prog"></i></div>
+</header>
+
+<div class="scrim" id="scrim"></div>
+<nav class="drawer" id="drawer" aria-label="Contents" aria-hidden="true">
+  <div class="dr-head"><h2>Contents</h2>
+    <button class="ib" id="tocClose" type="button" aria-label="Close contents"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <ol>
+    <li><a href="#top"><span>·</span>Start here</a></li>
+    <li><a href="#idea"><span>01</span>The one idea</a></li>
+    <li><a href="#problems"><span>02</span>Four problems</a></li>
+    <li><a href="#loop"><span>02</span>The research loop</a></li>
+    <li><a href="#harness"><span>03</span>Anatomy of a harness</a></li>
+    <li><a href="#lve"><span>04</span>Local validation environment</a></li>
+    <li><a href="#ext"><span>05</span>External integrations</a></li>
+    <li><a href="#ops"><span>06</span>Operational interfaces</a></li>
+    <li><a href="#memory"><span>07</span>Memory</a></li>
+    <li><a href="#context"><span>08</span>Context management</a></li>
+    <li><a href="#telemetry"><span>09</span>Telemetry</a></li>
+    <li><a href="#skills"><span>10</span>Skills</a></li>
+    <li><a href="#det"><span>11</span>Deterministic tools</a></li>
+    <li><a href="#hooks"><span>12</span>Hooks</a></li>
+    <li><a href="#oracles"><span>13</span>Advanced: oracles</a></li>
+    <li><a href="#report"><span>14</span>Reporting &amp; disclosure</a></li>
+    <li><a href="#takeaways"><span>✓</span>What to remember</a></li>
+  </ol>
+</nav>
+
+<main id="top">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <p class="kick">An illustrated explainer</p>
+  <h1>Harness Engineering for <em>Vulnerability Research</em></h1>
+  <p class="tldr">A smart model on its own produces guesses; the <b>harness</b> you build around it — a safe lab, memory, repeatable tools and enforced rules — is what turns those guesses into evidence a human can trust.</p>
+  <p class="meta">Based on the open workshop book by Graham Helton and Ryan Basden · 14 chapters · about 20 minutes</p>
+
+  <figure class="fig" aria-label="A model at the centre, surrounded by a ring of harness components">
+    <svg class="d" viewBox="0 0 400 236" role="img" aria-label="Model surrounded by harness ring">
+      <circle cx="200" cy="115" r="106" class="ln thin s-l dot2"/>
+      <g class="fade ln thin s-m dot2">
+        <path d="M200 115 L200 30"/><path d="M200 115 L254.6 49.9"/><path d="M200 115 L283.7 100.2"/>
+        <path d="M200 115 L273.6 157.5"/><path d="M200 115 L229.1 194.9"/><path d="M200 115 L170.9 194.9"/>
+        <path d="M200 115 L126.4 157.5"/><path d="M200 115 L116.3 100.2"/><path d="M200 115 L145.4 49.9"/>
+      </g>
+      <path class="ln draw s-t" pathLength="1" d="M200 30 A85 85 0 1 1 199.99 30"/>
+      <circle cx="200" cy="115" r="30" class="box s-b fs-b"/>
+      <text x="200" y="121" text-anchor="middle" class="serif lg">model</text>
+      <g class="fade2">
+        <circle cx="200" cy="30" r="7" class="f-t"/><circle cx="254.6" cy="49.9" r="7" class="f-b"/><circle cx="283.7" cy="100.2" r="7" class="f-y"/>
+        <circle cx="273.6" cy="157.5" r="7" class="f-p"/><circle cx="229.1" cy="194.9" r="7" class="f-o"/><circle cx="170.9" cy="194.9" r="7" class="f-g"/>
+        <circle cx="126.4" cy="157.5" r="7" class="f-r"/><circle cx="116.3" cy="100.2" r="7" class="f-b"/><circle cx="145.4" cy="49.9" r="7" class="f-t"/>
+        <path d="M300 34 L270 52" class="ln thin s-m"/>
+        <text x="304" y="32" class="serif">the harness</text>
+      </g>
+    </svg>
+    <figcaption>The model sits in the middle. Everything on the ring is something <em>you</em> build, and it decides what the model sees, what it can touch, and what gets kept.</figcaption>
+  </figure>
+
+  <p class="intro">Point an AI agent at a codebase, ask it to “find vulnerabilities,” and you’ll usually get back a confident report that nobody has actually checked. This book argues that a smarter model won’t fix that. What fixes it is the setup around the model: a safe place to run the software, notes that outlast a chat session, tools that give the same answer every time, and rules the system enforces instead of just hoping they get followed. The book calls that setup a <strong>harness</strong>. This page walks through each piece in the book’s order, with a picture for every idea.</p>
+</section>
+
+<!-- ================= 01 IDEA ================= -->
+<section class="chap" id="idea">
+  <p class="kick">Chapter 1 · Introduction</p>
+  <h2>The one idea</h2>
+  <p class="lede">A capable model and capable research aren’t the same thing.</p>
+
+  <div class="eq" aria-label="Model capability is not research capability. Research equals model plus harness.">
+    model capability<span class="ne">≠</span>research capability<br>
+    <span class="hb">research</span><span class="pl">=</span>model<span class="pl">+</span><span class="ht">harness</span>
+  </div>
+
+  <p>Even a strong model writes weak research when it’s missing five things: context about the specific target, tools that behave the same way every run, clear authorization boundaries, state that survives between sessions, and a way to validate claims. The harness supplies those. Workshop participants build their own around a target they choose. The book ships no ready-made scanner.</p>
+
+  <blockquote class="pull">“Agent output is a lead, not a finding.”<cite>The book’s ground rule</cite></blockquote>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 196" role="img" aria-label="Lead becomes evidence after testing, then a finding after human judgment">
+      <rect x="8" y="46" width="134" height="88" rx="14" class="box dash s-y fs-y"/>
+      <text x="75" y="80" text-anchor="middle" class="bold">Agent output</text>
+      <text x="75" y="104" text-anchor="middle" class="sm f-y">a lead</text>
+      <path d="M146 90 H170" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <rect x="173" y="46" width="134" height="88" rx="14" class="box s-t fs-t"/>
+      <text x="240" y="80" text-anchor="middle" class="bold">Evidence</text>
+      <text x="240" y="102" text-anchor="middle" class="sm mut">tested under</text>
+      <text x="240" y="119" text-anchor="middle" class="sm mut">stated conditions</text>
+      <path d="M311 90 H335" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <rect x="338" y="46" width="134" height="88" rx="14" class="box s-b fs-b"/>
+      <text x="405" y="80" text-anchor="middle" class="bold">Finding</text>
+      <text x="405" y="102" text-anchor="middle" class="sm mut">after a human</text>
+      <text x="405" y="119" text-anchor="middle" class="sm mut">judges it</text>
+      <text x="158" y="160" text-anchor="middle" class="xs mut fade">test</text>
+      <text x="323" y="160" text-anchor="middle" class="xs mut fade">judge</text>
+      <text x="240" y="28" text-anchor="middle" class="sm mut fade">Two gates between “the agent said so” and “it’s real”</text>
+    </svg>
+    <figcaption>Nothing becomes a finding just because an agent wrote it down.</figcaption>
+  </figure>
+
+  <p>The human stays responsible for authorization, security judgment, validating at runtime, analysing impact, and disclosing responsibly. Testing happens only on local, isolated, or explicitly authorized systems. A project’s public infrastructure is off-limits, and suspected unpatched bugs are never published.</p>
+  <p>The book also says plainly that finding a vulnerability isn’t guaranteed. A successful workshop ends with three things:</p>
+  <div class="pills">
+    <span class="pill"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" class="f-t"/></svg>a working harness</span>
+    <span class="pill"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" class="f-b"/></svg>evidence about one hypothesis</span>
+    <span class="pill"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" class="f-y"/></svg>a method you can repeat</span>
+  </div>
+</section>
+
+<!-- ================= 02 PROBLEMS ================= -->
+<section class="chap" id="problems">
+  <p class="kick">Chapter 2 · Problems in agent-assisted research</p>
+  <h2>Four ways agent research goes wrong</h2>
+  <p class="lede">You didn’t train the model. You inherit how it reads a security question and what it counts as “done.”</p>
+
+  <div class="grid2">
+    <div class="card">
+      <svg viewBox="0 0 120 80" aria-hidden="true"><rect x="22" y="8" width="30" height="64" rx="4" class="box s-y fs-y"/><rect x="66" y="54" width="30" height="18" rx="4" class="box s-t fs-t"/><path d="M10 72 H110" class="ln thin s-m"/></svg>
+      <h4>1 · Claims outrun the evidence</h4>
+      <p>The agent spots suspicious code and announces a severe impact before checking what an attacker would actually need.</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 120 80" aria-hidden="true"><rect x="28" y="8" width="64" height="62" rx="5" class="box s-b fs-b"/><path d="M38 26 H82 M38 38 H74" class="ln thin s-m"/><text x="78" y="64" style="font:600 20px var(--serif)" class="f-y">?</text></svg>
+      <h4>2 · Standards stay implicit</h4>
+      <p>“Be accurate” isn’t a method. With no docs, examples or past pitfalls, the agent may pick tools that can’t answer the question while still looking compliant.</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 120 80" aria-hidden="true"><path d="M8 52 H62" class="ln s-t"/><path d="M66 34 V66 M58 40 H74 M58 52 H74" class="ln s-r"/><path d="M78 52 H112" class="ln dash s-m"/><text x="92" y="40" style="font:600 18px var(--serif)" class="f-y">?</text></svg>
+      <h4>3 · Validation stops halfway</h4>
+      <p>The model describes a severe impact, then won’t run the step that would test it, or a broken setup blocks it. The report may never mention the gap.</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 120 80" aria-hidden="true"><rect x="14" y="22" width="30" height="40" rx="4" class="box s-m fs-m"/><rect x="74" y="6" width="30" height="70" rx="4" class="box s-b fs-b"/><text x="59" y="50" text-anchor="middle" style="font:600 20px var(--serif)" class="f-y">≠</text></svg>
+      <h4>4 · “Different” passes for “better”</h4>
+      <p>A longer report, a lower severity score or a more careful tone doesn’t prove the research improved. A change has to rest on something you can inspect.</p>
+    </div>
+  </div>
+
+  <h3>A worked example: the CSRF leap</h3>
+  <p>An agent reports that an attacker can change a user’s email because the settings handler doesn’t check the <code>Origin</code> header. That’s something it saw in the code. It hasn’t shown that an attacker’s page can get a victim’s <em>browser</em> to submit the change successfully.</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 252" role="img" aria-label="The gap between a source code observation and an attack claim">
+      <rect x="20" y="12" width="440" height="62" rx="14" class="box s-t fs-t"/>
+      <text x="40" y="36" class="xs f-t bold" style="letter-spacing:.08em">OBSERVED IN SOURCE</text>
+      <text x="40" y="60">Settings handler has no Origin header check</text>
+      <path d="M240 78 V136" class="ln dash s-y" marker-end="url(#a-y)"/>
+      <circle cx="240" cy="106" r="16" class="box s-y f-bg"/>
+      <text x="240" y="112" text-anchor="middle" class="serif lg f-y">?</text>
+      <text x="268" y="102" class="sm fade">the leap</text>
+      <text x="268" y="119" class="xs mut fade">never tested</text>
+      <text x="212" y="102" text-anchor="end" class="xs mut fade">attack conditions</text>
+      <text x="212" y="119" text-anchor="end" class="xs mut fade">not established</text>
+      <rect x="20" y="140" width="440" height="62" rx="14" class="box dash s-y fs-y"/>
+      <text x="40" y="164" class="xs f-y bold" style="letter-spacing:.08em">CLAIMED</text>
+      <text x="40" y="188" class="sm">Attacker page makes the victim’s browser change their email</text>
+      <text x="240" y="234" text-anchor="middle" class="sm mut fade2">A curl request from a terminal can’t show what a browser would do.</text>
+    </svg>
+    <figcaption>The observation is real. The impact is an assumption until someone tests it under the conditions an attack would need.</figcaption>
+  </figure>
+  <p>The same pattern turns up elsewhere. A CVSS v4.0 score looks precise even when its inputs were guesses, because the calculator never checks them. A report can flag a vulnerable dependency the app never calls (a problem that predates language models). Each untested claim hands the missing research to the maintainer.</p>
+
+  <h3>Keep three things in separate boxes</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 158" role="img" aria-label="Observation, interpretation, hypothesis kept separate">
+      <rect x="10" y="12" width="146" height="96" rx="14" class="box s-t fs-t"/>
+      <text x="83" y="48" text-anchor="middle" class="bold">Observation</text>
+      <text x="83" y="72" text-anchor="middle" class="sm mut">what was</text>
+      <text x="83" y="90" text-anchor="middle" class="sm mut">actually seen</text>
+      <rect x="167" y="12" width="146" height="96" rx="14" class="box s-b fs-b"/>
+      <text x="240" y="48" text-anchor="middle" class="bold">Interpretation</text>
+      <text x="240" y="72" text-anchor="middle" class="sm mut">what it</text>
+      <text x="240" y="90" text-anchor="middle" class="sm mut">might mean</text>
+      <rect x="324" y="12" width="146" height="96" rx="14" class="box dash s-y fs-y"/>
+      <text x="397" y="48" text-anchor="middle" class="bold">Hypothesis</text>
+      <text x="397" y="72" text-anchor="middle" class="sm mut">untested,</text>
+      <text x="397" y="90" text-anchor="middle" class="sm mut">needs a check</text>
+      <text x="240" y="142" text-anchor="middle" class="sm mut fade">Don’t let one quietly turn into another.</text>
+    </svg>
+  </figure>
+  <ul class="clean">
+    <li>Every claim needs evidence that supports it <em>under stated conditions</em>.</li>
+    <li>If the evidence contradicts a claim, revise it or reject it.</li>
+    <li>When validation stalls, write down the blocker, the unanswered question, and one permitted next step. Some blockers, like a model refusing, may stay unresolved, and that’s fine.</li>
+  </ul>
+</section>
+
+<!-- ================= 02b LOOP ================= -->
+<section class="chap" id="loop">
+  <p class="kick">Chapter 2 · The workflow</p>
+  <h2>The research loop</h2>
+  <p class="lede">Start with a baseline, test one claim, compare, adjust the harness, then go around again.</p>
+  <p>Harness engineering brings more of the research process under <em>your</em> standards. You make the method explicit, give the agent what it needs, and then check whether it actually followed the method. Written instructions don’t prove that; the agent’s actions and the evidence it kept do. Tap through the loop:</p>
+
+  <figure class="fig" id="loopFig">
+    <svg class="d" viewBox="0 0 480 492" role="img" aria-label="Research loop with seven steps">
+      <path d="M70 447 H40 V43 H64" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <text transform="translate(28 250) rotate(-90)" text-anchor="middle" class="xs mut">repeat</text>
+      <g id="loopSteps"></g>
+      <rect x="345" y="148" width="127" height="66" rx="12" class="box dash s-y fs-y"/>
+      <text x="408" y="170" text-anchor="middle" class="xs">No useful lead?</text>
+      <text x="408" y="187" text-anchor="middle" class="xs">Pick a security</text>
+      <text x="408" y="204" text-anchor="middle" class="xs">boundary instead</text>
+      <path d="M325 181 H341" class="ln dash s-y" marker-end="url(#a-y)"/>
+    </svg>
+    <div class="panel" aria-live="polite" id="loopPanel"><b>Baseline run</b><p>…</p></div>
+    <div class="stepper">
+      <button class="btn" type="button" id="loopPrev" aria-label="Previous step">◀ Back</button>
+      <span class="count" id="loopCount">1 / 7</span>
+      <button class="btn" type="button" id="loopNext" aria-label="Next step">Next ▶</button>
+    </div>
+  </figure>
+
+  <div class="callout t"><p class="lab">What good research output looks like</p>
+    <p>It’s open about uncertainty, it names specific gaps, and every claim points to its own evidence.</p></div>
+  <div class="check"><p class="lab">Checkpoint</p><p>A saved baseline record plus one chosen claim, with its evidence, the conditions it assumes, and the check that could confirm or reject it.</p></div>
+</section>
+
+<!-- ================= 03 HARNESS ================= -->
+<section class="chap" id="harness">
+  <p class="kick">Chapter 3 · Harness components</p>
+  <h2>Anatomy of a harness</h2>
+  <p class="lede">A harness is the context, tools, controls, state and workflow wrapped around an agent.</p>
+  <p>The book introduces nine building blocks. The important rule is that you add one only after you’ve <em>seen</em> the problem it solves. Not every harness needs all of them. Tap a component:</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 372" role="img" aria-label="Interactive ring of nine harness components" id="ringSvg">
+      <circle cx="240" cy="200" r="125" class="ln dash s-l"/>
+      <circle cx="240" cy="200" r="46" class="box s-b fs-b"/>
+      <text x="240" y="206" text-anchor="middle" class="serif lg">model</text>
+      <g id="ringNodes"></g>
+    </svg>
+    <div class="chips" id="ringChips" role="group" aria-label="Harness components"></div>
+    <div class="panel" aria-live="polite" id="ringPanel"><b>Tap a component</b><p class="mut">Each one solves a specific, observed research problem.</p></div>
+  </figure>
+
+  <h3>How information moves</h3>
+  <p>Five kinds of information flow into a harness. Some of it lands in the model’s current context. Whether to <em>capture</em> it, <em>persist</em> it and <em>reuse</em> it are three separate decisions. Stored information only works as memory once someone has picked and organized it for later use.</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 384" role="img" aria-label="Information flow from inputs to context and memory">
+      <g class="box s-m fs-m">
+        <rect x="10" y="30" width="145" height="32" rx="16"/><rect x="167" y="30" width="146" height="32" rx="16"/><rect x="325" y="30" width="145" height="32" rx="16"/>
+        <rect x="88" y="72" width="145" height="32" rx="16"/><rect x="247" y="72" width="145" height="32" rx="16"/>
+      </g>
+      <text x="82" y="51" text-anchor="middle" class="sm">Human input</text>
+      <text x="240" y="51" text-anchor="middle" class="sm">Target files</text>
+      <text x="397" y="51" text-anchor="middle" class="sm">Tool results</text>
+      <text x="160" y="93" text-anchor="middle" class="sm">Agent responses</text>
+      <text x="319" y="93" text-anchor="middle" class="sm">Harness events</text>
+      <text x="240" y="18" text-anchor="middle" class="xs mut">what enters</text>
+      <path d="M160 108 L222 136" class="ln thin s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <path d="M240 108 V136" class="ln thin s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <path d="M320 108 L258 136" class="ln thin s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <rect x="110" y="140" width="260" height="54" rx="14" class="box s-b fs-b"/>
+      <text x="240" y="164" text-anchor="middle" class="lg serif">harness</text>
+      <text x="240" y="184" text-anchor="middle" class="xs mut">routes · filters · records</text>
+      <path d="M180 196 L128 236" class="ln s-t draw" pathLength="1" marker-end="url(#a-t)"/>
+      <path d="M300 196 L352 236" class="ln s-p draw" pathLength="1" marker-end="url(#a-p)"/>
+      <rect x="20" y="240" width="200" height="64" rx="14" class="box s-t fs-t"/>
+      <text x="120" y="266" text-anchor="middle" class="bold">Current context</text>
+      <text x="120" y="288" text-anchor="middle" class="sm mut">what the model sees now</text>
+      <rect x="260" y="240" width="200" height="64" rx="14" class="box s-p fs-p"/>
+      <text x="360" y="266" text-anchor="middle" class="bold">Memory</text>
+      <text x="360" y="288" text-anchor="middle" class="sm mut">capture · persist · reuse</text>
+      <path d="M222 260 H256" class="ln thin s-m fade" marker-end="url(#a-m)"/>
+      <path d="M360 308 C360 352 120 352 120 312" class="ln s-p draw" pathLength="1" marker-end="url(#a-p)"/>
+      <text x="240" y="374" text-anchor="middle" class="xs mut fade2">supplied automatically, or retrieved when needed</text>
+    </svg>
+    <figcaption>Memory that comes back into context shapes new work, and that work can update memory again. It’s a loop.</figcaption>
+  </figure>
+</section>
+
+<!-- ================= 04 LVE ================= -->
+<section class="chap" id="lve">
+  <p class="kick">Chapter 4 · Local validation environment</p>
+  <h2>Prove the lab actually works</h2>
+  <p class="lede">Before researching a target, show that it’s running: the right app, reachable, and behaving normally.</p>
+  <p>Agents tend to declare success early. A container got created or a tool got installed, so the setup must be “done.” But a container that exists isn’t an app that works, and a tool on the PATH may not be able to reach its engine. Research built on a setup that never worked is wasted. Decide <em>before</em> you start what evidence will count as ready:</p>
+  <ol class="clean">
+    <li>The intended application is running and the agent’s tools can reach it.</li>
+    <li>The tools needed for the next task are present <em>and</em> working.</li>
+    <li>A harmless, normal operation gives the expected result. For a web app, that could be a documented health check or a request for a known page.</li>
+  </ol>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 282" role="img" aria-label="Staircase of increasing proof">
+      <rect x="20" y="210" width="108" height="56" rx="8" class="box s-m fs-m"/>
+      <rect x="132" y="160" width="108" height="106" rx="8" class="box s-b fs-b"/>
+      <rect x="244" y="110" width="108" height="156" rx="8" class="box s-b fs-b"/>
+      <rect x="356" y="60" width="108" height="206" rx="8" class="box s-t fs-t"/>
+      <text x="74" y="232" text-anchor="middle" class="sm bold">Tool on PATH</text>
+      <text x="74" y="252" text-anchor="middle" class="xs mono mut" style="font-size:11px">command -v</text>
+      <text x="186" y="182" text-anchor="middle" class="sm bold">Engine</text>
+      <text x="186" y="200" text-anchor="middle" class="sm bold">reachable</text>
+      <text x="298" y="132" text-anchor="middle" class="sm bold">Intended app</text>
+      <text x="298" y="150" text-anchor="middle" class="sm bold">answers</text>
+      <text x="298" y="170" text-anchor="middle" class="xs mut">not just any port</text>
+      <text x="410" y="82" text-anchor="middle" class="sm bold">Harmless op</text>
+      <text x="410" y="100" text-anchor="middle" class="sm bold">works</text>
+      <text x="410" y="120" text-anchor="middle" class="xs mut">expected result</text>
+      <path d="M150 146 C220 100 330 50 420 40" class="ln dash s-m fade"/>
+      <text x="20" y="40" class="sm mut fade">more is proven →</text>
+      <text x="22" y="180" class="xs f-y fade2">“setup done!”</text>
+      <text x="22" y="198" class="xs f-y fade2">often stops here ↓</text>
+    </svg>
+    <figcaption><code>command -v podman curl</code> only proves the command paths exist. It says nothing about whether the engine is reachable or the app works.</figcaption>
+  </figure>
+
+  <p>Keep the toolset small, and make sure every tool has a concrete job. For example, Podman runs the target and curl makes the requests. Then write the project’s standards somewhere the agent can read them, such as an <code>AGENTS.md</code>:</p>
+  <ul class="clean">
+    <li>the approved runtime, the setup steps, and which setup actions are allowed</li>
+    <li>the required tools and how to confirm each one works</li>
+    <li>the expected readiness result, and where setup output gets saved</li>
+    <li>filesystem and network boundaries, credentials, and which resources the agent owns</li>
+    <li>the conditions under which it must stop and report a blocker</li>
+  </ul>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 170" role="img" aria-label="Instructions describe the boundary, isolation enforces it">
+      <rect x="160" y="18" width="160" height="134" rx="18" class="ln s-t" style="stroke-width:5"/>
+      <rect x="176" y="36" width="82" height="26" rx="5" class="box s-y fs-y"/>
+      <text x="217" y="54" text-anchor="middle" class="mono" style="font-size:11px">AGENTS.md</text>
+      <circle cx="252" cy="108" r="13" class="f-b"/>
+      <text x="252" y="140" text-anchor="middle" class="xs mut">agent</text>
+      <text x="150" y="60" text-anchor="end" class="sm">Instructions</text>
+      <text x="150" y="78" text-anchor="end" class="sm mut">describe</text>
+      <text x="150" y="96" text-anchor="end" class="sm mut">the boundary</text>
+      <text x="332" y="60" class="sm">Isolation and</text>
+      <text x="332" y="78" class="sm">permissions</text>
+      <text x="332" y="96" class="sm mut">enforce it</text>
+    </svg>
+    <figcaption>The sign describes the rules. The wall is what enforces them. A successful setup doesn’t give the agent permission to widen the task.</figcaption>
+  </figure>
+
+  <div class="callout r"><p class="lab">When setup fails</p>
+    <p>Keep the failure and report the next permitted step. Never switch to public infrastructure, borrow unrelated credentials, or change another environment just to get a passing check.</p></div>
+
+  <h3>Going further</h3>
+  <ul class="clean">
+    <li><b>Access control:</b> prepare known accounts (say, two users and an admin) and resources whose owners you know, and compare results to a permission table built from the documented rules. A status code alone doesn’t prove an access check worked. Check whether the state actually changed.</li>
+    <li><b>Multi-service apps:</b> add migrations, queues and workers, use a readiness check that exercises all of them, and use resets that restore a known state <em>without</em> deleting evidence.</li>
+    <li><b>Reproducible tooling:</b> a Nix flake can pin compilers, runtimes and research tools so someone else can rebuild the same environment. Data, credentials and isolation still need their own controls.</li>
+  </ul>
+  <div class="check"><p class="lab">Checkpoint</p><p>A setup record listing the app and tools used, the readiness evidence, the resources the agent owns, and one justified next action. A clearly stated blocker counts as a result too.</p></div>
+</section>
+
+<!-- ================= 05 EXT ================= -->
+<section class="chap" id="ext">
+  <p class="kick">Chapter 5 · External integrations</p>
+  <h2>Ask the source, narrowly, and keep the receipt</h2>
+  <p class="lede">Some answers aren’t in the code. They live on the platform that hosts it.</p>
+  <p>A local checkout shows you one revision. It can’t tell you whether the repository is archived, whether it’s a fork, which branch is the default, or what releases, issues and advisories exist. An external integration lets the agent fetch that from the system that maintains it, and the response becomes evidence you can inspect.</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 262" role="img" aria-label="Local checkout versus hosting platform, connected by a bounded request">
+      <rect x="10" y="16" width="160" height="150" rx="14" class="box s-b fs-b"/>
+      <text x="90" y="42" text-anchor="middle" class="bold">Local checkout</text>
+      <g class="f-m" opacity=".55"><rect x="28" y="58" width="110" height="7" rx="3"/><rect x="40" y="74" width="96" height="7" rx="3"/><rect x="40" y="90" width="70" height="7" rx="3"/><rect x="28" y="106" width="118" height="7" rx="3"/><rect x="28" y="122" width="84" height="7" rx="3"/></g>
+      <text x="90" y="152" text-anchor="middle" class="xs mut">one revision</text>
+      <rect x="310" y="16" width="160" height="150" rx="14" class="box s-p fs-p"/>
+      <text x="390" y="42" text-anchor="middle" class="bold">Hosting platform</text>
+      <text x="390" y="70" text-anchor="middle" class="sm">archived?</text>
+      <text x="390" y="92" text-anchor="middle" class="sm">a fork?</text>
+      <text x="390" y="114" text-anchor="middle" class="sm">default branch</text>
+      <text x="390" y="136" text-anchor="middle" class="sm mut">releases · advisories</text>
+      <path d="M176 76 H302" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <text x="240" y="68" text-anchor="middle" class="xs mut">bounded request</text>
+      <path d="M304 108 H178" class="ln s-t draw" pathLength="1" marker-end="url(#a-t)"/>
+      <text x="240" y="126" text-anchor="middle" class="xs f-t">record + source</text>
+      <text x="240" y="141" text-anchor="middle" class="xs f-t">+ retrieval time</text>
+      <g class="fade2">
+        <g class="box s-l fs-m"><rect x="10" y="188" width="148" height="28" rx="14"/><rect x="166" y="188" width="148" height="28" rx="14"/><rect x="322" y="188" width="148" height="28" rx="14"/>
+        <rect x="10" y="224" width="148" height="28" rx="14"/><rect x="166" y="224" width="148" height="28" rx="14"/><rect x="322" y="224" width="148" height="28" rx="14"/></g>
+        <text x="84" y="207" text-anchor="middle" class="xs">HTTPS only</text><text x="240" y="207" text-anchor="middle" class="xs">5 s to connect</text><text x="396" y="207" text-anchor="middle" class="xs">15 s total</text>
+        <text x="84" y="243" text-anchor="middle" class="xs">≤ 256 KB body</text><text x="240" y="243" text-anchor="middle" class="xs">no retries</text><text x="396" y="243" text-anchor="middle" class="xs">no credentials</text>
+      </g>
+    </svg>
+    <figcaption>The book’s example request also ignores local curl config and proxies, turns off URL globbing, and prints the HTTP status after the body.</figcaption>
+  </figure>
+
+  <p><b>Worked example:</b> is <code>go-gitea/gitea</code> archived or a fork, and what’s its default branch? A single bounded, credential-free call to the GitHub REST API answers it. The book keeps just five fields from a historical retrieval (24 Oct 2026, UTC), stored alongside where and when they were fetched:</p>
+<pre><code>{
+  <span class="ck">"full_name"</span>: <span class="cs">"go-gitea/gitea"</span>,   <span class="cm">// confirms identity</span>
+  <span class="ck">"private"</span>: <span class="cy">false</span>,
+  <span class="ck">"fork"</span>: <span class="cy">false</span>,                <span class="cm">// status question</span>
+  <span class="ck">"archived"</span>: <span class="cy">false</span>,            <span class="cm">// status question</span>
+  <span class="ck">"default_branch"</span>: <span class="cs">"main"</span>
+}</code></pre>
+  <ul class="clean">
+    <li><b>Fork?</b> Find out why it exists. It might be your real target, or a remote you picked by mistake.</li>
+    <li><b>Archived?</b> Check whether development moved to a maintained fork, and how that fork handled fixes.</li>
+    <li><b>Default branch</b> isn’t the commit you audited, and releases are tags, so their code can differ from it.</li>
+    <li>These five fields don’t identify the audited commit, which release contains a fix, or whether the project is active. Each of those needs its own evidence.</li>
+  </ul>
+  <div class="callout y"><p class="lab">Ground rules</p>
+    <p>Treat response text as untrusted data: it can’t change the task or grant permissions. A metadata query doesn’t authorize testing the project’s infrastructure. A clean curl exit code doesn’t mean you got a valid answer. If something fails, keep the evidence and report the blocker before you try a different approach.</p></div>
+  <p><b>MCP</b> (Model Context Protocol) is another route. A server advertises named tools that an agent can discover and call, and GitHub’s official server covers repos, issues, PRs, releases and advisories. For a single metadata question, though, the direct request is enough. Going through MCP doesn’t make the same record any more authoritative.</p>
+  <p><b>Optional extensions:</b> Playwright MCP for checking real browser behaviour in your local lab, safewebtool for request policies enforced <em>outside</em> the model, the GitHub advisory API and OSV for matching known advisories (a match still needs checking, and no match doesn’t prove a bug is new), and disclose.io lookup for finding report contacts. Treat those contacts as leads, not as permission.</p>
+  <div class="check"><p class="lab">Checkpoint</p><p>One supported observation, or a documented blocker, with its source, a stated limit, and one justified next action.</p></div>
+</section>
+
+<!-- ================= 06 OPS ================= -->
+<section class="chap" id="ops">
+  <p class="kick">Chapter 6 · Operational interfaces</p>
+  <h2>A steering wheel and a dashboard</h2>
+  <p class="lede">Make the right way to do something the easy way, for people and agents alike.</p>
+  <p>Without clear interfaces, people and agents keep rediscovering how to start the target, which output matters, and where the work stands. Each rediscovery burns time and context-window tokens. The book splits interfaces into <b>controls</b> (doing things) and <b>views</b> (seeing what’s going on).</p>
+
+  <h3>Controls: named commands</h3>
+  <p>If someone keeps looking up the same sequence of commands, wrap it in a name. The book’s example is a small Kubernetes lab driven by a <code>justfile</code>. Here’s a sketch in the same spirit:</p>
+<pre><code><span class="cm"># one place defines the cluster name and log path</span>
+<span class="ck">lab-up</span>:      <span class="cm"># isolated kind cluster, audit logging on</span>
+    kind create cluster --name lab --config kind-audit.yaml
+<span class="ck">lab-status</span>:  <span class="cm"># are the nodes running?</span>
+    kubectl get nodes --context kind-lab
+<span class="ck">audit-tail</span>:  <span class="cm"># stream the API server audit log</span>
+    docker exec lab-control-plane tail -f /var/log/kubernetes/audit.log</code></pre>
+  <p>Now a human and an agent can both run <code>just audit-tail</code> without remembering the details, and the agent runs a known command instead of piecing the procedure back together, which saves context and tokens.</p>
+
+  <h3>Views: one source of truth, two windows</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 252" role="img" aria-label="Human web view and agent command view over one shared issue store">
+      <rect x="16" y="14" width="186" height="96" rx="12" class="box s-b fs-b"/>
+      <path d="M16 36 H202" class="ln thin s-b"/>
+      <circle cx="30" cy="25" r="3.5" class="f-b"/><circle cx="42" cy="25" r="3.5" class="f-b"/>
+      <text x="109" y="60" text-anchor="middle" class="sm">Issue #12</text>
+      <text x="109" y="80" text-anchor="middle" class="xs mut">status · history</text>
+      <text x="109" y="128" text-anchor="middle" class="xs mut">researcher · web UI</text>
+      <rect x="278" y="14" width="186" height="96" rx="12" class="box s-t fs-t"/>
+      <text x="292" y="44" class="mono f-t">› list issues</text>
+      <text x="292" y="66" class="mono f-t">› open #12</text>
+      <text x="292" y="88" class="mono mut">status: open</text>
+      <text x="371" y="128" text-anchor="middle" class="xs mut">agent · commands via a skill</text>
+      <path d="M120 136 L196 164" class="ln s-b draw" pathLength="1" marker-end="url(#a-b)"/>
+      <path d="M360 136 L284 164" class="ln s-t draw" pathLength="1" marker-end="url(#a-t)"/>
+      <path d="M160 176 V222 A80 13 0 0 0 320 222 V176" class="box s-p fs-p"/>
+      <ellipse cx="240" cy="176" rx="80" ry="13" class="box s-p fs-p"/>
+      <text x="240" y="208" text-anchor="middle" class="sm">git-bug issues</text>
+      <text x="240" y="226" text-anchor="middle" class="xs mut">the same data</text>
+      <g class="fade2">
+        <rect x="354" y="178" width="112" height="56" rx="10" class="box dash s-r fs-r"/>
+        <text x="410" y="202" text-anchor="middle" class="xs">a 2nd copy</text>
+        <text x="410" y="220" text-anchor="middle" class="xs mut">can drift</text>
+        <path d="M362 186 L458 228" class="ln s-r"/>
+      </g>
+    </svg>
+    <figcaption>The test for any view: does it show the existing work, or create a second copy that can end up disagreeing with it?</figcaption>
+  </figure>
+  <p>A view boils down a lot of data to what matters right now, much like a database view. Use interfaces selectively, for the actions you keep rebuilding and the information you keep struggling to find. Not everything needs a command or a dashboard.</p>
+</section>
+
+<!-- ================= 07 MEMORY ================= -->
+<section class="chap" id="memory">
+  <p class="kick">Chapter 7 · Memory</p>
+  <h2>Remember what was already tried</h2>
+  <p class="lede">Sessions end and context gets compacted. Memory is how the next session learns what happened before.</p>
+  <p>Coding agents lose investigation details in two ways. The context window fills up and gets compacted, or an interesting observation simply disappears when the session closes. Picture an agent testing whether a <code>viewer</code> can delete someone else’s report. It gets <code>403 Forbidden</code>, and a follow-up check shows the report still exists. A new session would have no record that this path was ever tried.</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 184" role="img" aria-label="Preserve, discover, retrieve, then judge">
+      <path d="M96 66 H142" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <path d="M216 66 H262" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <path d="M336 66 H382" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <circle cx="60" cy="66" r="34" class="box s-t fs-t"/>
+      <rect x="45" y="58" width="30" height="20" rx="3" class="ln s-t"/><path d="M42 52 H78 V58 H42 Z M54 66 H66" class="ln s-t"/>
+      <circle cx="180" cy="66" r="34" class="box s-b fs-b"/>
+      <circle cx="176" cy="62" r="11" class="ln s-b"/><path d="M184 70 L194 80" class="ln s-b"/>
+      <circle cx="300" cy="66" r="34" class="box s-p fs-p"/>
+      <path d="M288 50 H306 L314 58 V82 H288 Z M306 50 V58 H314 M293 66 H308 M293 73 H304" class="ln thin s-p"/>
+      <circle cx="420" cy="66" r="34" class="box s-y fs-y"/>
+      <text x="420" y="76" text-anchor="middle" class="serif xl f-y">?</text>
+      <text x="60" y="126" text-anchor="middle" class="bold sm">Preserve</text>
+      <text x="60" y="146" text-anchor="middle" class="xs mut">survives the</text><text x="60" y="162" text-anchor="middle" class="xs mut">session</text>
+      <text x="180" y="126" text-anchor="middle" class="bold sm">Discover</text>
+      <text x="180" y="146" text-anchor="middle" class="xs mut">a later session</text><text x="180" y="162" text-anchor="middle" class="xs mut">can find it</text>
+      <text x="300" y="126" text-anchor="middle" class="bold sm">Retrieve</text>
+      <text x="300" y="146" text-anchor="middle" class="xs mut">…and open</text><text x="300" y="162" text-anchor="middle" class="xs mut">and inspect it</text>
+      <text x="420" y="126" text-anchor="middle" class="bold sm">Judge</text>
+      <text x="420" y="146" text-anchor="middle" class="xs mut">is it relevant</text><text x="420" y="162" text-anchor="middle" class="xs mut">here? still a call</text>
+    </svg>
+    <figcaption>Three separate requirements, each solving a different problem. Finding something doesn’t make it relevant. Someone still has to decide that.</figcaption>
+  </figure>
+
+  <p>The book separates <b>research state</b>, the current position of an investigation with links to the observations behind it, from <b>target facts and procedures</b>, which are useful but aren’t tied to one hypothesis. Research state starts from a <em>hypothesis</em>, a specific, testable claim like “viewer <code>alice</code> can delete <code>bob</code>’s report through this endpoint,” and tracks:</p>
+  <div class="pills">
+    <span class="pill">status</span><span class="pill">evidence</span><span class="pill">assumptions</span><span class="pill">test conditions</span>
+    <span class="pill">rejected paths</span><span class="pill">open questions</span><span class="pill">next step</span><span class="pill">when to reopen</span>
+  </div>
+  <p>Closed work still needs a reopening condition.</p>
+
+  <h3>Keep evidence atomic</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 236" role="img" aria-label="One hundred requests, only the single success is kept and re-tested">
+      <g id="dots"></g>
+      <text x="110" y="226" text-anchor="middle" class="xs mut">100 requests</text>
+      <path d="M146 86 C190 84 196 50 230 50" class="ln s-y draw" pathLength="1" marker-end="url(#a-y)"/>
+      <rect x="235" y="24" width="232" height="52" rx="12" class="box s-y fs-y"/>
+      <text x="351" y="46" text-anchor="middle" class="sm">Keep only the one <tspan class="bold">200</tspan></text>
+      <text x="351" y="64" text-anchor="middle" class="xs mut">not all 100</text>
+      <path d="M351 80 V96" class="ln s-m" marker-end="url(#a-m)"/>
+      <rect x="235" y="100" width="232" height="52" rx="12" class="box s-b fs-b"/>
+      <text x="351" y="122" text-anchor="middle" class="sm">Tear down, re-run it once</text>
+      <text x="351" y="140" text-anchor="middle" class="xs mut">same conditions</text>
+      <path d="M351 156 V172" class="ln s-m" marker-end="url(#a-m)"/>
+      <rect x="235" y="176" width="232" height="52" rx="12" class="box s-t fs-t"/>
+      <text x="351" y="198" text-anchor="middle" class="sm">Still 200? Then make</text>
+      <text x="351" y="216" text-anchor="middle" class="xs mut">one research-state update</text>
+    </svg>
+    <figcaption>One investigation can generate lots of telemetry but should produce one useful research-state update.</figcaption>
+  </figure>
+
+  <h3>A simple shape that works</h3>
+  <p>Start with one short markdown file per check. Add an index and separate evidence files once several checks or sessions need to share an assessment. The format matters less than keeping the basis for every decision open to inspection.</p>
+<pre><code>threads/
+└── thr-001/
+    ├── index.md        <span class="cm"># question · current assessment · links · next action</span>
+    └── evidence/
+        └── E-001.md    <span class="cm"># conditions · request · response · state check</span></code></pre>
+  <div class="grid2">
+    <div class="card"><p class="mono">index.md · status: active</p>
+      <h4>Can a viewer delete a report they don’t control?</h4>
+      <p>Current assessment: the tested delete didn’t remove the report. That doesn’t rule out other deletion paths. <b>Next:</b> check whether another path is reachable in the isolated target.</p></div>
+    <div class="card"><p class="mono">E-001.md · rev: example · local-test</p>
+      <h4>viewer-a → DELETE /api/reports/42</h4>
+      <p>Report 42 is owned by author-b. Response: <b>403 Forbidden</b>. Follow-up GET as author-b: <b>200 OK</b>, so the report is still there. A later test can revise the index without rewriting this record.</p></div>
+  </div>
+  <p>Small indexes are easy on context. A new session can scan many of them without opening every full record.</p>
+  <div class="check"><p class="lab">Checkpoint</p><p>A thread index and one linked evidence record.</p></div>
+</section>
+
+<!-- ================= 08 CONTEXT ================= -->
+<section class="chap" id="context">
+  <p class="kick">Chapter 8 · Context management</p>
+  <h2>Choose what the model sees</h2>
+  <p class="lede">The model’s conclusion depends on what’s in front of it right now.</p>
+  <p>Research produces far more material than any single decision needs: source code, logs, telemetry, tool output, notes. That leads to two kinds of failure. With <b>too little</b> information, the agent can’t judge the question. With <b>too much</b>, irrelevant material can steer the answer even when the right evidence is also there.</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 236" role="img" aria-label="Context window contents versus files outside it">
+      <rect x="12" y="12" width="324" height="208" rx="16" class="box s-t fs-t"/>
+      <text x="28" y="38" class="bold">Context window</text>
+      <g class="box s-l f-bg2">
+        <rect x="28" y="52" width="292" height="32" rx="8"/><rect x="28" y="92" width="292" height="32" rx="8"/>
+        <rect x="28" y="132" width="292" height="32" rx="8"/><rect x="28" y="172" width="292" height="32" rx="8"/>
+      </g>
+      <text x="42" y="73" class="sm">Current request</text>
+      <text x="42" y="113" class="sm">Instructions loaded at start</text>
+      <text x="42" y="153" class="sm">Conversation history</text>
+      <text x="42" y="193" class="sm">Tool results &amp; files <tspan class="bold">already read</tspan></text>
+      <g class="ln dash s-m fs-m">
+        <path d="M386 34 H412 L424 46 V80 H386 Z"/><path d="M402 96 H428 L440 108 V142 H402 Z"/><path d="M380 156 H406 L418 168 V202 H380 Z"/>
+      </g>
+      <path d="M378 120 H344" class="ln s-t draw" pathLength="1" marker-end="url(#a-t)"/>
+      <text x="360" y="112" text-anchor="middle" class="xs f-t">read</text>
+      <text x="420" y="224" text-anchor="middle" class="xs mut">files it <tspan font-style="italic">could</tspan> open</text>
+    </svg>
+    <figcaption>A file the agent could open isn’t in context until it’s actually read. The window is limited, so choosing what goes in matters.</figcaption>
+  </figure>
+
+  <h3>Filter before you read</h3>
+  <p>The book’s example asks for the current temperature in San Francisco from the Open-Meteo API. Both versions answer the question, but they put very different amounts into the window:</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 236" role="img" aria-label="Twelve kilobytes versus thirty four bytes, drawn to scale by area" id="sqSvg">
+      <rect id="sqBig" x="24" y="20" width="200" height="200" rx="6" class="sq box s-b fs-b"/>
+      <text x="124" y="114" text-anchor="middle" class="serif xl">≈ 12 KB</text>
+      <text x="124" y="140" text-anchor="middle" class="xs mut">16 days of hourly data</text>
+      <rect id="sqSmall" x="262" y="209" width="11" height="11" rx="1.5" class="sq box s-y f-y"/>
+      <text x="282" y="219" class="sm f-y bold">34 bytes</text>
+      <text x="262" y="48" class="sm">Same question:</text>
+      <text x="262" y="70" class="sm mut">“what’s the temperature</text>
+      <text x="262" y="90" class="sm mut">in San Francisco now?”</text>
+      <path d="M262 150 H460" class="ln thin s-l"/>
+      <text x="262" y="176" class="xs mut">areas drawn to scale —</text>
+      <text x="262" y="193" class="xs mut">about 1/350th the size</text>
+    </svg>
+    <div class="chips" role="group" aria-label="Choose request type">
+      <button class="btn" type="button" id="sqRaw" aria-pressed="true">Unfiltered response</button>
+      <button class="btn" type="button" id="sqJq" aria-pressed="false">Filtered with jq</button>
+    </div>
+<pre id="sqCode"><code></code></pre>
+  </figure>
+
+  <h3>Instructions that load before work starts</h3>
+  <p>Some context should be there from the first turn: the scope, how to handle suspected findings, which interfaces and deterministic tools exist, and how to use the local lab. That way the model isn’t working it out from scratch every session.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>System prompt</th><th><code>AGENTS.md</code></th></tr></thead>
+    <tbody>
+      <tr><td><b>Set via</b></td><td>the coding agent’s configuration</td><td>a file in the project’s directory tree</td></tr>
+      <tr><td><b>Loaded</b></td><td>when a session starts</td><td>usually automatically by the agent</td></tr>
+      <tr><td><b>Priority</b></td><td>generally wins over lower-priority instructions</td><td>depends on how the agent resolves conflicts</td></tr>
+    </tbody></table></div>
+</section>
+
+<!-- ================= 09 TELEMETRY ================= -->
+<section class="chap" id="telemetry">
+  <p class="kick">Chapter 9 · Telemetry</p>
+  <h2>The harness keeps its own diary</h2>
+  <p class="lede">A record written by the harness as events happen, not the agent’s own account of what it did.</p>
+  <p>Telemetry captures prompts, tool calls, completion events, responses, timestamps, durations and session IDs. It’s recorded deterministically, at the moment each event happens. Because it’s stored outside the conversation, it survives compaction or even deletion of the chat, which makes it the tool for reconstructing sessions and debugging the harness itself.</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 222" role="img" aria-label="Conversation is compacted while the telemetry ledger continues intact">
+      <text x="98" y="40" class="sm mut">Conversation</text>
+      <rect x="20" y="52" width="56" height="38" rx="6" fill="url(#hatch)" class="box s-m"/>
+      <g class="box s-b fs-b"><rect x="98" y="52" width="52" height="38" rx="6"/><rect x="158" y="52" width="74" height="38" rx="6"/><rect x="240" y="52" width="46" height="38" rx="6"/><rect x="294" y="52" width="84" height="38" rx="6"/><rect x="386" y="52" width="74" height="38" rx="6"/></g>
+      <text x="48" y="108" text-anchor="middle" class="xs mut">summary</text>
+      <path d="M87 26 V100" class="ln dash s-y"/>
+      <text x="87" y="18" text-anchor="middle" class="xs f-y">compaction</text>
+      <text x="20" y="142" class="sm mut">Ledger · append-only JSONL</text>
+      <rect x="20" y="154" width="440" height="22" fill="url(#ticks)" opacity=".75"/>
+      <path d="M20 186 H458" class="ln thin s-t draw" pathLength="1" marker-end="url(#a-t)"/>
+      <text x="240" y="208" text-anchor="middle" class="xs mut fade2">one line per event, written by the harness, untouched by compaction</text>
+    </svg>
+  </figure>
+<pre><code><span class="cm">// one illustrative line in the ledger</span>
+{<span class="ck">"timestamp"</span>:<span class="cs">"2026-11-18T23:02:11+08:00"</span>, <span class="ck">"event"</span>:<span class="cs">"PostToolUse"</span>,
+ <span class="ck">"session_id"</span>:<span class="cs">"s-7f2"</span>, <span class="ck">"turn_id"</span>:<span class="cs">"t-14"</span>, <span class="ck">"cwd"</span>:<span class="cs">"/lab"</span>,
+ <span class="ck">"tool"</span>:<span class="cs">"Bash"</span>, <span class="ck">"command"</span>:<span class="cs">"python3 --version"</span>,
+ <span class="ck">"duration_ms"</span>:<span class="cy">38</span>, <span class="ck">"status"</span>:<span class="cs">"completed"</span>}</code></pre>
+  <div class="callout"><p class="lab">What it isn’t</p>
+    <p>Telemetry records <em>activity</em>. It doesn’t show that a conclusion is correct or that a behaviour has security impact. There’s a lot of it, so it rarely belongs in the context window. Its value shows up when you’re figuring out where the harness is failing.</p></div>
+  <h3>Six questions before you keep anything</h3>
+  <ol class="steps">
+    <li>What’s worth preserving?</li><li>At what level of detail?</li><li>How long does it stay valid?</li>
+    <li>Who needs to know about it?</li><li>When should it enter the context window?</li><li>When, if ever, should it be revised?</li>
+  </ol>
+</section>
+
+<!-- ================= 10 SKILLS ================= -->
+<section class="chap" id="skills">
+  <p class="kick">Chapter 10 · Skills</p>
+  <h2>Write the procedure once</h2>
+  <p class="lede">A skill packages a method you keep re-explaining, and loads it only when a task needs it.</p>
+<pre><code>report-research-progress/
+├── SKILL.md       <span class="cm"># when and how to do the task</span>
+├── references/    <span class="cm"># optional: detailed tool operations, fields</span>
+└── assets/        <span class="cm"># optional: templates, e.g. a progress-update format</span></code></pre>
+  <p><code>SKILL.md</code> opens with YAML frontmatter. Only <code>name</code> (up to 64 lowercase characters, digits and hyphens) and <code>description</code> (up to 1024 characters, saying what the skill does <em>and when to use it</em>) are required. <code>license</code>, <code>compatibility</code>, <code>metadata</code> and the experimental <code>allowed-tools</code> are optional. If a skill loads at the wrong times, rewrite the description.</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 272" role="img" aria-label="Progressive loading of a matching skill">
+      <text x="12" y="62" class="xs mut">at start: names + descriptions only</text>
+      <g class="box s-l f-bg2"><rect x="12" y="74" width="208" height="38" rx="9"/><rect x="12" y="122" width="208" height="38" rx="9"/><rect x="12" y="218" width="208" height="38" rx="9"/></g>
+      <rect x="12" y="170" width="208" height="38" rx="9" class="box s-y fs-y"/>
+      <text x="26" y="97" class="mono">start-lab</text>
+      <text x="26" y="145" class="mono">triage-scan-diff</text>
+      <text x="26" y="193" class="mono f-y">package-finding</text>
+      <text x="26" y="241" class="mono" style="font-size:11.5px">report-research-progress</text>
+      <rect x="250" y="8" width="218" height="52" rx="12" class="box dash s-y fs-y"/>
+      <text x="359" y="30" text-anchor="middle" class="sm">Task: package this suspected</text>
+      <text x="359" y="48" text-anchor="middle" class="sm">finding for review</text>
+      <path d="M359 62 V98" class="ln s-y draw" pathLength="1" marker-end="url(#a-y)"/>
+      <text x="368" y="84" class="xs mut">description matches</text>
+      <path d="M222 189 H246" class="ln s-b" marker-end="url(#a-b)"/>
+      <g class="fade2">
+        <rect x="250" y="102" width="218" height="160" rx="14" class="box s-b fs-b"/>
+        <text x="266" y="128" class="mono f-b">package-finding/</text>
+        <text x="266" y="158" class="sm">SKILL.md</text><text x="460" y="158" text-anchor="end" class="xs mut">full steps</text>
+        <text x="266" y="188" class="sm">references/</text><text x="460" y="188" text-anchor="end" class="xs mut">field details</text>
+        <text x="266" y="218" class="sm">assets/</text><text x="460" y="218" text-anchor="end" class="xs mut">templates</text>
+        <text x="359" y="248" text-anchor="middle" class="xs f-b">now loaded into context</text>
+      </g>
+    </svg>
+    <figcaption>Progressive loading: the full instructions come in only when a task matches. The exact behaviour depends on the harness. (Skill names other than the book’s example are made up here.)</figcaption>
+  </figure>
+
+  <div class="callout y"><p class="lab">Two honest limits</p>
+    <p><b>Consistency, not determinism.</b> The model still interprets the procedure, chooses which steps to follow, and judges what it sees.</p>
+    <p><b>No new powers.</b> A skill can say <em>what</em> to post and how, but a CLI or MCP server still has to do the posting, and the agent has to be set up to use it.</p></div>
+
+  <h3>Example: the handoff bundle</h3>
+  <p>Agents can surface plausible-looking vulnerabilities without leaving enough context to verify them. A skill can tell the agent how to package a suspected finding for a human to review:</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 214" role="img" aria-label="A tar.gz bundle containing the context needed to verify a finding">
+      <text x="200" y="22" text-anchor="middle" class="mono f-o">finding.tar.gz</text>
+      <path d="M80 44 L100 32 H300 L320 44" class="ln s-o"/>
+      <rect x="80" y="44" width="240" height="160" rx="10" class="box s-o fs-o"/>
+      <text x="98" y="76" class="sm">• affected versions &amp; paths</text>
+      <text x="98" y="102" class="sm">• hypothesis &amp; test conditions</text>
+      <text x="98" y="128" class="sm">• threat model</text>
+      <text x="98" y="154" class="sm">• evidence for <tspan class="f-r">and against</tspan></text>
+      <text x="98" y="180" class="sm">• assumptions &amp; open questions</text>
+      <path d="M326 124 H352" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <text x="360" y="104" class="xs mut fade2">out of the harness,</text>
+      <text x="360" y="120" class="xs mut fade2">for independent</text>
+      <text x="360" y="136" class="xs mut fade2">review or a</text>
+      <text x="360" y="152" class="xs mut fade2">wider team</text>
+    </svg>
+  </figure>
+</section>
+
+<!-- ================= 11 DET ================= -->
+<section class="chap" id="det">
+  <p class="kick">Chapter 11 · Deterministic tools</p>
+  <h2>Same question, same way, every time</h2>
+  <p class="lede">A scanner answers one defined question repeatably. You still read the answer and its limits.</p>
+  <p>A scanner match doesn’t show that an attacker controls the input, that the code is reachable, or that there’s any impact. The book’s example is deliberately narrow: an inventory of direct Go <code>exec.Command</code> and <code>exec.CommandContext</code> calls under <code>util/</code>, excluding <code>*_test.go</code>, compared against the previous inventory. It isn’t a command-injection review.</p>
+  <ol class="clean">
+    <li><b>Rule</b>: the saved question, such as a Semgrep pattern.</li>
+    <li><b>Scan</b>: answers for one source version.</li>
+    <li><b>Saved comparison</b>: which facts changed, and whether an agent needs to review them.</li>
+    <li><b>Interpretation</b>: hypotheses stay in research state, not in the scanner output.</li>
+  </ol>
+
+  <h3>Why counts and line numbers lie</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 306" role="img" aria-label="Change detection keyed by path, API and full expression">
+      <text x="240" y="16" text-anchor="middle" class="xs mut">identity of an entry = (path, API, full matched expression) · line kept separately</text>
+      <rect x="10" y="28" width="460" height="72" rx="12" class="box s-m fs-m"/>
+      <text x="26" y="50" class="xs mut bold" style="letter-spacing:.06em">PREVIOUS SCAN</text>
+      <text x="454" y="50" text-anchor="end" class="xs mut">line 42</text>
+      <text x="26" y="72" class="mono">util/run.go · exec.Command</text>
+      <text x="26" y="90" class="mono">exec.Command("git", args...)</text>
+      <rect x="10" y="114" width="460" height="80" rx="12" class="box s-t fs-t"/>
+      <text x="26" y="136" class="xs f-t bold" style="letter-spacing:.06em">LINE MOVED</text>
+      <text x="454" y="136" text-anchor="end" class="xs f-t">line 47</text>
+      <text x="26" y="158" class="mono">util/run.go · exec.Command</text>
+      <text x="26" y="176" class="mono">exec.Command("git", args...)</text>
+      <text x="454" y="184" text-anchor="end" class="xs f-t">same key → just refresh the line</text>
+      <rect x="10" y="208" width="460" height="80" rx="12" class="box s-y fs-y"/>
+      <text x="26" y="230" class="xs f-y bold" style="letter-spacing:.06em">ARGUMENT CHANGED</text>
+      <text x="454" y="230" text-anchor="end" class="xs mut">line 42</text>
+      <text x="26" y="252" class="mono">util/run.go · exec.Command</text>
+      <text x="26" y="270" class="mono">exec.Command(<tspan class="f-y">name</tspan>, args...)</text>
+      <text x="454" y="278" text-anchor="end" class="xs f-y">new key → review</text>
+      <text x="240" y="302" text-anchor="middle" class="xs mut">count: 1 → 1 → 1. A count alone would miss the yellow case.</text>
+    </svg>
+    <figcaption>Review is triggered by first scans, changed expressions, removals, and changed rules, tools or scope. A refresh for a moved line doesn’t claim the code is safe.</figcaption>
+  </figure>
+
+  <h3>When to stop and say “not valid”</h3>
+  <div class="pills">
+    <span class="pill"><svg viewBox="0 0 16 16"><path d="M5 1h6l4 4v6l-4 4H5l-4-4V5z" class="f-r"/></svg>evidence missing</span>
+    <span class="pill"><svg viewBox="0 0 16 16"><path d="M5 1h6l4 4v6l-4 4H5l-4-4V5z" class="f-r"/></svg>scan errored</span>
+    <span class="pill"><svg viewBox="0 0 16 16"><path d="M5 1h6l4 4v6l-4 4H5l-4-4V5z" class="f-r"/></svg>coverage incomplete</span>
+    <span class="pill"><svg viewBox="0 0 16 16"><path d="M5 1h6l4 4v6l-4 4H5l-4-4V5z" class="f-r"/></svg>source changed mid-scan</span>
+  </div>
+  <div class="callout r"><p class="lab">A real coverage miss</p>
+    <p>In the Argo pilot, Semgrep’s default ignore rules silently skipped <code>util/test/testutil.go</code>, a non-test file sitting in a test-named folder. The fix was to list the tracked Go files explicitly, scan a source-only <em>mirror</em> with the exclusions overridden there (not in the target), require the expected and scanned paths to match, and keep a regression case. Even then, scanning every file isn’t the same as catching every pattern.</p></div>
+  <p>The book’s counterexamples are worth testing against: a replaced argument with an unchanged count, a pure line move, and a file that’s normally ignored (zero matches doesn’t prove full coverage).</p>
+
+  <h3>The paired pilot</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 214" role="img" aria-label="Pilot comparing six baseline sessions with four workflow sessions">
+      <text x="120" y="22" text-anchor="middle" class="sm bold">Agent-led baseline</text>
+      <text x="360" y="22" text-anchor="middle" class="sm bold">Deterministic workflow</text>
+      <g class="box s-t fs-t"><circle cx="55" cy="56" r="11"/><circle cx="81" cy="56" r="11"/><circle cx="107" cy="56" r="11"/><circle cx="133" cy="56" r="11"/><circle cx="159" cy="56" r="11"/><circle cx="185" cy="56" r="11"/>
+      <circle cx="321" cy="56" r="11"/><circle cx="347" cy="56" r="11"/><circle cx="373" cy="56" r="11"/><circle cx="399" cy="56" r="11"/></g>
+      <g class="ln thin s-t"><path d="M50 56 l4 4 l7 -8"/><path d="M76 56 l4 4 l7 -8"/><path d="M102 56 l4 4 l7 -8"/><path d="M128 56 l4 4 l7 -8"/><path d="M154 56 l4 4 l7 -8"/><path d="M180 56 l4 4 l7 -8"/>
+      <path d="M316 56 l4 4 l7 -8"/><path d="M342 56 l4 4 l7 -8"/><path d="M368 56 l4 4 l7 -8"/><path d="M394 56 l4 4 l7 -8"/></g>
+      <text x="120" y="90" text-anchor="middle" class="xs mut">6 sessions</text>
+      <text x="360" y="90" text-anchor="middle" class="xs mut">4 sessions</text>
+      <text x="240" y="118" text-anchor="middle" class="sm">All 10 inventories accurate · source unchanged</text>
+      <rect x="30" y="132" width="200" height="34" rx="17" class="box s-t fs-t"/>
+      <text x="130" y="154" text-anchor="middle" class="sm">measured time ↓</text>
+      <rect x="250" y="132" width="200" height="34" rx="17" class="box s-o fs-o"/>
+      <text x="350" y="154" text-anchor="middle" class="sm">uncached input tokens ↑</text>
+      <text x="240" y="194" text-anchor="middle" class="xs mut">One local pilot, one Argo revision. No cost-saving or detection claim.</text>
+    </svg>
+    <figcaption>A tie counts as a valid result. For a small one-off question, ordinary search may be all you need. A maintained rule has to justify its setup and review costs.</figcaption>
+  </figure>
+  <div class="check"><p class="lab">Checkpoint</p><p>For an unfamiliar change: the inventory, the coverage evidence, a review decision, one limitation, and one next action.</p></div>
+</section>
+
+<!-- ================= 12 HOOKS ================= -->
+<section class="chap" id="hooks">
+  <p class="kick">Chapter 12 · Hooks</p>
+  <h2>Guarantees, not requests</h2>
+  <p class="lede">Instructions ask. Hooks run fixed code at fixed moments, whether or not the model remembers.</p>
+  <p>The chapter opens with a 2026 incident it describes, in which agents under evaluation reached infrastructure outside their test environment. Its argument: you need visibility into what agents actually do, and since the model is non-deterministic, trusting it to follow instructions isn’t enough. A hook lets the harness run pre-configured behaviour at a lifecycle event, such as logging a tool call or blocking it.</p>
+  <p>There are two loops. The <b>session lifecycle</b> covers start or resume, input, the end of a turn, compaction, and session end. The <b>agent loop</b> is the repeated cycle of model calls and tool calls inside a single turn. Tap an event:</p>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 524" role="img" aria-label="Session lifecycle with hook events" id="hookSvg">
+      <path d="M50 30 V500" class="ln thin s-l"/>
+      <rect x="28" y="140" width="440" height="212" rx="16" class="box dash s-b fs-b"/>
+      <text x="456" y="162" text-anchor="end" class="xs f-b">agent loop · repeats within a turn</text>
+      <path d="M392 322 C440 322 440 192 392 192" class="ln s-b draw" pathLength="1" marker-end="url(#a-b)"/>
+      <text x="434" y="262" class="xs f-b">again</text>
+      <g id="hookNodes"></g>
+      <g class="fade">
+        <polygon points="330,28 337,35 330,42 323,35" class="f-y"/><text x="344" y="40" class="xs">hook event</text>
+        <circle cx="330" cy="58" r="6" class="box s-t f-bg"/><text x="344" y="62" class="xs">ordinary step</text>
+      </g>
+    </svg>
+    <div class="chips" id="hookChips" role="group" aria-label="Hook events"></div>
+    <div class="panel" aria-live="polite" id="hookPanel"><b>Tap an event</b><p class="mut">Seven lifecycle events, each a place the harness can run your handler.</p></div>
+  </figure>
+
+  <h3>If you know git hooks, you know this</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 140" role="img" aria-label="Git hooks compared to agent tool hooks">
+      <path d="M140 34 H184 M296 34 H340 M140 100 H184 M296 100 H340" class="ln thin s-m"/>
+      <polygon points="80,22 92,34 80,46 68,34" class="f-y"/><text x="80" y="64" text-anchor="middle" class="mono">pre-commit</text>
+      <circle cx="240" cy="34" r="10" class="box s-t f-bg"/><text x="240" y="64" text-anchor="middle" class="mono">git commit</text>
+      <polygon points="400,22 412,34 400,46 388,34" class="f-y"/><text x="400" y="64" text-anchor="middle" class="mono">post-commit</text>
+      <polygon points="80,88 92,100 80,112 68,100" class="f-y"/><text x="80" y="130" text-anchor="middle" class="mono">PreToolUse</text>
+      <circle cx="240" cy="100" r="10" class="box s-t f-bg"/><text x="240" y="130" text-anchor="middle" class="mono">tool call</text>
+      <polygon points="400,88 412,100 400,112 388,100" class="f-y"/><text x="400" y="130" text-anchor="middle" class="mono">PostToolUse</text>
+    </svg>
+    <figcaption>You configure the handler. The harness decides when it fires, at exactly that point in the lifecycle.</figcaption>
+  </figure>
+</section>
+
+<!-- ================= 13 ORACLES ================= -->
+<section class="chap" id="oracles">
+  <p class="kick">Chapter 13 · Advanced components</p>
+  <h2>Oracles: turn a vague question into a query</h2>
+  <p class="lede">An oracle reveals information you can’t reach directly. It hands over data, not decisions.</p>
+  <p>The case study: the author found a quirk in Kubernetes RBAC permissions behind a nodes/proxy RCE disclosure, and needed to know which vendors’ software used it, to estimate the blast radius. Asking an agent was unreliable, and a plain web search didn’t return useful or complete results. So the author built a dataset instead.</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 384" role="img" aria-label="Pipeline from Helm charts to a searchable RBAC database">
+      <rect x="40" y="8" width="400" height="56" rx="14" class="box dash s-y fs-y"/>
+      <text x="240" y="32" text-anchor="middle" class="sm">“Which vendors might be affected?”</text>
+      <text x="240" y="52" text-anchor="middle" class="xs mut">open-ended · web search was unreliable</text>
+      <path d="M240 66 V84" class="ln s-m" marker-end="url(#a-m)"/>
+      <g class="box s-b fs-b"><rect x="80" y="88" width="320" height="44" rx="12"/><rect x="80" y="148" width="320" height="44" rx="12"/><rect x="80" y="208" width="320" height="44" rx="12"/><rect x="80" y="268" width="320" height="44" rx="12"/></g>
+      <text x="100" y="115" class="sm"><tspan class="f-b bold">1</tspan>  Pull charts from Helm repositories</text>
+      <text x="100" y="175" class="sm"><tspan class="f-b bold">2</tspan>  Unpack templates and values</text>
+      <text x="100" y="235" class="sm"><tspan class="f-b bold">3</tspan>  Extract the RBAC declarations</text>
+      <text x="100" y="295" class="sm"><tspan class="f-b bold">4</tspan>  Store permissions in a searchable DB</text>
+      <path d="M240 133 V146 M240 193 V206 M240 253 V266" class="ln thin s-b draw" pathLength="1"/>
+      <path d="M240 313 V330" class="ln s-t" marker-end="url(#a-t)"/>
+      <rect x="12" y="334" width="456" height="42" rx="21" class="box s-t fs-t"/>
+      <text x="240" y="360" text-anchor="middle" class="mono f-t" style="font-size:11.5px">chart · version · resource · verbs · scope · role</text>
+    </svg>
+    <figcaption>Before: “ask an agent which vendors might be affected.” After: actual data analysis, with a query anyone can re-run.</figcaption>
+  </figure>
+  <div class="callout"><p class="lab">Still to come in the book</p><p><b>Routing</b> and <b>Advanced Research State</b> are listed as upcoming chapters and don’t have content yet.</p></div>
+</section>
+
+<!-- ================= 14 REPORT ================= -->
+<section class="chap" id="report">
+  <p class="kick">Chapter 14 · Reporting and disclosure</p>
+  <h2>Decide first, draft second, and a human sends</h2>
+  <p class="lede">Every claim ends in one of three decisions, and all three can count as success.</p>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 232" role="img" aria-label="Evidence branches to report, hold or refute">
+      <rect x="8" y="86" width="112" height="60" rx="12" class="box s-m fs-m"/>
+      <text x="64" y="112" text-anchor="middle" class="bold">Evidence</text>
+      <text x="64" y="132" text-anchor="middle" class="xs mut">for one claim</text>
+      <path d="M122 116 C162 116 160 43 196 43" class="ln s-b draw" pathLength="1" marker-end="url(#a-b)"/>
+      <path d="M122 116 H196" class="ln s-y draw" pathLength="1" marker-end="url(#a-y)"/>
+      <path d="M122 116 C162 116 160 189 196 189" class="ln s-r draw" pathLength="1" marker-end="url(#a-r)"/>
+      <rect x="200" y="14" width="272" height="58" rx="12" class="box s-b fs-b"/>
+      <text x="218" y="38" class="bold f-b">Report</text><text x="218" y="58" class="xs mut">evidence supports a private report</text>
+      <rect x="200" y="87" width="272" height="58" rx="12" class="box s-y fs-y"/>
+      <text x="218" y="111" class="bold f-y">Hold</text><text x="218" y="131" class="xs mut">save the open question + next step</text>
+      <rect x="200" y="160" width="272" height="58" rx="12" class="box s-r fs-r"/>
+      <text x="218" y="184" class="bold f-r">Refute</text><text x="218" y="204" class="xs mut">the evidence doesn’t support the claim</text>
+    </svg>
+    <figcaption>A well-supported hold or rejection is a good outcome. Drafting only makes sense when the evidence supports a report.</figcaption>
+  </figure>
+
+  <h3>Confidence and severity are different axes</h3>
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 312" role="img" aria-label="Confidence versus severity plane">
+      <path d="M60 268 H456" class="ln s-m" marker-end="url(#a-m)"/>
+      <path d="M60 268 V24" class="ln s-m" marker-end="url(#a-m)"/>
+      <path d="M258 30 V266 M62 148 H452" class="ln thin dash s-l"/>
+      <text x="456" y="290" text-anchor="end" class="sm">Confidence →</text>
+      <text x="456" y="306" text-anchor="end" class="xs mut">how well the claim survives questioning</text>
+      <text transform="translate(26 146) rotate(-90)" text-anchor="middle" class="sm">Severity →</text>
+      <text transform="translate(44 146) rotate(-90)" text-anchor="middle" class="xs mut">impact actually demonstrated</text>
+      <text x="160" y="82" text-anchor="middle" class="xs mut">big impact claimed,</text><text x="160" y="98" text-anchor="middle" class="xs mut">little survives scrutiny</text>
+      <text x="356" y="82" text-anchor="middle" class="xs mut">well supported,</text><text x="356" y="98" text-anchor="middle" class="xs mut">high demonstrated impact</text>
+      <text x="160" y="204" text-anchor="middle" class="xs mut">neither established</text><text x="160" y="220" text-anchor="middle" class="xs mut">yet</text>
+      <text x="356" y="204" text-anchor="middle" class="xs mut">well supported,</text><text x="356" y="220" text-anchor="middle" class="xs mut">modest impact</text>
+      <circle cx="120" cy="56" r="10" class="ln dash s-y fade"/>
+      <circle cx="400" cy="56" r="10" class="f-b fade2"/>
+      <circle cx="400" cy="178" r="10" class="f-t fade2"/>
+    </svg>
+    <figcaption>Confidence asks how well the claim holds up when questioned. Severity counts only impact that was actually shown. Keep them separate.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>Readiness</th><th>What it takes</th></tr></thead>
+    <tbody>
+      <tr><td><b style="color:var(--b)">High</b></td><td>mechanism and callers established, plus reproduction with a control, reachability, and impact</td></tr>
+      <tr><td><b style="color:var(--t)">Medium</b></td><td>solid reproduction; any remaining inference is immaterial and stated clearly</td></tr>
+      <tr><td><b style="color:var(--y)">Blocked</b></td><td>a missing answer could change the claim, so save the question and next step instead of a report</td></tr>
+    </tbody></table></div>
+  <p>Agents should read whole functions and their callers, run a one-variable control, record real outcomes and attacker capabilities, and name both the likely objection and the weakest link in the case.</p>
+
+  <h3>The five steps</h3>
+  <ol class="steps">
+    <li><b>Decide if the evidence is ready.</b> Assign a readiness level and a decision.</li>
+    <li><b>Verify the project and the private route.</b> Check the supported release, the exact source and duplicates, and tell forks apart from upstream. Don’t invent version ranges. Use the project’s confirmed private channel. If there isn’t one, hold and ask.</li>
+    <li><b>Collect the inputs.</b> Gather the target, tested version, evidence, limits and observed impact, keeping facts, inferences and open questions separate. Add a severity vector and CWE, or a reason for leaving them out. Ask the operator for identity, contact, policy and coordination terms instead of making them up.</li>
+    <li><b>Draft for the actual channel.</b> Fill the advisory form’s own fields. The description covers who can do what to whom and under which conditions, the boundary that failed, reproduction with a control, observed impact and its limits, remediation, and checks after the fix.</li>
+    <li><b>Review, then a human sends.</b> Review the actual evidence, attribution, redaction and policy, not just a checklist.</li>
+  </ol>
+
+  <figure class="fig">
+    <svg class="d" viewBox="0 0 480 196" role="img" aria-label="Agent drafts, human reviews and sends">
+      <rect x="8" y="30" width="138" height="84" rx="12" class="box s-p fs-p"/>
+      <text x="77" y="62" text-anchor="middle" class="bold">Drafting agent</text>
+      <text x="77" y="84" text-anchor="middle" class="xs mut">prepares material</text>
+      <path d="M150 72 H170" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <rect x="173" y="30" width="138" height="84" rx="12" class="box s-b fs-b"/>
+      <text x="242" y="62" text-anchor="middle" class="bold">Human review</text>
+      <text x="242" y="84" text-anchor="middle" class="xs mut">evidence, redaction,</text>
+      <text x="242" y="100" text-anchor="middle" class="xs mut">policy, attribution</text>
+      <path d="M315 72 H335" class="ln s-m draw" pathLength="1" marker-end="url(#a-m)"/>
+      <rect x="338" y="30" width="134" height="84" rx="12" class="box s-t fs-t"/>
+      <text x="405" y="62" text-anchor="middle" class="bold">Human sends</text>
+      <text x="405" y="84" text-anchor="middle" class="xs mut">confirmed private</text>
+      <text x="405" y="100" text-anchor="middle" class="xs mut">channel only</text>
+      <g class="fade2">
+        <rect x="56" y="132" width="16" height="13" rx="2" class="f-r"/><path d="M59 132 V127 a5 5 0 0 1 10 0 V132" class="ln thin s-r"/>
+        <text x="80" y="144" class="xs f-r">no send or publish tools</text>
+        <text x="240" y="182" text-anchor="middle" class="xs mut">No private route? Stop and ask. Never fall back to public.</text>
+      </g>
+    </svg>
+  </figure>
+  <div class="callout r"><p class="lab">Counterexamples that should stop you</p>
+    <p>A plausible mechanism without a control isn’t a reproduction. An old observation doesn’t prove the current release is affected. A fork policy, an unknown route, missing values or changed evidence all mean stop. Don’t invent support and don’t go public.</p></div>
+  <p>After a human sends a report, they privately record the date, channel, agreed window, replies and next action. Writing a draft doesn’t start any clock, and when a coordination window expires that doesn’t trigger publication. Synthetic workshop material is marked training-only and is never submitted.</p>
+  <div class="check"><p class="lab">Checkpoint</p><p>A report, hold or refute decision with its supporting evidence, a stated limitation and one next action, plus which new fact would change a hold or a rejection.</p></div>
+</section>
+
+<!-- ================= TAKEAWAYS ================= -->
+<section class="chap" id="takeaways">
+  <p class="kick">The whole book in nine lines</p>
+  <h2>What to remember</h2>
+  <ol class="take">
+    <li><span>Agent output is a <b>lead</b>. Tested evidence plus human judgment is what makes it a finding.</span></li>
+    <li><span>Save a <b>baseline</b> first, and compare later work on evidence, not on length or tone.</span></li>
+    <li><span>Define <b>“working”</b> with observable checks before you build anything on top of it.</span></li>
+    <li><span>Write the standards down, then <b>enforce</b> the boundaries with isolation and permissions.</span></li>
+    <li><span>Keep research state <b>small, atomic and reopenable</b>, and keep telemetry out of the context window.</span></li>
+    <li><span><b>Filter</b> before the model reads. What’s in context shapes the conclusion.</span></li>
+    <li><span>Use <b>deterministic tools</b> for repeatable questions, and know exactly what they don’t cover.</span></li>
+    <li><span>A precise <b>blocker, hold or refutation</b> is a real result.</span></li>
+    <li><span><b>Humans</b> authorize, judge, and send. Agents draft.</span></li>
+  </ol>
+  <div class="endnav">
+    <a class="btn" href="https://grahamhelton.github.io/harness-engineering-workshop-book/" target="_blank" rel="noopener">Read the full book ↗</a>
+    <a class="btn" href="#top">Back to top ↑</a>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function(){
+  var d=document.documentElement, NS='http://www.w3.org/2000/svg';
+  function $(id){return document.getElementById(id)}
+  function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);for(var k in attrs){e.setAttribute(k,attrs[k])}if(parent)parent.appendChild(e);return e}
+  function tx(attrs,str,parent){var t=el('text',attrs,parent);t.textContent=str;return t}
+  function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+  /* ---------- theme ---------- */
+  var meta=document.querySelector('meta[name="theme-color"]');
+  function syncMeta(){meta.setAttribute('content',d.getAttribute('data-theme')==='light'?'#f6f2e9':'#1c1f29')}
+  syncMeta();
+  $('themeBtn').addEventListener('click',function(){
+    var t=d.getAttribute('data-theme')==='light'?'dark':'light';d.setAttribute('data-theme',t);store('he-theme',t);syncMeta();
+  });
+
+  /* ---------- text size ---------- */
+  var sizes=[15,16,17,18,19,20,22];
+  function curFs(){return Math.round(parseFloat(getComputedStyle(d).fontSize))}
+  function setFs(dir){
+    var c=curFs(),i=0;for(var j=0;j<sizes.length;j++){if(sizes[j]<=c)i=j}
+    i=Math.max(0,Math.min(sizes.length-1,i+dir));d.style.setProperty('--fs',sizes[i]+'px');store('he-fs',sizes[i]);
+  }
+  $('fsUp').addEventListener('click',function(){setFs(1)});
+  $('fsDown').addEventListener('click',function(){setFs(-1)});
+
+  /* ---------- drawer ---------- */
+  var drawer=$('drawer'),scrim=$('scrim'),tocBtn=$('tocBtn');
+  function openToc(o){
+    drawer.classList.toggle('open',o);scrim.classList.toggle('open',o);document.body.classList.toggle('lock',o);
+    drawer.setAttribute('aria-hidden',o?'false':'true');tocBtn.setAttribute('aria-expanded',o?'true':'false');
+    if(o){setTimeout(function(){$('tocClose').focus()},50)}
+  }
+  tocBtn.addEventListener('click',function(){openToc(true)});
+  $('tocClose').addEventListener('click',function(){openToc(false)});
+  scrim.addEventListener('click',function(){openToc(false)});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')openToc(false)});
+  var links=drawer.querySelectorAll('a');
+  for(var i=0;i<links.length;i++){links[i].addEventListener('click',function(){openToc(false)})}
+
+  /* ---------- progress + current section ---------- */
+  var prog=$('prog'),ticking=false,secs=document.querySelectorAll('section.chap, section.hero');
+  function onScroll(){
+    var h=document.documentElement.scrollHeight-window.innerHeight;
+    prog.style.width=(h>0?Math.min(100,window.scrollY/h*100):0)+'%';
+    var cur='top';for(var i=0;i<secs.length;i++){if(secs[i].getBoundingClientRect().top<window.innerHeight*.35&&secs[i].id){cur=secs[i].id}}
+    for(var j=0;j<links.length;j++){links[j].classList.toggle('cur',links[j].getAttribute('href')==='#'+cur)}
+    ticking=false;
+  }
+  window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(onScroll)}},{passive:true});
+  onScroll();
+
+  /* ---------- reveal figures ---------- */
+  var figs=document.querySelectorAll('.fig');
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.18});
+    for(var f=0;f<figs.length;f++)io.observe(figs[f]);
+  }else{for(var g=0;g<figs.length;g++)figs[g].classList.add('in')}
+
+  /* ---------- research loop stepper ---------- */
+  var steps=[
+    ['Baseline run','Send a broad “find vulnerabilities” request to an authorized project. This ordinary, unharnessed attempt is your point of comparison.'],
+    ['Save artifacts','Keep the prompt, the response, the source revision, and the checks the agent actually ran (not the ones it says it ran).'],
+    ['Pick one claim','Ask where its evidence is, which conditions it assumed, and which check could support or reject it. If nothing useful came back, pick a security boundary to investigate. Don’t invent a vulnerability.'],
+    ['Test under stated conditions','Run the check in an environment where the conditions are known and written down.'],
+    ['Support, revise, or reject','Let the evidence decide. If validation is blocked, record the blocker, the open question, and one permitted next step.'],
+    ['Compare to baseline','Weigh evidence, uncertainty and effort against the baseline. Keep the baseline’s strengths, and note ties and additions that didn’t help.'],
+    ['Keep or change the harness','Use the comparison to decide what stays. Your judgment, not the agent’s, decides what the evidence shows and whether anything is ready to disclose. Then go around again.']
+  ];
+  var lg=$('loopSteps'),loopIdx=0,lgroups=[];
+  steps.forEach(function(s,i){
+    var y=20+i*68,gp=el('g',{'class':'lp tap','data-i':i},lg);
+    el('rect',{x:70,y:y,width:255,height:46,rx:12,'class':'lp-box box s-l f-bg2'},gp);
+    el('circle',{cx:94,cy:y+23,r:12,'class':'box s-b f-bg'},gp);
+    tx({x:94,y:y+28,'text-anchor':'middle','class':'sm f-b'},String(i+1),gp);
+    tx({x:116,y:y+28,'class':'sm'},s[0],gp);
+    if(i<steps.length-1){el('path',{d:'M197.5 '+(y+48)+' V'+(y+64),'class':'ln thin s-m','marker-end':'url(#a-m)'},lg)}
+    gp.addEventListener('click',function(){showLoop(i)});
+    lgroups.push(gp);
+  });
+  function showLoop(i){
+    loopIdx=i;
+    lgroups.forEach(function(g,j){g.classList.toggle('cur',j===i);g.classList.toggle('done',j<i)});
+    $('loopPanel').innerHTML='<b>'+(i+1)+'. '+steps[i][0]+'</b><p>'+steps[i][1]+'</p>';
+    $('loopCount').textContent=(i+1)+' / '+steps.length;
+    $('loopPrev').disabled=(i===0);
+    $('loopNext').textContent=(i===steps.length-1)?'Start over ↺':'Next ▶';
+  }
+  $('loopPrev').addEventListener('click',function(){if(loopIdx>0)showLoop(loopIdx-1)});
+  $('loopNext').addEventListener('click',function(){showLoop(loopIdx===steps.length-1?0:loopIdx+1)});
+  showLoop(0);
+
+  /* ---------- harness ring ---------- */
+  var comps=[
+    ['lve','Sandbox','Local validation environment','Agents say “setup done” when nothing actually runs. This is a known, isolated way to run the target and prove it works.','#lve','t'],
+    ['ext','Integrations','External integrations','A checkout can’t tell you if a repo is archived or forked, or what advisories exist. Narrow, bounded requests fetch those records as evidence.','#ext','b'],
+    ['ops','Interfaces','Operational interfaces','People and agents keep rediscovering how to start the lab or check status. Named commands and shared views make the right way the easy way.','#ops','y'],
+    ['mem','Memory','Memory · research state','Compaction and closed sessions wipe out what was tested. Durable notes keep hypotheses, evidence and next steps.','#memory','p'],
+    ['ctx','Context','Context management','With too little information the agent can’t judge; with too much, noise steers the answer. Selection keeps the window clean.','#context','o'],
+    ['tel','Telemetry','Telemetry','You need a record of what the agent actually did, not its own story. The harness logs events as they happen.','#telemetry','g'],
+    ['skl','Skills','Skills','Re-explaining the same procedure every session. A skill packages the method once and loads it when a task matches.','#skills','r'],
+    ['det','Det. tools','Deterministic tools','Agent-led searches vary from run to run. A fixed rule and scan answer one defined question the same way every time.','#det','b'],
+    ['hok','Hooks','Hooks','Instructions are only suggestions to a non-deterministic model. Hooks run fixed handlers at lifecycle events.','#hooks','t']
+  ];
+  var rn=$('ringNodes'),chipBox=$('ringChips'),rgroups=[],rchips=[];
+  comps.forEach(function(c,k){
+    var a=(k*40-90)*Math.PI/180,x=240+125*Math.cos(a),y=200+125*Math.sin(a);
+    var lx=240+152*Math.cos(a),ly=200+152*Math.sin(a)+5,anchor='middle';
+    var ca=Math.cos(a);if(ca>.25)anchor='start';else if(ca<-.25)anchor='end';
+    if(k===0)ly-=4; if(k===4||k===5){ly+=8}
+    var gp=el('g',{'class':'tap'},rn);
+    el('path',{d:'M240 200 L'+x.toFixed(1)+' '+y.toFixed(1),'class':'ln thin dot2 s-m'},gp);
+    el('circle',{cx:x,cy:y,r:24,fill:'transparent'},gp);
+    el('circle',{cx:x,cy:y,r:17,'class':'ring ln s-y'},gp);
+    el('circle',{cx:x,cy:y,r:10,'class':'f-'+c[5]},gp);
+    tx({x:lx,y:ly,'text-anchor':anchor,'class':'sm'},c[1],gp);
+    gp.addEventListener('click',function(){pick(k)});
+    rgroups.push(gp);
+    var b=document.createElement('button');b.type='button';b.className='btn';b.textContent=c[1];b.setAttribute('aria-pressed','false');
+    b.addEventListener('click',function(){pick(k)});chipBox.appendChild(b);rchips.push(b);
+  });
+  function pick(k){
+    rgroups.forEach(function(g,j){g.classList.toggle('sel',j===k)});
+    rchips.forEach(function(b,j){b.setAttribute('aria-pressed',j===k?'true':'false')});
+    var c=comps[k];$('ringPanel').innerHTML='<b>'+c[2]+'</b><p>'+c[3]+'</p><a href="'+c[4]+'">Read this section ↓</a>';
+  }
+
+  /* ---------- 100 dots ---------- */
+  var dg=$('dots');
+  for(var r=0;r<10;r++){for(var c=0;c<10;c++){
+    var hit=(r===3&&c===6);
+    el('circle',{cx:25+c*19,cy:30+r*19,r:hit?6:4.5,'class':hit?'f-y':'f-m',opacity:hit?1:.5},dg);
+  }}
+
+  /* ---------- context squares ---------- */
+  var codeRaw='<span class="cm"># unfiltered: the whole forecast lands in context (~12 KB)</span>\ncurl -s "https://api.open-meteo.com/v1/forecast?latitude=37.77&amp;longitude=-122.42&amp;current=temperature_2m&amp;hourly=temperature_2m&amp;forecast_days=16"\n<span class="cm">→ { …16 days of hourly arrays… }</span>';
+  var codeJq='<span class="cm"># filtered: keep only what answers the question (34 bytes)</span>\ncurl -s "…same request…" \\\n  | jq -c \'{temperature: .current.temperature_2m, unit: .current_units.temperature_2m}\'\n<span class="cs">{"temperature":22.2,"unit":"°C"}</span>';
+  var sqB=$('sqBig'),sqS=$('sqSmall'),code=$('sqCode').firstChild;
+  function sq(raw){
+    $('sqRaw').setAttribute('aria-pressed',raw?'true':'false');$('sqJq').setAttribute('aria-pressed',raw?'false':'true');
+    sqB.classList.toggle('dim',!raw);sqS.classList.toggle('dim',raw);
+    sqS.style.strokeWidth=raw?'1.6':'4';code.innerHTML=raw?codeRaw:codeJq;
+  }
+  $('sqRaw').addEventListener('click',function(){sq(true)});
+  $('sqJq').addEventListener('click',function(){sq(false)});
+  sq(true);
+
+  /* ---------- hooks ---------- */
+  var hooks=[
+    {n:'SessionStart',y:44,hook:1,sub:'session starts or resumes',d:'Fires when a session starts, resumes, or makes a similar transition. Example: load the research scope before the model is ever called.'},
+    {n:'UserPromptSubmit',y:104,hook:1,sub:'you send a prompt',d:'A turn boundary, usually once per submitted prompt. The harness then prepares context and calls the model.'},
+    {n:'Model call',y:192,hook:0,sub:'reads context, may request a tool'},
+    {n:'PreToolUse',y:236,hook:1,sub:'+ permission check',d:'Runs before each matching tool call, alongside the permission check. This is where you can log the request or block it.'},
+    {n:'Tool executes',y:280,hook:0,sub:'result returns to the harness'},
+    {n:'PostToolUse',y:322,hook:1,sub:'then the model is called again',d:'Runs after each matching tool call, for example to append the event to a telemetry ledger before the next model call.'},
+    {n:'Stop',y:388,hook:1,sub:'agent tries to finish the turn',d:'A turn boundary: fires when the agent attempts to finish, before control goes back to you.'},
+    {n:'PreCompact',y:440,hook:1,sub:'only when context is about to shrink',d:'Fires right before compaction. Use it to preserve what matters before the context gets squeezed.'},
+    {n:'SessionEnd',y:492,hook:1,sub:'session closes',d:'Fires when the harness considers the session ended. Later turns repeat the pattern before this point.'}
+  ];
+  var hn=$('hookNodes'),hc=$('hookChips'),hg=[],hb=[];
+  hooks.forEach(function(h){
+    var gp=el('g',{'class':h.hook?'hk tap':''},hn);
+    if(h.hook){
+      el('rect',{x:30,y:h.y-20,width:340,height:40,fill:'transparent'},gp);
+      el('circle',{cx:50,cy:h.y,r:16,'class':'halo ln s-y'},gp);
+      el('polygon',{points:'50,'+(h.y-10)+' 60,'+h.y+' 50,'+(h.y+10)+' 40,'+h.y,'class':'f-y'},gp);
+      tx({x:76,y:h.y-2,'class':'ev mono','style':'font-size:13.5px'},h.n,gp);
+    }else{
+      el('circle',{cx:50,cy:h.y,r:7,'class':'box s-t f-bg'},gp);
+      tx({x:76,y:h.y-2,'class':'sm'},h.n,gp);
+    }
+    tx({x:76,y:h.y+15,'class':'xs mut'},h.sub,gp);
+    if(h.hook){
+      var idx=hg.length;hg.push(gp);
+      gp.addEventListener('click',function(){pickHook(idx)});
+      var b=document.createElement('button');b.type='button';b.className='btn mono';b.textContent=h.n;b.setAttribute('aria-pressed','false');
+      b.addEventListener('click',function(){pickHook(idx)});hc.appendChild(b);hb.push({b:b,h:h});
+    }
+  });
+  function pickHook(i){
+    hg.forEach(function(g,j){g.classList.toggle('sel',j===i)});
+    hb.forEach(function(o,j){o.b.setAttribute('aria-pressed',j===i?'true':'false')});
+    var h=hb[i].h;$('hookPanel').innerHTML='<b style="font-family:var(--mono);font-size:.95rem">'+h.n+'</b><p>'+h.d+'</p>';
+  }
+})();
+</script>
+</body>
+</html>
