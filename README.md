@@ -71,6 +71,9 @@
 - Where LLM Agents Fail and How They can Learn From Failures
   - https://arxiv.org/html/2509.25370v1
   - https://edangx100.github.io/interesting_papers/agentDebug
+- Introduction to Harness Engineering for Vulnerability Research
+  - https://grahamhelton.github.io/harness-engineering-workshop-book/
+  - https://edangx100.github.io/interesting_papers/harness-engineering-vul-research
 
 ## Evaluation
 - Emerging Trends in AI Agent Evaluation
