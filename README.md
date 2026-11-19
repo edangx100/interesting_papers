@@ -85,6 +85,9 @@
 - ARES: An Automated Evaluation Framework for Retrieval-Augmented Generation Systems
   - https://arxiv.org/html/2311.09476v2
   - https://edangx100.github.io/interesting_papers/ares
+- Safe AI Evaluation: A Systems Perspective
+  - https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7724138
+  - https://edangx100.github.io/interesting_papers/safe-ai-evaluation
 
 ## Retrieval and memory
 - STAIR (STructure Aware Information Retriever): A novel dataset and LLM based retriever for document structure augmentation
