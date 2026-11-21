@@ -74,6 +74,9 @@
 - Introduction to Harness Engineering for Vulnerability Research
   - https://grahamhelton.github.io/harness-engineering-workshop-book/
   - https://edangx100.github.io/interesting_papers/harness-engineering-vul-research
+- Language Model Harnesses Can Be Compositional Generalizers
+  - https://x.com/a1zhang/status/2123774098241147225
+  - https://edangx100.github.io/interesting_papers/LM_Harnesses_Compositional_Generalizers
 
 ## Evaluation
 - Emerging Trends in AI Agent Evaluation
