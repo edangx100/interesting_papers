@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#1d2128">
+<title>Harnesses can be compositional generalizers — an explainer</title>
+<style>
+/* ---------- Theme tokens ---------- */
+:root{
+  --bg:#1d2128; --bg2:#242932; --bg3:#2b313b; --code:#181b21;
+  --ink:#d9dde3; --ink2:#a9b1bc; --ink3:#7f8894; --rule:#363d48;
+  --blue:#3e9fd6; --gold:#bd8b26; --coral:#d0664f; --gray:#6c7480;
+  --blue-soft:rgba(62,159,214,.16); --gold-soft:rgba(189,139,38,.16); --coral-soft:rgba(208,102,79,.16);
+  --blue-ink:#7cc0e6; --gold-ink:#d9b25c; --coral-ink:#e3907d;
+  --fs:18px; --measure:66ch;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+  color-scheme:dark;
+}
+[data-theme="light"]{
+  --bg:#f6f3ec; --bg2:#efeadf; --bg3:#e7e1d3; --code:#ece6d8;
+  --ink:#2b2f36; --ink2:#535a64; --ink3:#767d87; --rule:#dcd5c6;
+  --blue:#2577b8; --gold:#b07d0e; --coral:#c0503a; --gray:#959ba4;
+  --blue-soft:rgba(37,119,184,.12); --gold-soft:rgba(176,125,14,.13); --coral-soft:rgba(192,80,58,.12);
+  --blue-ink:#1f659c; --gold-ink:#8a620a; --coral-ink:#a2412e;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:var(--fs);line-height:1.72;
+  -webkit-font-smoothing:antialiased;transition:background-color .4s ease,color .4s ease;
+  padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+::selection{background:var(--blue-soft)}
+a{color:var(--blue-ink);text-underline-offset:3px}
+/* ---------- Top bar ---------- */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  padding:.45rem max(1rem,env(safe-area-inset-left)) .45rem 1rem;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.bar .mark{font-family:var(--serif);font-size:.92rem;color:var(--ink2);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tools{display:flex;gap:.35rem;flex-shrink:0}
+.progress{position:absolute;left:0;bottom:-1px;height:2px;width:0;background:var(--blue);opacity:.7}
+/* ---------- Buttons (mobile-safe) ---------- */
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.btn{min-height:44px;min-width:44px;padding:.45rem .95rem;border-radius:999px;border:1px solid var(--rule);background:var(--bg2);
+  font-size:.86rem;line-height:1.2;color:var(--ink);transition:background-color .2s,border-color .2s,color .2s}
+.btn:hover{border-color:var(--ink3)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.seg button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.btn.icon{padding:.45rem .7rem;font-size:.92rem}
+.btn.primary{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-ink)}
+.seg{display:flex;flex-wrap:wrap;gap:.4rem;margin:.9rem 0 .4rem}
+.seg button{min-height:44px;min-width:44px;padding:.45rem .9rem;border-radius:999px;border:1px solid var(--rule);background:transparent;
+  font-size:.86rem;color:var(--ink2);transition:all .2s}
+.seg button[aria-pressed="true"]{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-ink)}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.8rem 0}
+/* ---------- Layout ---------- */
+main{max-width:calc(var(--measure) + 2.5rem);margin:0 auto;padding:0 1.25rem 5rem}
+section{padding-top:3.2rem}
+h1,h2,h3{font-family:var(--serif);font-weight:500;color:var(--ink);letter-spacing:.005em;line-height:1.25}
+h1{font-size:clamp(1.85rem,5.6vw,2.7rem);margin:2.6rem 0 1rem}
+h2{font-size:clamp(1.4rem,4vw,1.75rem);margin:0 0 .9rem}
+h3{font-size:1.12rem;margin:1.6rem 0 .4rem}
+.kicker{font-family:var(--sans);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:0 0 .35rem}
+p{margin:0 0 1.05rem}
+.summary{font-family:var(--serif);font-size:1.22em;line-height:1.5;color:var(--ink);border-left:3px solid var(--gold);padding:.15rem 0 .15rem 1rem;margin:0 0 1.2rem}
+.byline{font-size:.86rem;color:var(--ink3);margin-bottom:1.6rem}
+.lede{color:var(--ink)}
+.muted{color:var(--ink2)}
+em.v{font-family:var(--serif);font-style:italic}
+.hl-blue{color:var(--blue-ink)} .hl-coral{color:var(--coral-ink)} .hl-gold{color:var(--gold-ink)}
+hr.soft{border:0;border-top:1px solid var(--rule);margin:3rem 0 0}
+/* ---------- Figures ---------- */
+figure{margin:1.4rem 0 1.6rem;padding:1.1rem 1rem 1rem;background:var(--bg2);border:1px solid var(--rule);border-radius:16px}
+figure svg{display:block;width:100%;height:auto;overflow:visible}
+figcaption{font-size:.86rem;color:var(--ink2);line-height:1.55;margin-top:.7rem}
+figcaption b{color:var(--ink);font-weight:600}
+.cap-live{min-height:3.1em;font-size:.92rem;color:var(--ink);line-height:1.55;margin:.6rem 0 0}
+.fig-title{font-family:var(--serif);font-size:1.02rem;color:var(--ink);margin:0 0 .2rem}
+.fig-sub{font-size:.8rem;color:var(--ink3);margin:0 0 .4rem}
+.callout{background:var(--blue-soft);border:1px solid color-mix(in srgb,var(--blue) 45%,transparent);border-radius:14px;padding:1rem 1.1rem;margin:1.4rem 0}
+.callout p:last-child{margin-bottom:0}
+.callout .term{font-family:var(--serif);font-size:1.12rem;color:var(--blue-ink);display:block;margin-bottom:.25rem}
+.cards{display:grid;grid-template-columns:1fr;gap:.9rem;margin:1.2rem 0}
+@media(min-width:720px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--bg2);border:1px solid var(--rule);border-radius:14px;padding:.9rem .9rem 1rem}
+.card h3{margin:.5rem 0 .3rem;font-size:1.02rem}
+.card p{font-size:.88rem;color:var(--ink2);margin:0;line-height:1.55}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin:1rem 0}
+@media(min-width:620px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:var(--bg2);border:1px solid var(--rule);border-radius:14px;padding:.8rem .85rem}
+.tile .lab{font-size:.75rem;color:var(--ink3);line-height:1.35}
+.tile .num{font-family:var(--serif);font-size:1.55rem;color:var(--ink);line-height:1.2;margin:.2rem 0 .1rem}
+.tile .num small{font-size:.85rem;color:var(--ink3)}
+.tile .delta{font-size:.78rem;color:var(--blue-ink)}
+pre.code{font-family:var(--mono);font-size:.76rem;line-height:1.6;background:var(--code);color:var(--ink);border-radius:12px;padding:.85rem 1rem;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;margin:.8rem 0;border:1px solid var(--rule);tab-size:4}
+pre.code .c{color:var(--ink3)} pre.code .k{color:var(--blue-ink)} pre.code .f{color:var(--gold-ink)} pre.code .n{color:var(--coral-ink)}
+details{margin-top:.6rem}
+summary{cursor:pointer;font-size:.84rem;color:var(--ink2);min-height:44px;display:flex;align-items:center;list-style:none;-webkit-tap-highlight-color:transparent}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";margin-right:.45rem;transition:transform .2s;display:inline-block}
+details[open] summary::before{transform:rotate(90deg)}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:.82rem;width:100%;min-width:320px}
+th,td{text-align:left;padding:.4rem .55rem;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{color:var(--ink2);font-weight:600}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+/* skeleton (strategy) */
+.skel{display:grid;grid-template-columns:1fr;gap:.55rem;margin-top:.4rem}
+@media(min-width:640px){.skel{grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch}}
+.step{background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:.7rem .8rem}
+.step .t{font-family:var(--serif);font-size:1rem;color:var(--ink);margin-bottom:.35rem}
+.step .tr,.step .te{font-size:.82rem;line-height:1.45;transition:opacity .35s}
+.step .tr{color:var(--ink2)} .step .te{color:var(--blue-ink);margin-top:.3rem}
+.step .tr b,.step .te b{font-weight:600;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;display:block;color:var(--ink3)}
+.arrow{display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:1.1rem}
+.arrow::before{content:"↓"} @media(min-width:640px){.arrow::before{content:"→"}}
+.fade{opacity:.15}
+ol.take{padding-left:1.3rem} ol.take li{margin-bottom:.8rem} ol.take li::marker{color:var(--gold-ink);font-family:var(--serif)}
+dl.gloss dt{font-family:var(--serif);color:var(--ink);margin-top:.8rem}
+dl.gloss dd{margin:.1rem 0 0;color:var(--ink2);font-size:.92rem}
+/* tooltip */
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--bg3);color:var(--ink);border:1px solid var(--rule);border-radius:10px;
+  padding:.45rem .6rem;font-size:.8rem;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .15s;max-width:240px}
+.tip.on{opacity:1}
+.tip b{font-weight:600}
+/* SVG text defaults */
+svg text{font-family:var(--sans);fill:var(--ink2)}
+svg .serif{font-family:var(--serif)}
+.t-ink{fill:var(--ink)} .t-ink2{fill:var(--ink2)} .t-ink3{fill:var(--ink3)}
+.anim{transition:all .7s cubic-bezier(.65,0,.35,1)}
+.hitbox{fill:transparent;cursor:pointer}
+.grow{transform-box:fill-box;transform-origin:left center;animation:grow .7s cubic-bezier(.65,0,.35,1) both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* hero draw-on */
+.draw{stroke-dasharray:400;stroke-dashoffset:400;animation:draw 1.6s cubic-bezier(.65,0,.35,1) forwards}
+.pop{opacity:0;animation:pop .6s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pop{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bar" role="toolbar" aria-label="Reading settings">
+  <div class="mark">Harnesses &amp; compositional generalization</div>
+  <div class="tools">
+    <button class="btn icon" id="fsDown" type="button" aria-label="Smaller text">A−</button>
+    <button class="btn icon" id="fsUp" type="button" aria-label="Larger text">A+</button>
+    <button class="btn icon" id="themeBtn" type="button" aria-label="Switch to light paper theme">☀︎</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</div>
+
+<main>
+
+<!-- ============ TITLE ============ -->
+<header>
+  <h1>Language model harnesses can be compositional generalizers</h1>
+  <p class="summary">Rather than teach an AI model to read ever-longer prompts, teach it to break big, unfamiliar jobs into small, familiar ones. Trained only on short tasks, it then handles tasks up to 64× longer.</p>
+  <div class="byline">An explainer of the paper by Alex L. Zhang, Souradip Chakraborty &amp; Omar Khattab · MIT CSAIL · 2026</div>
+
+  <figure aria-label="A root model splitting one big job into many small calls" style="background:transparent;border:0;padding:0">
+    <svg viewBox="0 0 400 190" role="img" aria-labelledby="heroT">
+      <title id="heroT">One root model writes a plan, and the plan sends small pieces of the job to many helper models.</title>
+      <g fill="none" stroke-width="1.6">
+        <path class="draw" stroke="var(--ink3)" d="M200 52 C200 90 52 96 52 140"/>
+        <path class="draw" stroke="var(--ink3)" style="animation-delay:.08s" d="M200 52 C200 90 111 96 111 140"/>
+        <path class="draw" stroke="var(--ink3)" style="animation-delay:.16s" d="M200 52 C200 90 170 96 170 140"/>
+        <path class="draw" stroke="var(--ink3)" style="animation-delay:.24s" d="M200 52 C200 90 230 96 230 140"/>
+        <path class="draw" stroke="var(--ink3)" style="animation-delay:.32s" d="M200 52 C200 90 289 96 289 140"/>
+        <path class="draw" stroke="var(--ink3)" style="animation-delay:.40s" d="M200 52 C200 90 348 96 348 140"/>
+      </g>
+      <rect class="pop" x="150" y="18" width="100" height="36" rx="10" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.6"/>
+      <text class="pop serif t-ink" x="200" y="41" text-anchor="middle" font-size="15">root model</text>
+      <g class="pop" style="animation-delay:1s">
+        <circle cx="52" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <circle cx="111" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <circle cx="170" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <circle cx="230" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <circle cx="289" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <circle cx="348" cy="152" r="13" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/>
+        <text x="200" y="186" text-anchor="middle" font-size="13" class="t-ink3">small, familiar sub-calls, each with a fresh, short context</text>
+      </g>
+    </svg>
+  </figure>
+</header>
+
+<!-- ============ INTRO ============ -->
+<section style="padding-top:.6rem" aria-labelledby="intro">
+  <h2 id="intro" class="serif">The short version</h2>
+  <p class="lede">AI models are getting good at small tasks, but they still stumble on long ones: give a model ten times more reading than it practiced on and it starts to get lost. The usual fix is more training on long tasks, which is slow and expensive. This paper tries something different. It wraps the model in a <b>harness</b>, a small program around the model, that lets the model split a big job into many small pieces. Each piece looks like something the model already knows how to do. The authors find that a model trained this way on short tasks keeps working on much longer ones, and on tasks from subjects it never saw. They also show you can train the "planner" part cheaply, using made-up practice worlds.</p>
+  <p class="muted">Below, we build the idea up one picture at a time.</p>
+</section>
+
+<!-- ============ 1. THE PROBLEM ============ -->
+<section aria-labelledby="s1">
+  <p class="kicker">1 · The problem</p>
+  <h2 id="s1">One prompt that keeps on growing</h2>
+  <p>Most AI agents today work like a diary. Every step (what the model thought, what it ran, what came back) is added to the end of one long prompt. The whole diary is then fed back to the model so it can choose the next step. The paper calls this <b>"trajectory as a prompt"</b>. It is how the classic ReAct design works.</p>
+  <p>The catch: if the model only practiced on short diaries, a long one is something it has never seen. Its performance drifts as the prompt grows. People call this <i>context rot</i>.</p>
+  <p>Now compare a harness like the <b>Recursive Language Model (RLM)</b>. The long input sits outside the model, like a file on disk. The root model writes a short program that cuts the input into chunks and sends each chunk to a fresh helper model. When the task gets longer, the program stays about the same. It just sends out more chunks.</p>
+
+  <figure>
+    <p class="fig-title">What a single model call sees as the task gets longer</p>
+    <p class="fig-sub">Schematic. Choose a task length; the shaded band is the range of lengths seen in training.</p>
+    <div class="seg" id="lenSeg" role="group" aria-label="Task length multiplier"></div>
+    <svg id="lenSvg" viewBox="0 0 400 330" role="img" aria-label="Comparison of prompt length for one growing prompt versus many small calls"></svg>
+    <div class="row"><button class="btn primary" type="button" id="lenPlay">▶ Play through lengths</button></div>
+    <p class="cap-live" id="lenCap" aria-live="polite"></p>
+  </figure>
+</section>
+
+<!-- ============ 2. THREE TRICKS ============ -->
+<section aria-labelledby="s2">
+  <p class="kicker">2 · The toolkit</p>
+  <h2 id="s2">Three ways to control what the model sees</h2>
+  <p>The paper treats the model as a kind of <i>probabilistic function</i>: put text in, get text out, and it is reliable as long as the input looks familiar. Seen that way, a harness's job is to <b>arrange the inputs</b> so that every call gets something it can handle. Popular coding agents already use three tools for this, and they combine well:</p>
+
+  <div class="cards">
+    <div class="card">
+      <svg viewBox="0 0 200 110" role="img" aria-label="Context offloading: a big document outside the window, only a slice enters">
+        <g stroke="var(--ink3)" stroke-width="1.2" fill="var(--bg)">
+          <rect x="12" y="20" width="62" height="78" rx="4"/><rect x="18" y="14" width="62" height="78" rx="4"/><rect x="24" y="8" width="62" height="78" rx="4"/>
+        </g>
+        <g stroke="var(--ink3)" stroke-width="1"><line x1="32" y1="24" x2="78" y2="24"/><line x1="32" y1="34" x2="74" y2="34"/><line x1="32" y1="54" x2="78" y2="54"/><line x1="32" y1="64" x2="70" y2="64"/><line x1="32" y1="74" x2="76" y2="74"/></g>
+        <rect x="28" y="40" width="54" height="10" rx="2" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.2"/>
+        <path d="M86 45 C110 45 112 55 128 55" fill="none" stroke="var(--gold)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <rect x="130" y="30" width="60" height="50" rx="8" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.4"/>
+        <rect x="138" y="50" width="44" height="9" rx="2" fill="var(--gold-soft)" stroke="var(--gold)"/>
+        <text x="160" y="96" text-anchor="middle" font-size="11" class="t-ink3">model's window</text>
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--gold)"/></marker></defs>
+      </svg>
+      <h3>Context offloading</h3>
+      <p>The giant input stays outside the model, in the environment. The model only pulls in the slices it asks for.</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 200 110" role="img" aria-label="Programmatic tool calling: tools are functions in code; only printed output returns">
+        <rect x="14" y="10" width="112" height="90" rx="8" fill="var(--code)" stroke="var(--rule)"/>
+        <text x="24" y="30" font-size="10" font-family="ui-monospace,Menlo,monospace" class="t-ink3">for f in files:</text>
+        <text x="34" y="46" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="var(--gold-ink)">h += grep(f, q)</text>
+        <text x="24" y="62" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="var(--gold-ink)">top = rank(h)[:3]</text>
+        <text x="24" y="78" font-size="10" font-family="ui-monospace,Menlo,monospace" class="t-ink3">print(top)</text>
+        <path d="M126 78 C146 78 146 55 160 55" fill="none" stroke="var(--blue)" stroke-width="1.5" marker-end="url(#ah2)"/>
+        <rect x="160" y="40" width="30" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/>
+        <text x="175" y="88" text-anchor="middle" font-size="11" class="t-ink3">3 lines</text>
+        <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--blue)"/></marker></defs>
+      </svg>
+      <h3>Programmatic tool calling</h3>
+      <p>Tools are functions inside code. Bulky in-between results live in variables, and only what the program prints comes back to the model.</p>
+    </div>
+    <div class="card">
+      <svg viewBox="0 0 200 110" role="img" aria-label="Sub-agent calling: a root model fans out to helpers with fresh contexts">
+        <rect x="74" y="8" width="52" height="26" rx="7" fill="var(--gold-soft)" stroke="var(--gold)" stroke-width="1.4"/>
+        <text x="100" y="25" text-anchor="middle" font-size="11" class="t-ink">root</text>
+        <g fill="none" stroke="var(--ink3)" stroke-width="1.3"><path d="M100 34 C100 55 34 55 34 72"/><path d="M100 34 C100 55 78 55 78 72"/><path d="M100 34 C100 55 122 55 122 72"/><path d="M100 34 C100 55 166 55 166 72"/></g>
+        <g fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.3"><rect x="20" y="72" width="28" height="24" rx="6"/><rect x="64" y="72" width="28" height="24" rx="6"/><rect x="108" y="72" width="28" height="24" rx="6"/><rect x="152" y="72" width="28" height="24" rx="6"/></g>
+        <text x="100" y="108" text-anchor="middle" font-size="10" class="t-ink3">each helper starts with a clean slate</text>
+      </svg>
+      <h3>Sub-agent calling</h3>
+      <p>The model can launch other model calls, each with its own fresh, short context, and collect their answers.</p>
+    </div>
+  </div>
+  <p>The paper compares four setups that use more and more of these tools:</p>
+  <ul>
+    <li><b>Base model</b>: no harness at all. The whole input goes straight into the prompt.</li>
+    <li><b>Pi</b>: a ReAct-style coding agent with a terminal, sub-agents, and the input stored as a file.</li>
+    <li><b>LM + REPL</b> (a CodeAct-style harness): the model writes code over the offloaded input, but it cannot call sub-models from code.</li>
+    <li><b>RLM</b>: offloading, plus code, plus sub-model calls from inside that code. It uses all three tools.</li>
+  </ul>
+</section>
+
+<!-- ============ 3. KEY IDEA ============ -->
+<section aria-labelledby="s3">
+  <p class="kicker">3 · The key idea</p>
+  <h2 id="s3">A task can be new while every piece is familiar</h2>
+  <p>Picture a cook who has only ever made soup for four. Ask for soup for four hundred and they don't need a new skill. They need a plan: split the work into pots, have each pot made the usual way, then combine. The <i>whole</i> job is new, but no single step is.</p>
+  <p>The paper's claim is that a good harness can do this for a language model. The overall task may be unlike anything in training, but if the harness cuts it up the right way, <b>every individual call to the model is something it already handles well</b>.</p>
+
+  <figure>
+    <p class="fig-title">One unfamiliar task → many familiar ones</p>
+    <svg id="decoSvg" viewBox="0 0 400 260" role="img" aria-label="A large unfamiliar task splitting into twelve familiar pieces"></svg>
+    <div class="row"><button class="btn primary" type="button" id="decoBtn" aria-pressed="false">Decompose</button></div>
+    <p class="cap-live" id="decoCap" aria-live="polite"></p>
+  </figure>
+
+  <div class="callout">
+    <span class="term">Locally in-distribution (LID)</span>
+    <p>"In-distribution" means "looks like what the model was trained on". A harness run is <i>locally</i> in-distribution when each single model call sees a familiar, solvable input, even though the full task is out of distribution. That doesn't require the model to have seen that exact input; it only has to be the kind of thing the model handles reliably.</p>
+  </div>
+  <p>Two kinds of familiarity work together here:</p>
+  <ol>
+    <li>The <b>root model's plan</b> ("split, ask about each piece, count up") is something it learned in training.</li>
+    <li>The <b>helper calls</b> do jobs the model could already do before any training, such as "what kind of question is this?"</li>
+  </ol>
+  <p>Training only has to teach the first one. The second comes free.</p>
+</section>
+
+<!-- ============ 4. LENGTH ============ -->
+<section aria-labelledby="s4">
+  <p class="kicker">4 · Test one</p>
+  <h2 id="s4">Train on short tasks, test on long ones</h2>
+  <p>The authors took six long-reading tasks where length can be dialed up and down. They trained a model (Qwen3-30B-A3B) with reinforcement learning on the <b>short</b> versions only, then tested it on versions 2 to 64 times longer.</p>
+
+  <figure>
+    <p class="fig-title">Training length vs. test length</p>
+    <p class="fig-sub">Input size in tokens, log scale. Tap a row for details.</p>
+    <div id="lenChart" style="width:100%"></div>
+    <details><summary>Show as table</summary>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Task</th><th>Trained on</th><th>Tested on</th><th class="r">Longer by</th></tr></thead>
+        <tbody>
+          <tr><td>MRCRv2</td><td>32K–64K, 2 needles</td><td>2M–4M, 8 needles</td><td class="r">64×</td></tr>
+          <tr><td>GraphWalks</td><td>≤128K</td><td>256K–1M</td><td class="r">2–8×</td></tr>
+          <tr><td>LongBench-Pro</td><td>32K</td><td>256K</td><td class="r">8×</td></tr>
+          <tr><td>OOLONG</td><td>32K</td><td>256K</td><td class="r">8×</td></tr>
+          <tr><td>OOLONG-Pairs</td><td>8K</td><td>32K</td><td class="r">4×</td></tr>
+          <tr><td>Ada-LEval</td><td>8K</td><td>128K</td><td class="r">16×</td></tr>
+        </tbody></table></div>
+    </details>
+  </figure>
+
+  <p><b>What happened.</b> The plain model did very well on the short training tasks, often better than any harness. But that skill didn't carry over to the long versions. The RLM learned more slowly on the short tasks, but its test score on the long tasks <i>tracked its training score</i>: whatever it learned on short tasks, it kept on long ones. Among the harnesses, the RLM did best overall, because it can fan sub-calls out over the offloaded input.</p>
+
+  <h3>Why: the program doesn't change, it just runs more</h3>
+  <p>Here's an actual pattern from the paper's appendix, simplified. The task (OOLONG) is to look through a big pile of trivia questions and count how many are of each type. At training time the root model wrote a program like this:</p>
+<pre class="code" aria-label="Simplified root program"><span class="c"># input lives in a variable, not the prompt</span>
+questions = extract_questions(context)
+batches   = chunk(questions, size=<span class="n">20</span>)
+prompts   = [<span class="f">ask</span>(b) <span class="k">for</span> b <span class="k">in</span> batches]
+<span class="c"># fan out to helper models</span>
+labels    = <span class="f">llm_query_batched</span>(prompts)
+answer    = Counter(flatten(labels))</pre>
+  <p>On the 8× longer test task, it wrote <i>essentially the same program</i>. The only thing that changed was how many batches went out.</p>
+
+  <figure>
+    <p class="fig-title">Same program, more helper calls</p>
+    <div class="seg" id="batchSeg" role="group" aria-label="Training or test task">
+      <button type="button" aria-pressed="true" data-k="train">Training task · 787 questions</button>
+      <button type="button" aria-pressed="false" data-k="test">Test task · ~6,400 questions</button>
+    </div>
+    <svg id="batchSvg" viewBox="0 0 400 210" role="img" aria-label="Grid of batched helper calls"></svg>
+    <p class="cap-live" id="batchCap" aria-live="polite"></p>
+  </figure>
+
+  <p>That only works if the helpers keep doing their small jobs well on the bigger task. The authors checked: on OOLONG, helper calls labeled single questions correctly <b>85.6%</b> of the time on training tasks and <b>83.7%</b> on the 8× longer test tasks. The small job stays the same size, so it stays easy.</p>
+  <p class="muted">Where a short piece of code can solve the whole thing (MRCRv2, GraphWalks), the code-only LM + REPL harness also generalizes well. Where you have to actually <i>read and judge</i> lots of pieces (OOLONG, OOLONG-Pairs), you need sub-model calls, and that's where the RLM stands out.</p>
+</section>
+
+<!-- ============ 5. STRATEGY ============ -->
+<section aria-labelledby="s5">
+  <p class="kicker">5 · Test two</p>
+  <h2 id="s5">Same shape, different subject</h2>
+  <p>Length is only one way a task can be new. A task can also be about something completely different but have the <b>same shape</b> of solution. The paper calls carrying a plan across subjects <b>strategy generalization</b>. They trained on one subject and tested on another that shares no content, only structure.</p>
+
+  <figure>
+    <p class="fig-title">The plan stays put. Only the subject changes.</p>
+    <div class="seg" id="skinSeg" role="group" aria-label="Choose a train and test pair"></div>
+    <div class="skel" id="skel"></div>
+    <figcaption>In all three pairs, the RLM transferred best. The plain model's training score rose like the harnesses' did, but it barely moved on the new subject, because the test task's <i>wording</i> looked nothing like what it practiced on.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 6. EVIDENCE ============ -->
+<section aria-labelledby="s6">
+  <p class="kicker">6 · Checking the story</p>
+  <h2 id="s6">Is the model really reusing what it learned?</h2>
+  <p>To check, the authors compared the root model's moves on each long test task with its moves on the training tasks. They used a word-overlap score, called weighted Jaccard similarity, where 1 means identical and 0 means nothing in common. A high score means the model is replaying a plan it already practiced.</p>
+
+  <figure>
+    <p class="fig-title">How closely test-time moves match training-time moves</p>
+    <p class="fig-sub">Weighted Jaccard similarity of root trajectories (0–1). Pick a task.</p>
+    <div class="seg" id="simSeg" role="group" aria-label="Task"></div>
+    <div id="simChart" style="width:100%"></div>
+    <p class="cap-live" id="simCap" aria-live="polite"></p>
+    <details><summary>Show as table</summary>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Task</th><th class="r">RLM</th><th class="r">LM + REPL</th><th class="r">Pi</th><th class="r">Base model</th></tr></thead>
+        <tbody>
+          <tr><td>GraphWalks</td><td class="r">0.66</td><td class="r">0.68</td><td class="r">0.64</td><td class="r">0.03</td></tr>
+          <tr><td>OOLONG</td><td class="r">0.57</td><td class="r">0.55</td><td class="r">0.87</td><td class="r">0.12</td></tr>
+          <tr><td>OOLONG-Pairs</td><td class="r">0.66</td><td class="r">0.62</td><td class="r">0.30</td><td class="r">0.22</td></tr>
+          <tr><td>Ada-LEval</td><td class="r">0.48</td><td class="r">0.45</td><td class="r">0.65</td><td class="r">0.06</td></tr>
+        </tbody></table></div>
+    </details>
+  </figure>
+  <p>The base model's runs barely overlap with training (0.03–0.22), which makes sense: its "moves" are just the giant prompt, and that changes completely with length. Harnesses that keep the input outside the model reuse their plans.</p>
+  <p><b>Reuse alone isn't enough, though.</b> Pi copies its training plan closely on OOLONG (0.87) and still does badly. Its plan doesn't scale: it learned to read a fixed handful of chunks, or to write long lists out by hand, which works at short lengths and breaks at long ones. You need both pieces: a <b>reusable plan</b> and <b>small helper jobs</b> that stay reliable.</p>
+</section>
+
+<!-- ============ 7. CATCH ============ -->
+<section aria-labelledby="s7">
+  <p class="kicker">7 · A catch</p>
+  <h2 id="s7">Practice can also teach the wrong habits</h2>
+  <p>Next, the authors asked whether skills learned on those short practice tasks carry over to eight much harder real-world benchmarks that don't share their structure. Mostly, not much. Reinforcement learning on the short tasks raised a weaker model's average by about 7 points but a stronger model's (Qwen3.8-27B) by only 2.4. What each model picked up depended on where it started: the weaker one learned to lean on code and call helpers <i>less</i>, while the stronger one learned to fan out to helpers <i>more</i>.</p>
+  <p>On messy real tasks, there often isn't a neat, easier version to practice on. That leads to the paper's most practical idea.</p>
+</section>
+
+<!-- ============ 8. SURROGATE ============ -->
+<section aria-labelledby="s8">
+  <p class="kicker">8 · The practical trick</p>
+  <h2 id="s8">Surrogate training: rehearse in a cheap fake world</h2>
+  <p>If what transfers is the <b>root model's plan</b>, you don't need the real task to train it. You need a practice world where the <i>same plan</i> wins. The helper calls in that world can even be <b>fake</b>, returning pre-written answers. The root model's behavior is what's being trained, so the helpers just need to answer.</p>
+  <p>That's <b>surrogate harness training</b>. For each benchmark, the authors had a strong coding agent (Claude Opus 5.5 in Claude Code) study a separate public split of the task and some example runs. It proposed a plan that should work, then built synthetic practice tasks with different content that the same plan solves. They collected 8,015 successful practice runs and fine-tuned Qwen3.8-27B on them. The result is <b>RLM-27B</b>.</p>
+
+  <figure>
+    <p class="fig-title">Rehearse cheaply, perform for real</p>
+    <svg id="surSvg" viewBox="0 0 400 302" role="img" aria-label="The same root moves in a cheap synthetic world and in the costly real task"></svg>
+    <div class="row">
+      <button class="btn primary" type="button" id="surPlay">▶ Step through</button>
+      <button class="btn" type="button" id="surReset">Reset</button>
+    </div>
+    <p class="cap-live" id="surCap" aria-live="polite"></p>
+  </figure>
+
+  <h3>The result</h3>
+  <p>Using the same RLM harness, RLM-27B beat the untrained Qwen3.8-27B on seven of the eight hard benchmarks. Its average rose from 46.1 to 58.5, a <b>26.9% relative gain</b>.</p>
+
+  <figure>
+    <p class="fig-title">Score on eight hard long-input benchmarks</p>
+    <p class="fig-sub">Grey dot = comparison model, blue dot = RLM-27B. Tap a row for exact values.</p>
+    <div class="seg" id="resSeg" role="group" aria-label="Comparison model">
+      <button type="button" aria-pressed="true" data-k="rlm">vs. untrained model, same harness</button>
+      <button type="button" aria-pressed="false" data-k="base">vs. plain model, no harness</button>
+    </div>
+    <div id="resChart" style="width:100%"></div>
+    <details><summary>Show as table</summary>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Benchmark</th><th class="r">Plain model</th><th class="r">Untrained, RLM harness</th><th class="r">RLM-27B</th></tr></thead>
+        <tbody id="resTbody"></tbody></table></div>
+    </details>
+  </figure>
+
+  <p>It also got there <b>with far less work</b>:</p>
+  <div class="tiles">
+    <div class="tile"><div class="lab">Root-model turns per task</div><div class="num">6.5 <small>vs 18.4</small></div><div class="delta">≈3× fewer</div></div>
+    <div class="tile"><div class="lab">Root input tokens</div><div class="num">44K <small>vs 263K</small></div><div class="delta">≈6× fewer</div></div>
+    <div class="tile"><div class="lab">Runs that use helpers</div><div class="num">97% <small>vs 43%</small></div><div class="delta">delegates by default</div></div>
+    <div class="tile"><div class="lab">Runs hitting the 40-turn cap</div><div class="num">1.1% <small>vs 33%</small></div><div class="delta">rarely gets stuck</div></div>
+  </div>
+  <p class="muted">Counting every token, root and helpers together, RLM-27B used about half as many as the untrained model. Training directly with reinforcement learning on the same synthetic worlds, without the hinted plans, also helped (+6.8 points on average), but didn't produce the efficiency gains.</p>
+</section>
+
+<!-- ============ 9. RECURSION ============ -->
+<section aria-labelledby="s9">
+  <p class="kicker">9 · Going one level up</p>
+  <h2 id="s9">Harnesses inside harnesses</h2>
+  <p>If one harness run can be treated like a single model call, then a harness can call <i>itself</i>. That lets the newly learned plans be chained together too.</p>
+  <p>To test this, the authors picked 87 tasks that RLM-27B solves reliably and chained four of them: answer task A to unlock task B, B to unlock C, and so on. By default, the model solves all four inside <b>one</b> growing run. That's the old diary problem again, one level up. With <b>tail recursion</b>, it solves A, then hands B–D to a fresh copy of the harness, which solves B and hands off C–D, and so on. Each task gets a clean slate.</p>
+
+  <figure>
+    <p class="fig-title">One long run vs. handing off to a fresh harness</p>
+    <div class="seg" id="recSeg" role="group" aria-label="Mode">
+      <button type="button" aria-pressed="true" data-k="flat">One long run</button>
+      <button type="button" aria-pressed="false" data-k="rec">Tail recursion</button>
+    </div>
+    <svg id="recSvg" viewBox="0 0 400 268" role="img" aria-label="Context per task in each mode"></svg>
+    <div class="row">
+      <button class="btn primary" type="button" id="recNext">Solve next task →</button>
+      <button class="btn" type="button" id="recReset">Reset</button>
+    </div>
+    <p class="cap-live" id="recCap" aria-live="polite"></p>
+  </figure>
+
+  <figure>
+    <p class="fig-title">Share of four-task chains fully solved</p>
+    <p class="fig-sub">Averaged over 2,000 random chains; whiskers are 95% confidence intervals.</p>
+    <div id="recChart" style="width:100%"></div>
+    <details><summary>Show as table</summary>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Setup</th><th class="r">Full chains solved</th><th class="r">Single tasks solved</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen3.8-27B, RLM harness</td><td class="r">19.3 ± 1.7%</td><td class="r">38.4 ± 1.7%</td></tr>
+          <tr><td>RLM-27B, one long run</td><td class="r">55.2 ± 2.2%</td><td class="r">74.5 ± 1.4%</td></tr>
+          <tr><td>RLM-27B + hint to recurse</td><td class="r">47.2 ± 2.2%</td><td class="r">63.3 ± 1.7%</td></tr>
+          <tr><td>RLM-27B + recursion training</td><td class="r">77.5 ± 1.8%</td><td class="r">84.4 ± 1.4%</td></tr>
+        </tbody></table></div>
+    </details>
+  </figure>
+  <p>Just <i>telling</i> the model to hand off actually made things worse (55.2% → 47.2%). But teaching it to hand off, with the same cheap surrogate training, raised full-chain success to <b>77.5%</b>. The skill of splitting a job applies one level up, too.</p>
+</section>
+
+<!-- ============ 10. TAKEAWAYS ============ -->
+<section aria-labelledby="s10">
+  <p class="kicker">10 · What to take away</p>
+  <h2 id="s10">The big picture</h2>
+  <ol class="take">
+    <li><b>Generalize through structure.</b> Don't rely on the network alone to stretch to new inputs. Let a program break new tasks into pieces the model already handles.</li>
+    <li><b>Keep every call familiar.</b> The goal is a harness where each single model call is "locally in-distribution", even when the whole task isn't.</li>
+    <li><b>Train the planner, not the whole run.</b> Because helper calls compose with skills the model already has, you can target just the root model's behavior, and do it in cheap synthetic worlds with fake helpers.</li>
+    <li><b>It nests.</b> A harness can call itself, so learned plans become building blocks for bigger plans.</li>
+    <li><b>Not automatic.</b> Plain reinforcement learning can teach habits that don't scale, and a reused plan only helps if the plan itself is sound.</li>
+  </ol>
+  <p class="muted">Code for the paper: <a href="https://github.com/alexzhang13/harness-cg">github.com/alexzhang13/harness-cg</a></p>
+
+  <details>
+    <summary>Glossary</summary>
+    <dl class="gloss">
+      <dt>Harness</dt><dd>The program wrapped around a language model that decides what it sees, what tools it can use, and how its outputs are acted on.</dd>
+      <dt>Compositional generalization</dt><dd>Solving a new problem by combining pieces you already know how to solve.</dd>
+      <dt>Trajectory as a prompt</dt><dd>Agent designs (like ReAct) that feed the full, ever-growing history back to the model at every step.</dd>
+      <dt>Root model / sub-call</dt><dd>The root model plans and writes code; sub-calls are fresh model calls launched from that code to handle small pieces.</dd>
+      <dt>Token</dt><dd>A chunk of text, roughly ¾ of a word. "128K tokens" is about a long novel.</dd>
+      <dt>Reinforcement learning (RL)</dt><dd>Training by trial and reward: the model tries, gets scored, and shifts toward what scored well.</dd>
+      <dt>Supervised fine-tuning (SFT)</dt><dd>Training by imitation on example runs. RLM-27B was trained this way on synthetic runs.</dd>
+    </dl>
+  </details>
+</section>
+
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(function(){
+"use strict";
+var NS="http://www.w3.org/2000/svg";
+var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function el(tag,attrs,parent,text){var e=document.createElementNS(NS,tag);if(attrs)for(var k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e;}
+function $(id){return document.getElementById(id);}
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+
+/* ---------- reading settings ---------- */
+var root=document.documentElement;
+var meta=document.querySelector('meta[name="theme-color"]');
+function setTheme(t){root.setAttribute("data-theme",t);var b=$("themeBtn");
+  b.textContent=t==="dark"?"☀︎":"☾";b.setAttribute("aria-label",t==="dark"?"Switch to light paper theme":"Switch to dark theme");
+  if(meta)meta.setAttribute("content",t==="dark"?"#1d2128":"#f6f3ec");store("hx-theme",t);}
+var savedT=store("hx-theme"); if(savedT==="light"||savedT==="dark") root.setAttribute("data-theme",savedT);
+$("themeBtn").addEventListener("click",function(){setTheme(root.getAttribute("data-theme")==="dark"?"light":"dark");});
+var fs=parseFloat(store("hx-fs"))||18;
+function setFs(v){fs=Math.max(15,Math.min(23,v));root.style.setProperty("--fs",fs+"px");store("hx-fs",String(fs));}
+setFs(fs);
+$("fsDown").addEventListener("click",function(){setFs(fs-1);});
+$("fsUp").addEventListener("click",function(){setFs(fs+1);});
+var prog=$("progress");
+function onScroll(){var h=document.documentElement;var max=h.scrollHeight-h.clientHeight;prog.style.width=(max>0?(h.scrollTop/max*100):0)+"%";}
+window.addEventListener("scroll",onScroll,{passive:true});
+
+/* ---------- tooltip (tap or hover) ---------- */
+var tip=$("tip"), tipOwner=null;
+function showTip(html,x,y,owner){tip.innerHTML=html;tip.classList.add("on");tipOwner=owner;
+  var w=tip.offsetWidth,h=tip.offsetHeight,vw=window.innerWidth;
+  var left=Math.min(Math.max(8,x-w/2),vw-w-8), top=y-h-14; if(top<56) top=y+18;
+  tip.style.left=left+"px";tip.style.top=top+"px";}
+function hideTip(){tip.classList.remove("on");tipOwner=null;}
+function bindTip(node,htmlFn){
+  node.addEventListener("pointerenter",function(e){if(e.pointerType==="mouse")showTip(htmlFn(),e.clientX,e.clientY,node);});
+  node.addEventListener("pointermove",function(e){if(e.pointerType==="mouse")showTip(htmlFn(),e.clientX,e.clientY,node);});
+  node.addEventListener("pointerleave",function(e){if(e.pointerType==="mouse")hideTip();});
+  node.addEventListener("click",function(e){e.stopPropagation();if(tipOwner===node){hideTip();return;}var r=node.getBoundingClientRect();showTip(htmlFn(),r.left+r.width/2,r.top+r.height/2,node);});
+}
+document.addEventListener("click",function(){if(tipOwner)hideTip();});
+window.addEventListener("scroll",function(){if(tipOwner)hideTip();},{passive:true});
+
+/* segmented control helper */
+function seg(container,items,onPick,initial){
+  container.innerHTML="";
+  items.forEach(function(it){var b=document.createElement("button");b.type="button";b.textContent=it.label;b.dataset.k=it.k;
+    b.setAttribute("aria-pressed",it.k===initial?"true":"false");
+    b.addEventListener("click",function(){pick(it.k);onPick(it.k);});container.appendChild(b);});
+  function pick(k){Array.prototype.forEach.call(container.children,function(c){c.setAttribute("aria-pressed",c.dataset.k===String(k)?"true":"false");});}
+  return pick;
+}
+function bindStaticSeg(container,onPick){
+  Array.prototype.forEach.call(container.querySelectorAll("button"),function(b){
+    b.addEventListener("click",function(){Array.prototype.forEach.call(container.querySelectorAll("button"),function(c){c.setAttribute("aria-pressed",c===b?"true":"false");});onPick(b.dataset.k);});});
+}
+
+/* =========================================================
+   1. Length explorer
+   ========================================================= */
+var mults=[1,2,4,8,16,32,64], curMult=1;
+var lenSvg=$("lenSvg");
+var X0=20,X1=392; var ticks=[0.25,0.5,1,2,4,8,16,32,64];
+function lx(m){return X0+(Math.log2(m)+2)/8*(X1-X0);}
+(function buildLen(){
+  // panel A
+  el("text",{x:X0,y:20,"font-size":15,class:"serif t-ink"},lenSvg,"One growing prompt");
+  el("text",{x:X0,y:38,"font-size":13,class:"t-ink3"},lenSvg,"ReAct-style: rereads everything each step");
+  el("rect",{x:lx(0.25),y:52,width:lx(1)-lx(0.25),height:62,fill:"var(--blue-soft)",rx:6},lenSvg);
+  el("text",{x:(lx(0.25)+lx(1))/2,y:68,"text-anchor":"middle","font-size":12,class:"t-ink2"},lenSvg,"in training");
+  el("rect",{id:"lenBar",x:X0,y:76,width:lx(1)-X0,height:24,rx:5,fill:"var(--blue)",class:"anim"},lenSvg);
+  el("text",{id:"lenBarLab",x:lx(1)+6,y:94,"font-size":15,class:"t-ink anim"},lenSvg,"1×");
+  ticks.forEach(function(t){var x=lx(t);el("line",{x1:x,x2:x,y1:118,y2:123,stroke:"var(--ink3)"},lenSvg);
+    el("text",{x:x,y:138,"text-anchor":"middle","font-size":12,class:"t-ink3"},lenSvg,t===0.25?"¼×":t===0.5?"½×":t+"×");});
+  el("line",{x1:X0,x2:X1,y1:118,y2:118,stroke:"var(--rule)"},lenSvg);
+  // panel B
+  el("text",{x:X0,y:172,"font-size":15,class:"serif t-ink"},lenSvg,"Many small calls");
+  el("text",{x:X0,y:190,"font-size":13,class:"t-ink3"},lenSvg,"RLM: short program + fresh helper calls");
+  el("rect",{x:X0,y:202,width:lx(0.5)-X0,height:20,rx:5,fill:"var(--gold-soft)",stroke:"var(--gold)","stroke-width":1.3},lenSvg);
+  el("text",{x:lx(0.5)+8,y:217,"font-size":13,class:"t-ink2"},lenSvg,"root program: same size always");
+  el("g",{id:"subGrid"},lenSvg);
+  el("text",{id:"subLab",x:X0,y:327,"font-size":13,class:"t-ink2"},lenSvg,"");
+})();
+function drawLen(m){
+  curMult=m;
+  var bar=$("lenBar"), lab=$("lenBarLab"); var w=lx(m)-X0;
+  bar.setAttribute("width",w); bar.setAttribute("fill",m>1?"var(--coral)":"var(--blue)");
+  lab.setAttribute("x",Math.min(lx(m)+6,X1-30)); lab.setAttribute("y",m>=32?70:94); lab.textContent=m+"×";
+  var g=$("subGrid"); while(g.firstChild)g.removeChild(g.firstChild);
+  var n=4*m, cols=Math.min(32,Math.max(8,Math.ceil(Math.sqrt(n*4.5)))), rows=Math.ceil(n/cols);
+  var gw=X1-X0, gh=78, cw=gw/cols, ch=Math.min(18,gh/rows);
+  for(var i=0;i<n;i++){var c=i%cols,r=Math.floor(i/cols);
+    var rc=el("rect",{x:X0+c*cw+1,y:232+r*ch+1,width:Math.max(2,cw-2),height:Math.max(2,ch-2),rx:2,fill:"var(--blue)",opacity:0},g);
+    (function(rc,i){setTimeout(function(){rc.setAttribute("opacity",0.85);rc.style.transition="opacity .35s";},reduce?0:Math.min(600,i*6));})(rc,i);}
+  $("subLab").textContent=n+" helper calls, each a training-sized chunk";
+  var cap = m===1 ? "At the training length, both approaches see familiar inputs."
+    : "At "+m+"×, the growing prompt is "+m+" times longer than anything the model practiced on, so it's out of distribution. The RLM's root program barely changes; it sends out "+m+"× more helper calls, and each one is still a familiar size.";
+  $("lenCap").textContent=cap;
+}
+var pickLen=seg($("lenSeg"),mults.map(function(m){return{k:String(m),label:m+"×"};}),function(k){stopLenPlay();drawLen(+k);},"1");
+var lenTimer=null;
+function stopLenPlay(){if(lenTimer){clearInterval(lenTimer);lenTimer=null;$("lenPlay").textContent="▶ Play through lengths";}}
+$("lenPlay").addEventListener("click",function(){
+  if(lenTimer){stopLenPlay();return;}
+  var i=0;drawLen(mults[0]);pickLen("1");$("lenPlay").textContent="❚❚ Pause";
+  lenTimer=setInterval(function(){i++;if(i>=mults.length){stopLenPlay();return;}drawLen(mults[i]);pickLen(String(mults[i]));},1300);
+});
+drawLen(1);
+
+/* =========================================================
+   3. Decompose animation
+   ========================================================= */
+var deco=$("decoSvg"), decoOn=false, tiles=[];
+(function(){
+  var plan=el("g",{id:"decoPlan",opacity:0,class:"anim"},deco);
+  el("rect",{x:80,y:2,width:240,height:32,rx:9,fill:"var(--gold-soft)",stroke:"var(--gold)","stroke-width":1.3},plan);
+  el("text",{x:200,y:23,"text-anchor":"middle","font-size":14,class:"t-ink"},plan,"plan: split → solve → combine");
+  var BX=60,BY=50,BW=280,BH=168,cols=4,rows=3,tw=BW/cols,th=BH/rows;
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    var g=el("g",{class:"anim"},deco); g.style.transformBox="fill-box";
+    var rc=el("rect",{x:BX+c*tw,y:BY+r*th,width:tw,height:th,fill:"var(--coral-soft)",stroke:"var(--coral)","stroke-width":1,class:"anim"},g);
+    var ck=el("path",{d:"M"+(BX+c*tw+tw/2-7)+" "+(BY+r*th+th/2)+" l5 5 l9 -10",fill:"none",stroke:"var(--blue)","stroke-width":2.2,"stroke-linecap":"round","stroke-linejoin":"round",opacity:0,class:"anim"},g);
+    tiles.push({g:g,rc:rc,ck:ck,dx:(c-1.5)*12,dy:(r-1)*12});
+  }
+  el("text",{id:"decoBig",x:200,y:BY+BH/2+5,"text-anchor":"middle","font-size":16,class:"serif t-ink anim"},deco,"an unseen task");
+  el("text",{id:"decoFoot",x:200,y:252,"text-anchor":"middle","font-size":14,class:"t-ink3"},deco,"too long, never practiced");
+})();
+function drawDeco(){
+  tiles.forEach(function(t,i){
+    var d=reduce?0:i*40;
+    setTimeout(function(){
+      t.g.style.transform=decoOn?"translate("+t.dx+"px,"+t.dy+"px) scale(.86)":"none";
+      t.rc.setAttribute("fill",decoOn?"var(--blue-soft)":"var(--coral-soft)");
+      t.rc.setAttribute("stroke",decoOn?"var(--blue)":"var(--coral)");
+      t.rc.setAttribute("rx",decoOn?8:0);
+      t.ck.setAttribute("opacity",decoOn?1:0);
+    },d);
+  });
+  $("decoBig").setAttribute("opacity",decoOn?0:1);
+  $("decoPlan").setAttribute("opacity",decoOn?1:0);
+  $("decoFoot").textContent=decoOn?"12 small pieces · each one is a familiar job":"too long, never practiced";
+  $("decoBtn").textContent=decoOn?"Put it back together":"Decompose";
+  $("decoBtn").setAttribute("aria-pressed",decoOn?"true":"false");
+  $("decoCap").textContent=decoOn
+    ? "The pieces are small and look like training data. The only new skill needed is the plan, and that's what the root model learns."
+    : "As a single block, this task is out of distribution: the model has never seen anything like it.";
+}
+$("decoBtn").addEventListener("click",function(){decoOn=!decoOn;drawDeco();});
+drawDeco();
+
+/* =========================================================
+   4a. Length dumbbell chart (Table 1)
+   ========================================================= */
+var lenData=[
+  {n:"MRCRv2",tr:32e3,te:2e6,lab:"64×",trS:"32K–64K",teS:"2M–4M"},
+  {n:"GraphWalks",tr:128e3,te:1e6,lab:"2–8×",trS:"≤128K",teS:"256K–1M"},
+  {n:"LongBench-Pro",tr:32e3,te:256e3,lab:"8×",trS:"32K",teS:"256K"},
+  {n:"OOLONG",tr:32e3,te:256e3,lab:"8×",trS:"32K",teS:"256K"},
+  {n:"OOLONG-Pairs",tr:8e3,te:32e3,lab:"4×",trS:"8K",teS:"32K"},
+  {n:"Ada-LEval",tr:8e3,te:128e3,lab:"16×",trS:"8K",teS:"128K"}
+];
+function fmtTok(v){return v>=1e6?(v/1e6)+"M":(v/1e3)+"K";}
+function drawLenChart(){
+  var host=$("lenChart"); host.innerHTML="";
+  var W=Math.max(280,host.clientWidth), small=W<460, labW=small?96:118, padR=40, rowH=40, top=30;
+  var H=top+lenData.length*rowH+28;
+  var s=el("svg",{width:W,height:H,viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Dumbbell chart of training versus test input length"},host);
+  var lo=Math.log10(5e3),hi=Math.log10(5e6);
+  function x(v){return labW+(Math.log10(v)-lo)/(hi-lo)*(W-labW-padR);}
+  [1e4,1e5,1e6].forEach(function(t){el("line",{x1:x(t),x2:x(t),y1:top-8,y2:H-24,stroke:"var(--rule)","stroke-dasharray":"2 4"},s);
+    el("text",{x:x(t),y:H-8,"text-anchor":"middle","font-size":11,class:"t-ink3"},s,fmtTok(t));});
+  // legend
+  el("circle",{cx:labW,cy:10,r:5,fill:"var(--gray)"},s); el("text",{x:labW+10,y:14,"font-size":12,class:"t-ink2"},s,"trained on");
+  el("circle",{cx:labW+92,cy:10,r:5,fill:"var(--blue)"},s); el("text",{x:labW+102,y:14,"font-size":12,class:"t-ink2"},s,"tested on");
+  lenData.forEach(function(d,i){
+    var y=top+i*rowH+rowH/2;
+    el("text",{x:labW-10,y:y+4,"text-anchor":"end","font-size":small?12:13,class:"t-ink"},s,d.n);
+    el("line",{x1:x(d.tr),x2:x(d.te),y1:y,y2:y,stroke:"var(--ink3)","stroke-width":2,"stroke-linecap":"round"},s);
+    el("circle",{cx:x(d.tr),cy:y,r:6,fill:"var(--gray)",stroke:"var(--bg2)","stroke-width":2},s);
+    el("circle",{cx:x(d.te),cy:y,r:6,fill:"var(--blue)",stroke:"var(--bg2)","stroke-width":2},s);
+    el("text",{x:x(d.te)+11,y:y+4,"font-size":12,class:"t-ink2"},s,d.lab);
+    var hb=el("rect",{x:0,y:y-rowH/2,width:W,height:rowH,class:"hitbox"},s);
+    bindTip(hb,function(){return "<b>"+d.n+"</b><br>Trained: "+d.trS+" tokens<br>Tested: "+d.teS+" tokens<br>Longer by "+d.lab;});
+  });
+}
+
+/* =========================================================
+   4b. Batches grid
+   ========================================================= */
+var batchSvg=$("batchSvg"), bRects=[];
+(function(){
+  var cols=29, rows=11, cw=372/cols, ch=150/rows;
+  for(var i=0;i<319;i++){var c=i%cols,r=Math.floor(i/cols);
+    bRects.push(el("rect",{x:14+c*cw+1.2,y:28+r*ch+1.2,width:cw-2.4,height:ch-2.4,rx:2.5,fill:"var(--blue)",opacity:i<40?.85:0},batchSvg));}
+  el("text",{id:"bTop",x:14,y:16,"font-size":15,class:"t-ink"},batchSvg,"");
+  el("text",{id:"bFoot",x:14,y:200,"font-size":13,class:"t-ink3"},batchSvg,"each square = one helper call (≤20 questions)");
+})();
+function drawBatch(k){
+  var n=k==="train"?40:319;
+  bRects.forEach(function(r,i){r.style.transition="opacity .3s ease "+(reduce?0:Math.abs(i-(k==="train"?319:40))*1.2)+"ms";r.setAttribute("opacity",i<n?.85:0);});
+  $("bTop").textContent=n+" batched helper calls";
+  $("batchCap").textContent=k==="train"
+    ? "Training: 787 questions → 40 batches of 20. The root program is about a dozen lines."
+    : "Test: 8× more context → 319 batches. Same dozen lines, same batch size, so every helper call is still the familiar size.";
+}
+bindStaticSeg($("batchSeg"),drawBatch);
+drawBatch("train");
+
+/* =========================================================
+   5. Strategy skins
+   ========================================================= */
+var skins=[
+  {k:"0",label:"Question types → spam",
+   s:[["Split the pile","lines of trivia questions (32K tokens)","lines of text messages (132K tokens)"],
+      ["Ask a helper about each piece","what kind of answer does this question want?","is this message spam?"],
+      ["Combine","count the labels","count the labels"]]},
+  {k:"1",label:"Writing style → math",
+   s:[["Split the pile","300 writing samples","300 math problems"],
+      ["Ask a helper about each piece","how well does this sample match the query's style?","is this problem a hidden analogue of the query?"],
+      ["Combine","rank and return the best matches","rank and return the best matches"]]},
+  {k:"2",label:"Tweet stances → chat-log errors",
+   s:[["Split the pile","300 tweets","300 chatbot transcripts"],
+      ["Ask a helper about each piece","does this tweet take the stance in question?","does this transcript show the error in question?"],
+      ["Combine","rank and return the best matches","rank and return the best matches"]]}
+];
+var skel=$("skel");
+function drawSkin(k){
+  var d=skins[+k]; skel.innerHTML="";
+  d.s.forEach(function(st,i){
+    if(i>0){var a=document.createElement("div");a.className="arrow";a.setAttribute("aria-hidden","true");skel.appendChild(a);}
+    var b=document.createElement("div");b.className="step";
+    b.innerHTML='<div class="t">'+st[0]+'</div><div class="tr"><b>Trained on</b>'+st[1]+'</div><div class="te"><b>Tested on</b>'+st[2]+'</div>';
+    skel.appendChild(b);
+  });
+}
+seg($("skinSeg"),skins.map(function(s){return{k:s.k,label:s.label};}),drawSkin,"0");
+drawSkin("0");
+
+/* =========================================================
+   6. Similarity chart
+   ========================================================= */
+var simData={
+  "GraphWalks":[0.66,0.68,0.64,0.03],
+  "OOLONG":[0.57,0.55,0.87,0.12],
+  "OOLONG-Pairs":[0.66,0.62,0.30,0.22],
+  "Ada-LEval":[0.48,0.45,0.65,0.06]
+};
+var simNotes={
+  "GraphWalks":"A short program solves this one, so every harness that offloads the input writes the same compact code at any length. The base model's moves don't resemble training at all.",
+  "OOLONG":"Pi has the highest similarity here but still breaks on long inputs. It replays a plan (read a fixed few chunks) that doesn't scale.",
+  "OOLONG-Pairs":"The RLM and LM + REPL reuse their training plans; Pi's moves drift as the input grows.",
+  "Ada-LEval":"Overlap is lower overall, yet the RLM shows the strongest carry-over in actual score on this reading-heavy task."
+};
+var simNames=["RLM","LM + REPL","Pi","Base model"], curSim="GraphWalks";
+function simColor(i){return i===0?"var(--blue)":i===3?"var(--coral)":"var(--gray)";}
+function drawSim(){
+  var host=$("simChart"); host.innerHTML="";
+  var W=Math.max(280,host.clientWidth), labW=W<460?86:104, padR=44, rowH=40, top=8;
+  var H=top+4*rowH+26;
+  var s=el("svg",{width:W,height:H,viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Bar chart of trajectory similarity for "+curSim},host);
+  function x(v){return labW+v*(W-labW-padR);}
+  [0,0.25,0.5,0.75,1].forEach(function(t){el("line",{x1:x(t),x2:x(t),y1:top,y2:H-22,stroke:"var(--rule)","stroke-dasharray":t===0?"":"2 4"},s);
+    el("text",{x:x(t),y:H-6,"text-anchor":"middle","font-size":11,class:"t-ink3"},s,t===0?"0":t===1?"1":String(t));});
+  simData[curSim].forEach(function(v,i){
+    var y=top+i*rowH+8, h=rowH-16;
+    el("text",{x:labW-10,y:y+h/2+4,"text-anchor":"end","font-size":13,class:"t-ink"},s,simNames[i]);
+    var r=el("rect",{x:x(0),y:y,width:Math.max(2,x(v)-x(0)),height:h,rx:4,fill:simColor(i),class:"grow"},s);
+    r.style.animationDelay=(i*70)+"ms";
+    el("text",{x:x(v)+8,y:y+h/2+4,"font-size":12,class:"t-ink2"},s,v.toFixed(2));
+    var hb=el("rect",{x:0,y:y-8,width:W,height:rowH,class:"hitbox"},s);
+    bindTip(hb,function(){return "<b>"+simNames[i]+"</b> on "+curSim+"<br>Similarity to nearest training runs: "+v.toFixed(2);});
+  });
+  $("simCap").textContent=simNotes[curSim];
+}
+seg($("simSeg"),Object.keys(simData).map(function(k){return{k:k,label:k};}),function(k){curSim=k;drawSim();},curSim);
+
+/* =========================================================
+   8a. Surrogate lanes
+   ========================================================= */
+var sur=$("surSvg"), surStep=-1;
+var surSteps=[
+  {n:"Read task",d:"The root model reads the question. The big input stays offloaded in both worlds."},
+  {n:"Probe",d:"It peeks at a small sample of the input to see what it's dealing with."},
+  {n:"Plan",d:"It writes the plan as code: how to cut the input and what to ask about each piece. This is the behavior being trained."},
+  {n:"Fan out",d:"Helper calls go out. In the rehearsal world they can be fake, returning pre-built answers for pennies. In the real task they're real and costly."},
+  {n:"Submit",d:"It combines the answers and submits. The root model made the same moves in both worlds, so practice in the cheap one carries over to the real one."}
+];
+var surNodes=[];
+(function(){
+  function lane(y,title,sub,fill,stroke,cost,tag){
+    el("rect",{x:2,y:y,width:396,height:116,rx:12,fill:"var(--bg)",stroke:"var(--rule)"},sur);
+    el("text",{x:14,y:y+24,"font-size":16,class:"serif t-ink"},sur,title);
+    el("text",{x:14,y:y+42,"font-size":13,class:"t-ink3"},sur,sub);
+    el("text",{x:386,y:y+24,"text-anchor":"end","font-size":16,fill:"var(--gold-ink)"},sur,cost);
+    var nodes=[], labs=["Read","Probe","Plan","Fan out","Submit"];
+    for(var i=0;i<5;i++){var cx=42+i*79, cy=y+76;
+      if(i<4) el("line",{x1:cx+33,x2:cx+46,y1:cy,y2:cy,stroke:"var(--ink3)","stroke-width":1.4},sur);
+      var r=el("rect",{x:cx-33,y:cy-17,width:66,height:34,rx:8,fill:"var(--bg2)",stroke:"var(--rule)","stroke-width":1.3,class:"anim"},sur);
+      el("text",{x:cx,y:cy+5,"text-anchor":"middle","font-size":14,class:"t-ink"},sur,labs[i]);
+      if(i===3){ el("text",{x:cx,y:cy+33,"text-anchor":"middle","font-size":12,fill:stroke},sur,tag); }
+      nodes.push(r);}
+    return nodes;
+  }
+  var a=lane(2,"Rehearsal world","synthetic content · fake helpers","var(--gold-soft)","var(--gold-ink)","¢","fake helpers");
+  var b=lane(182,"Real task","real content · real helpers","var(--blue-soft)","var(--blue-ink)","$$$","real helpers");
+  for(var i=0;i<5;i++) surNodes.push([a[i],b[i]]);
+  el("path",{d:"M200 120 L200 180",stroke:"var(--ink3)","stroke-width":1.4,"stroke-dasharray":"3 4",fill:"none","marker-end":"url(#ahS)"},sur);
+  var defs=el("defs",{},sur); var m=el("marker",{id:"ahS",viewBox:"0 0 10 10",refX:8,refY:5,markerWidth:7,markerHeight:7,orient:"auto"},defs); el("path",{d:"M0 0L10 5L0 10z",fill:"var(--ink3)"},m);
+  el("rect",{x:104,y:137,width:192,height:28,rx:14,fill:"var(--bg2)",stroke:"var(--rule)"},sur);
+  el("text",{x:200,y:156,"text-anchor":"middle","font-size":13,class:"t-ink"},sur,"same root moves transfer");
+})();
+function drawSur(){
+  surNodes.forEach(function(p,i){p.forEach(function(r,j){
+    var on=i<=surStep, cur=i===surStep;
+    r.setAttribute("fill",on?(j===0?"var(--gold-soft)":"var(--blue-soft)"):"var(--bg2)");
+    r.setAttribute("stroke",on?(j===0?"var(--gold)":"var(--blue)"):"var(--rule)");
+    r.setAttribute("stroke-width",cur?2.4:1.3);});});
+  $("surCap").textContent=surStep<0?"Step through to see the root model make the same moves in both worlds.":"Step "+(surStep+1)+" of 5 · "+surSteps[surStep].d;
+  $("surPlay").textContent=surStep>=4?"↺ Start over":surStep<0?"▶ Step through":"Next step ▶";
+}
+$("surPlay").addEventListener("click",function(){surStep=surStep>=4?0:surStep+1;drawSur();});
+$("surReset").addEventListener("click",function(){surStep=-1;drawSur();});
+drawSur();
+
+/* =========================================================
+   8b. Results dumbbell (Table 4, Qwen3.8-27B)
+   ========================================================= */
+var res=[
+  ["LongReason",69.1,85.3,90.1],["LooGLE-v2",44.1,51.4,82.0],["CTC-Bench",7.9,19.1,39.8],["BrowseComp-Plus",0.0,64.8,64.9],
+  ["OOLONG-Real",20.7,33.3,43.2],["CorpusQA",28.2,48.4,61.6],["OBLIQ-Bench",15.6,13.5,15.2],["ExpertLongBench",58.2,53.1,71.2],["Average",30.5,46.1,58.5]
+];
+var tb=$("resTbody"); res.forEach(function(r){var tr=document.createElement("tr");tr.innerHTML="<td>"+(r[0]==="Average"?"<b>Average</b>":r[0])+"</td><td class='r'>"+r[1].toFixed(1)+"</td><td class='r'>"+r[2].toFixed(1)+"</td><td class='r'>"+r[3].toFixed(1)+"</td>";tb.appendChild(tr);});
+var resMode="rlm";
+function drawRes(){
+  var host=$("resChart"); host.innerHTML="";
+  var W=Math.max(280,host.clientWidth), small=W<460, labW=small?112:136, padR=18, rowH=36, top=26;
+  var H=top+res.length*rowH+30;
+  var s=el("svg",{width:W,height:H,viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Dumbbell chart of benchmark scores"},host);
+  function x(v){return labW+v/100*(W-labW-padR);}
+  [0,25,50,75,100].forEach(function(t){el("line",{x1:x(t),x2:x(t),y1:top-6,y2:H-24,stroke:"var(--rule)","stroke-dasharray":t===0?"":"2 4"},s);
+    el("text",{x:x(t),y:H-8,"text-anchor":"middle","font-size":11,class:"t-ink3"},s,String(t));});
+  var baseName=resMode==="rlm"?"untrained, RLM harness":"plain model";
+  var lgx=small?8:labW;
+  el("circle",{cx:lgx+5,cy:9,r:5,fill:"var(--gray)"},s); var lt=el("text",{x:lgx+15,y:13,"font-size":12,class:"t-ink2"},s,baseName);
+  var lw=170; try{lw=lt.getComputedTextLength()+15+22;}catch(e){}
+  el("circle",{cx:lgx+5+lw,cy:9,r:5,fill:"var(--blue)"},s); el("text",{x:lgx+15+lw,y:13,"font-size":12,class:"t-ink2"},s,"RLM-27B");
+  res.forEach(function(r,i){
+    var y=top+i*rowH+rowH/2, isAvg=r[0]==="Average";
+    if(isAvg) el("line",{x1:8,x2:W-4,y1:y-rowH/2,y2:y-rowH/2,stroke:"var(--rule)"},s);
+    var b=resMode==="rlm"?r[2]:r[1], t=r[3];
+    el("text",{x:labW-10,y:y+4,"text-anchor":"end","font-size":small?11.5:12.5,class:"t-ink","font-weight":isAvg?600:400},s,r[0]);
+    var ln=el("line",{x1:x(b),x2:x(t),y1:y,y2:y,stroke:"var(--ink3)","stroke-width":2,"stroke-linecap":"round"},s);
+    el("circle",{cx:x(b),cy:y,r:6,fill:"var(--gray)",stroke:"var(--bg2)","stroke-width":2},s);
+    el("circle",{cx:x(t),cy:y,r:isAvg?7:6,fill:"var(--blue)",stroke:"var(--bg2)","stroke-width":2},s);
+    var lx2=t>=b?x(t)+10:x(t)-10, anc=t>=b?"start":"end";
+    if(t>=b && x(t)+44>W){lx2=x(Math.min(b,t))-10;anc="end";}
+    el("text",{x:lx2,y:y+4,"text-anchor":anc,"font-size":11.5,class:"t-ink2"},s,t.toFixed(1));
+    var hb=el("rect",{x:0,y:y-rowH/2,width:W,height:rowH,class:"hitbox"},s);
+    bindTip(hb,function(){var d=t-b;return "<b>"+r[0]+"</b><br>"+baseName+": "+b.toFixed(1)+"<br>RLM-27B: "+t.toFixed(1)+"<br>"+(d>=0?"+":"")+d.toFixed(1)+" points";});
+  });
+}
+bindStaticSeg($("resSeg"),function(k){resMode=k;drawRes();});
+
+/* =========================================================
+   9a. Recursion animation
+   ========================================================= */
+var recSvg=$("recSvg"), recMode="flat", recStep=0;
+var taskNames=["A","B","C","D"];
+function drawRec(){
+  while(recSvg.firstChild)recSvg.removeChild(recSvg.firstChild);
+  for(var i=0;i<4;i++){var cx=48+i*101, done=i<recStep;
+    el("rect",{x:cx-40,y:4,width:80,height:34,rx:17,fill:done?"var(--blue-soft)":"var(--bg)",stroke:done?"var(--blue)":"var(--rule)","stroke-width":1.3},recSvg);
+    el("text",{x:cx,y:26,"text-anchor":"middle","font-size":14,class:"t-ink"},recSvg,(done?"✓ ":"")+"Task "+taskNames[i]);
+    if(i<3) el("text",{x:cx+50,y:26,"text-anchor":"middle","font-size":13,class:"t-ink3"},recSvg,"›");}
+  el("text",{x:6,y:64,"font-size":13,class:"t-ink3"},recSvg,recMode==="flat"?"what the root model's context holds":"each box is a fresh harness");
+  var shown=Math.min(recStep+1,4);
+  if(recMode==="flat"){
+    el("rect",{x:2,y:74,width:396,height:120,rx:12,fill:"var(--bg)",stroke:"var(--rule)"},recSvg);
+    el("rect",{x:12,y:84,width:96,height:100,rx:8,fill:"var(--blue-soft)"},recSvg);
+    el("text",{x:60,y:104,"text-anchor":"middle","font-size":12,class:"t-ink2"},recSvg,"familiar size");
+    for(var j=0;j<shown;j++){
+      el("rect",{x:16+j*95,y:122,width:89,height:36,rx:6,fill:j>=1?"var(--coral)":"var(--blue)",opacity:.9},recSvg);
+      el("text",{x:60+j*95,y:146,"text-anchor":"middle","font-size":15,fill:"var(--bg)","font-weight":700},recSvg,taskNames[j]);}
+    el("text",{x:200,y:224,"text-anchor":"middle","font-size":14,class:"t-ink2"},recSvg,
+      shown===1?"context so far: task A":"context so far: "+shown+" tasks piled up");
+  } else {
+    for(var k=0;k<4;k++){
+      var seen=k<=recStep, active=k===Math.min(recStep,3);
+      var x0=2+k*12, y0=74+k*46, w=396-k*24, h=190-k*46;
+      el("rect",{x:x0,y:y0,width:w,height:h,rx:12,fill:"var(--bg)",stroke:seen?"var(--ink3)":"var(--rule)","stroke-dasharray":seen?"":"3 4",opacity:seen?1:.4},recSvg);
+      if(seen){
+        el("rect",{x:x0+10,y:y0+9,width:56,height:28,rx:6,fill:"var(--blue)",opacity:active?.95:.45},recSvg);
+        el("text",{x:x0+38,y:y0+28,"text-anchor":"middle","font-size":15,fill:"var(--bg)","font-weight":700},recSvg,taskNames[k]);
+        el("text",{x:x0+76,y:y0+28,"font-size":13.5,class:"t-ink2"},recSvg,k<3?"solve "+taskNames[k]+" · hand "+taskNames.slice(k+1).join("–")+" to a new harness":"solve "+taskNames[k]+" · return");
+      }
+    }
+  }
+  var cap;
+  if(recMode==="flat"){
+    cap=recStep===0?"One run tackles every task in turn. Tap \"Solve next task\" to watch the context build up."
+      :recStep>=4?"All four tasks end up in one context, four times the size the model practiced on. Full-chain success: 55.2%."
+      :"The context now holds "+(recStep+1)+" tasks' worth of history. It's out of distribution again, one level up.";
+  } else {
+    cap=recStep===0?"Each task gets its own harness. Tap \"Solve next task\" to see the hand-offs."
+      :recStep>=4?"Every task was solved in a fresh, familiar-sized context. Full-chain success: 77.5%."
+      :"Task "+taskNames[recStep-1]+" is done. Tasks "+taskNames.slice(recStep).join("–")+" go to a fresh harness, so the context starts clean again.";
+  }
+  $("recCap").textContent=cap;
+  $("recNext").textContent=recStep>=4?"↺ Start over":"Solve next task →";
+}
+bindStaticSeg($("recSeg"),function(k){recMode=k;recStep=0;drawRec();});
+$("recNext").addEventListener("click",function(){recStep=recStep>=4?0:recStep+1;drawRec();});
+$("recReset").addEventListener("click",function(){recStep=0;drawRec();});
+drawRec();
+
+/* =========================================================
+   9b. Recursion results bars
+   ========================================================= */
+var recRes=[["Qwen3.8-27B, RLM harness",19.3,1.7,"gray"],["RLM-27B, one long run",55.2,2.2,"gray"],["RLM-27B + hint to recurse",47.2,2.2,"gray"],["RLM-27B + recursion training",77.5,1.8,"blue"]];
+function drawRecChart(){
+  var host=$("recChart"); host.innerHTML="";
+  var W=Math.max(280,host.clientWidth), small=W<520, rowH=small?54:40, labW=small?0:200, padR=50, top=6;
+  var H=top+recRes.length*rowH+24;
+  var s=el("svg",{width:W,height:H,viewBox:"0 0 "+W+" "+H,role:"img","aria-label":"Bar chart of full-chain solve rate"},host);
+  var x0=small?8:labW, x1=W-padR;
+  function x(v){return x0+v/100*(x1-x0);}
+  [0,25,50,75,100].forEach(function(t){el("line",{x1:x(t),x2:x(t),y1:top,y2:H-22,stroke:"var(--rule)","stroke-dasharray":t===0?"":"2 4"},s);
+    el("text",{x:x(t),y:H-6,"text-anchor":"middle","font-size":11,class:"t-ink3"},s,t+"%");});
+  recRes.forEach(function(r,i){
+    var y=top+i*rowH, by=small?y+22:y+10, bh=small?18:20;
+    if(small) el("text",{x:8,y:y+15,"font-size":12.5,class:"t-ink"},s,r[0]);
+    else el("text",{x:labW-10,y:by+bh/2+4,"text-anchor":"end","font-size":12.5,class:"t-ink"},s,r[0]);
+    var rect=el("rect",{x:x(0),y:by,width:x(r[1])-x(0),height:bh,rx:4,fill:"var(--"+r[3]+")",class:"grow"},s);
+    rect.style.animationDelay=(i*80)+"ms";
+    var cy=by+bh/2;
+    el("line",{x1:x(r[1]-r[2]),x2:x(r[1]+r[2]),y1:cy,y2:cy,stroke:"var(--ink)","stroke-width":1.4},s);
+    el("line",{x1:x(r[1]-r[2]),x2:x(r[1]-r[2]),y1:cy-5,y2:cy+5,stroke:"var(--ink)","stroke-width":1.4},s);
+    el("line",{x1:x(r[1]+r[2]),x2:x(r[1]+r[2]),y1:cy-5,y2:cy+5,stroke:"var(--ink)","stroke-width":1.4},s);
+    el("text",{x:x(r[1]+r[2])+8,y:cy+4,"font-size":12,class:"t-ink2"},s,r[1].toFixed(1)+"%");
+    var hb=el("rect",{x:0,y:y,width:W,height:rowH,class:"hitbox"},s);
+    bindTip(hb,function(){return "<b>"+r[0]+"</b><br>Full chains solved: "+r[1]+"% ± "+r[2];});
+  });
+}
+
+/* ---------- responsive redraw ---------- */
+function redrawAll(){ if(!window.__ready) return; drawLenChart(); drawSim(); drawRes(); drawRecChart(); }
+window.__ready=true; redrawAll();
+var lastW=window.innerWidth, rt=null;
+window.addEventListener("resize",function(){if(Math.abs(window.innerWidth-lastW)<4)return;lastW=window.innerWidth;clearTimeout(rt);rt=setTimeout(redrawAll,150);});
+window.addEventListener("orientationchange",function(){setTimeout(redrawAll,250);});
+})();
+</script>
+</body>
+</html>
